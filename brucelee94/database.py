@@ -102,7 +102,7 @@ def check_if_migration_is_needed():
     most_recent_mig = sorted(f for f in listdir(MIG_DIR) if f.endswith(".sql"))[-1:][0]
     if path.exists(OLD_DB_PATH):
         click.secho(
-            f"The database needs to be moved to the new directory ({DB_PATH}). Please run `salmon migrate`.\n",
+            f"The database needs to be moved to the new directory ({DB_PATH}). Please run `brucelee94 migrate`.\n",
             fg="red",
             bold=True,
         )
@@ -116,7 +116,7 @@ def check_if_migration_is_needed():
         raise click.Abort from None
     if mig_version > current_version:
         click.secho(
-            "The database needs updating. Please run `salmon migrate`.\n",
+            "The database needs updating. Please run `brucelee94 migrate`.\n",
             fg="red",
             bold=True,
         )

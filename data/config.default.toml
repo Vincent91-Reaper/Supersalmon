@@ -1,6 +1,6 @@
-# Smoked Salmon Configuration File
+# BruceLee94 Configuration File
 # Read details about each setting here:
-# https://github.com/smokin-salmon/smoked-salmon/wiki/Configuration
+# https://github.com/Vincent91-Reaper/Supersalmon/wiki/Configuration
 
 # ===============================
 # DIRECTORY SETTINGS
@@ -110,7 +110,7 @@ session = 'get-from-site-cookie'
 # # qbittorrent+http://username:password@127.0.0.1:8080
 # torrent_client = ""
 # directory = "" # Directory when adding torrent to download client
-# label = "smoked-salmon" # Label to apply to torrents in download client
+# label = "brucelee94" # Label to apply to torrents in download client
 # add_paused = false # If true, add torrents to client in paused state
 
 
