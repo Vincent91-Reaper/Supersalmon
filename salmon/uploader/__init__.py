@@ -20,14 +20,15 @@ from salmon.checks.logs import check_log_cambia
 from salmon.checks.upconverts import upload_upconvert_test
 from salmon.common import commandgroup
 from salmon.constants import ENCODINGS, FORMATS, SOURCES, TAG_ENCODINGS
-from salmon.converter.downconverting import (
-    convert_folder,
-    generate_conversion_description,
-)
-from salmon.converter.transcoding import (
-    generate_transcode_description,
-    transcode_folder,
-)
+# Downconversion removed
+# from salmon.converter.downconverting import (
+#     convert_folder,
+#     generate_conversion_description,
+# )
+# from salmon.converter.transcoding import (
+#     generate_transcode_description,
+#     transcode_folder,
+# )
 from salmon.errors import AbortAndDeleteFolder, InvalidMetadataError
 from salmon.images import upload_cover
 from salmon.tagger import (
@@ -41,11 +42,12 @@ from salmon.tagger.audio_info import (
     recompress_path,
 )
 from salmon.tagger.cover import compress_pictures, download_cover_if_nonexistent
-from salmon.tagger.foldername import rename_folder
+# Folder renaming removed
+# from salmon.tagger.foldername import rename_folder
 from salmon.tagger.folderstructure import check_folder_structure
 from salmon.tagger.metadata import get_metadata
 from salmon.tagger.pre_data import construct_rls_data
-from salmon.tagger.retagger import rename_files, tag_files
+from salmon.tagger.retagger import tag_files  # rename_files removed
 from salmon.tagger.review import review_metadata
 from salmon.tagger.tags import check_tags, gather_tags, standardize_tags
 from salmon.uploader.dupe_checker import (
@@ -56,16 +58,18 @@ from salmon.uploader.dupe_checker import (
     print_torrents,
 )
 from salmon.uploader.preassumptions import print_preassumptions
-from salmon.uploader.request_checker import check_requests
+# Request filling removed
+# from salmon.uploader.request_checker import check_requests
 from salmon.uploader.seedbox import UploadManager
-from salmon.uploader.spectrals import (
-    check_spectrals,
-    generate_lossy_approval_comment,
-    get_spectrals_path,
-    handle_spectrals_upload_and_deletion,
-    post_upload_spectral_check,
-    report_lossy_master,
-)
+# Spectral generation/upload removed
+# from salmon.uploader.spectrals import (
+#     check_spectrals,
+#     generate_lossy_approval_comment,
+#     get_spectrals_path,
+#     handle_spectrals_upload_and_deletion,
+#     post_upload_spectral_check,
+#     report_lossy_master,
+# )
 from salmon.uploader.upload import (
     concat_track_data,
     prepare_and_upload,
@@ -90,13 +94,14 @@ loop = asyncio.get_event_loop()
     default=None,
     help="Whether or not the files are lossy mastered",
 )
-@click.option(
-    "--spectrals",
-    "-sp",
-    type=click.INT,
-    multiple=True,
-    help="Track numbers of spectrals to include in torrent description",
-)
+# Spectral options removed
+# @click.option(
+#     "--spectrals",
+#     "-sp",
+#     type=click.INT,
+#     multiple=True,
+#     help="Track numbers of spectrals to include in torrent description",
+# )
 @click.option(
     "--overwrite",
     "-ow",
@@ -123,19 +128,22 @@ loop = asyncio.get_event_loop()
     callback=salmon.trackers.validate_tracker,
     help=f"Uploading Choices: ({'/'.join(salmon.trackers.tracker_list)})",
 )
-@click.option("--request", "-r", default=None, help="Pass a request URL or ID")
-@click.option(
-    "--spectrals-after",
-    "-a",
-    is_flag=True,
-    help="Assess / upload / report spectrals after torrent upload",
-)
-@click.option(
-    "--auto-rename",
-    "-n",
-    is_flag=True,
-    help="Rename files and folders automatically",
-)
+# Request filling removed
+# @click.option("--request", "-r", default=None, help="Pass a request URL or ID")
+# Spectral after option removed
+# @click.option(
+#     "--spectrals-after",
+#     "-a",
+#     is_flag=True,
+#     help="Assess / upload / report spectrals after torrent upload",
+# )
+# File/folder renaming option removed
+# @click.option(
+#     "--auto-rename",
+#     "-n",
+#     is_flag=True,
+#     help="Rename files and folders automatically",
+# )
 @click.option(
     "--skip-up",
     is_flag=True,
@@ -169,14 +177,14 @@ def up(
     group_id,
     source,
     lossy,
-    spectrals,
+    # spectrals,  # removed
     overwrite,
     encoding,
     compress,
     tracker,
-    request,
-    spectrals_after,
-    auto_rename,
+    # request,  # removed
+    # spectrals_after,  # removed
+    # auto_rename,  # removed
     skip_up,
     scene,
     source_url,
@@ -189,18 +197,19 @@ def up(
     if yyy:
         cfg.upload.yes_all = True
     gazelle_site = salmon.trackers.get_class(tracker)()
-    if request:
-        request = salmon.trackers.validate_request(gazelle_site, request)
-        # This is isn't handled by click because we need the tracker sorted first.
+    # Request filling removed
+    # if request:
+    #     request = salmon.trackers.validate_request(gazelle_site, request)
+    #     # This is isn't handled by click because we need the tracker sorted first.
     print_preassumptions(
         gazelle_site,
         path,
         group_id,
         source,
         lossy,
-        spectrals,
+        # spectrals,  # removed
         encoding,
-        spectrals_after,
+        # spectrals_after,  # removed
     )
     if source_url:
         source_url = source_url.strip()
@@ -210,15 +219,15 @@ def up(
         group_id,
         source,
         lossy,
-        spectrals,
+        # spectrals,  # removed
         encoding,
         source_url=source_url,
         scene=scene,
         overwrite_meta=overwrite,
         recompress=compress,
-        request_id=request,
-        spectrals_after=spectrals_after,
-        auto_rename=auto_rename,
+        # request_id=request,  # removed
+        # spectrals_after=spectrals_after,  # removed
+        # auto_rename=auto_rename,  # removed
         skip_up=skip_up,
         skip_mqa=skip_mqa,
         skip_log_check=skip_log_check,
@@ -232,23 +241,23 @@ def upload(
     group_id,
     source,
     lossy,
-    spectrals,
+    # spectrals,  # removed
     encoding,
     scene=False,
     overwrite_meta=False,
     recompress=False,
     source_url=None,
     searchstrs=None,
-    request_id=None,
-    spectrals_after=False,
-    auto_rename=False,
+    # request_id=None,  # removed
+    # spectrals_after=False,  # removed
+    # auto_rename=False,  # removed
     skip_up=False,
     skip_mqa=False,
     skip_log_check=False,
     skip_integrity_check=False,
 ):
-    """Upload an album folder to Gazelle Site
-    Offer the choice to upload to another tracker after completion."""
+    """Upload an album folder to RED (Gazelle Site)
+    Multi-tracker upload removed."""
     path = os.path.abspath(path)
     remove_downloaded_cover_image = scene or cfg.image.remove_auto_downloaded_cover_image
     if not source:
@@ -316,19 +325,21 @@ def upload(
             if len(searchstrs) > 0:
                 group_id = check_existing_group(gazelle_site, searchstrs)
 
-        spectral_ids = None
-        if spectrals_after:
-            lossy_master = False
-            # We tell the uploader not to worry about it being lossy until later.
-        else:
-            lossy_master, spectral_ids = check_spectrals(path, audio_info, lossy, spectrals, format=rls_data["format"])
+        # Spectral checking removed
+        # spectral_ids = None
+        # if spectrals_after:
+        #     lossy_master = False
+        #     # We tell the uploader not to worry about it being lossy until later.
+        # else:
+        #     lossy_master, spectral_ids = check_spectrals(path, audio_info, lossy, spectrals, format=rls_data["format"])
+        lossy_master = False  # Always set to False since spectral checking is removed
 
         metadata, new_source_url = get_metadata(path, tags, rls_data)
         if new_source_url is not None:
             source_url = new_source_url
             click.secho(f"New Source URL: {source_url}", fg="yellow")
         path, metadata, tags, audio_info = edit_metadata(
-            path, tags, metadata, source, rls_data, recompress, auto_rename, spectral_ids, skip_integrity_check
+            path, tags, metadata, source, rls_data, recompress, skip_integrity_check
         )
 
         if not group_id:
@@ -351,142 +362,145 @@ def upload(
             shutil.rmtree(path)
             return click.secho("\nDeleted folder, aborting upload...", fg="red")
 
-    lossy_comment = None
-    if spectrals_after:
-        spectral_urls = None
-    else:
-        if lossy_master:
-            lossy_comment = generate_lossy_approval_comment(source_url, list(track_data.keys()))
-            click.echo()
+    # Spectral and lossy master handling removed
+    # lossy_comment = None
+    # if spectrals_after:
+    #     spectral_urls = None
+    # else:
+    #     if lossy_master:
+    #         lossy_comment = generate_lossy_approval_comment(source_url, list(track_data.keys()))
+    #         click.echo()
+    #
+    #     spectrals_path = get_spectrals_path(path)
+    #     spectral_urls = handle_spectrals_upload_and_deletion(spectrals_path, spectral_ids)
+    # Last minute dupe check removed (related to requests)
+    # if cfg.upload.requests.last_minute_dupe_check:
+    #     last_min_dupe_check(gazelle_site, searchstrs)
 
-        spectrals_path = get_spectrals_path(path)
-        spectral_urls = handle_spectrals_upload_and_deletion(spectrals_path, spectral_ids)
-    if cfg.upload.requests.last_minute_dupe_check:
-        last_min_dupe_check(gazelle_site, searchstrs)
-
-    # Shallow copy to avoid errors on multiple uploads in one session.
-    remaining_gazelle_sites = list(salmon.trackers.tracker_list)
+    # Multi-tracker upload removed - only upload to RED
+    # remaining_gazelle_sites = list(salmon.trackers.tracker_list)
     tracker = gazelle_site.site_code
     torrent_id = None
     cover_url = None
-    stored_cover_url = None  # Store the cover URL for reuse across trackers
-    # Regenerate searchstrs (will be used to search for requests)
-    searchstrs = generate_dupe_check_searchstrs(rls_data["artists"], rls_data["title"], rls_data["catno"])
+    # stored_cover_url = None  # Store the cover URL for reuse across trackers - not needed anymore
+    # searchstrs = generate_dupe_check_searchstrs(rls_data["artists"], rls_data["title"], rls_data["catno"])
 
     seedbox_uploader = UploadManager()
 
-    while True:
-        # Loop until we don't want to upload to any more sites.
-        if not tracker:
-            if spectrals_after and torrent_id:
-                # Here we are checking the spectrals after uploading to the first site
-                # if they were not done before.
-                lossy_master, lossy_comment, spectral_urls, spectral_ids = post_upload_spectral_check(
-                    gazelle_site, path, torrent_id, None, track_data, source, source_url, format=rls_data["format"]
-                )
-                spectrals_after = False
-            click.secho("\nWould you like to upload to another tracker? ", fg="magenta", nl=False)
-            tracker = salmon.trackers.choose_tracker(remaining_gazelle_sites)
-            if not tracker:
-                click.secho("\nDone with this release.", fg="green")
-                break
-            gazelle_site = salmon.trackers.get_class(tracker)()
+    # Single upload to RED only (multi-tracker loop removed)
+    # while True:
+    #     # Loop until we don't want to upload to any more sites.
+    #     if not tracker:
+    #         if spectrals_after and torrent_id:
+    #             # Here we are checking the spectrals after uploading to the first site
+    #             # if they were not done before.
+    #             lossy_master, lossy_comment, spectral_urls, spectral_ids = post_upload_spectral_check(
+    #                 gazelle_site, path, torrent_id, None, track_data, source, source_url, format=rls_data["format"]
+    #             )
+    #             spectrals_after = False
+    #         click.secho("\nWould you like to upload to another tracker? ", fg="magenta", nl=False)
+    #         tracker = salmon.trackers.choose_tracker(remaining_gazelle_sites)
+    #         if not tracker:
+    #             click.secho("\nDone with this release.", fg="green")
+    #             break
+    #         gazelle_site = salmon.trackers.get_class(tracker)()
+    #
+    #         click.secho(f"Uploading to {gazelle_site.base_url}", fg="cyan", bold=True)
+    #         searchstrs = generate_dupe_check_searchstrs(rls_data["artists"], rls_data["title"], rls_data["catno"])
+    #         group_id = check_existing_group(gazelle_site, searchstrs, metadata)
+    #
+    #     remaining_gazelle_sites.remove(tracker)
 
-            click.secho(f"Uploading to {gazelle_site.base_url}", fg="cyan", bold=True)
-            searchstrs = generate_dupe_check_searchstrs(rls_data["artists"], rls_data["title"], rls_data["catno"])
-            group_id = check_existing_group(gazelle_site, searchstrs, metadata)
+    # Handle cover image
+    if group_id:
+        if not remove_downloaded_cover_image:
+            download_cover_if_nonexistent(path, metadata["cover"])
+        # Don't need cover URL for existing groups
+        cover_url = None
+    else:
+        # For new groups, we need a cover URL
+        cover_path, is_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
+        cover_url = upload_cover(cover_path)
+        if is_downloaded and remove_downloaded_cover_image:
+            click.secho("Removing downloaded Cover Image File", fg="yellow")
+            os.remove(cover_path)
 
-        remaining_gazelle_sites.remove(tracker)
+    if not scene and cfg.image.auto_compress_cover:
+        compress_pictures(path)
 
-        # Handle cover image for this tracker
-        if group_id:
-            if not remove_downloaded_cover_image:
-                download_cover_if_nonexistent(path, metadata["cover"])
-            # Don't need cover URL for existing groups
-            cover_url = None
-        else:
-            # For new groups, we need a cover URL
-            # If we already uploaded it for a previous tracker, reuse that URL
-            if not stored_cover_url:
-                cover_path, is_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
-                stored_cover_url = upload_cover(cover_path)
-                if is_downloaded and remove_downloaded_cover_image:
-                    click.secho("Removing downloaded Cover Image File", fg="yellow")
-                    os.remove(cover_path)
-            cover_url = stored_cover_url
+    # Request filling removed
+    # if not request_id and cfg.upload.requests.check_requests:
+    #     request_id = check_requests(gazelle_site, searchstrs)
 
-        if not scene and cfg.image.auto_compress_cover:
-            compress_pictures(path)
-
-        if not request_id and cfg.upload.requests.check_requests:
-            request_id = check_requests(gazelle_site, searchstrs)
-
-        torrent_id, group_id, torrent_path, torrent_content, url = upload_and_report(
-            gazelle_site,
-            path,
-            group_id,
-            metadata,
-            cover_url,
-            track_data,
-            hybrid,
-            lossy_master,
-            spectral_urls,
-            spectral_ids,
-            lossy_comment,
-            request_id,
-            source_url,
-            seedbox_uploader,
+    torrent_id, group_id, torrent_path, torrent_content, url = upload_and_report(
+        gazelle_site,
+        path,
+        group_id,
+        metadata,
+        cover_url,
+        track_data,
+        hybrid,
+        lossy_master,
+        # spectral_urls,  # removed
+        # spectral_ids,  # removed
+        # lossy_comment,  # removed
+        # request_id,  # removed
+        source_url,
+        seedbox_uploader,
             source=source,
         )
 
-        request_id = None
+        # request_id = None  # removed
 
         torrent_content.comment = url
         torrent_content.write(torrent_path, overwrite=True)
 
         print_torrents(gazelle_site, group_id, highlight_torrent_id=torrent_id)
 
-        if cfg.upload.yes_all or click.confirm(
-            click.style("\nWould you like to check downconversion options?", fg="magenta"),
-            default=True,
-        ):
-            selected_tasks = prompt_downconversion_choice(rls_data, track_data)
-            if selected_tasks:
-                display_names = [task["name"] for task in selected_tasks]
-                click.secho(f"\nSelected formats for downconversion: {', '.join(display_names)}", fg="green", bold=True)
+        # Downconversion removed
+        # if cfg.upload.yes_all or click.confirm(
+        #     click.style("\nWould you like to check downconversion options?", fg="magenta"),
+        #     default=True,
+        # ):
+        #     selected_tasks = prompt_downconversion_choice(rls_data, track_data)
+        #     if selected_tasks:
+        #         display_names = [task["name"] for task in selected_tasks]
+        #         click.secho(f"\nSelected formats for downconversion: {', '.join(display_names)}", fg="green", bold=True)
+        #
+        #         # Execute downconversion tasks
+        #         execute_downconversion_tasks(
+        #             selected_tasks,
+        #             path,
+        #             gazelle_site,
+        #             group_id,
+        #             metadata,
+        #             cover_url,
+        #             track_data,
+        #             hybrid,
+        #             lossy_master,
+        #             spectral_urls,
+        #             spectral_ids,
+        #             lossy_comment,
+        #             request_id,
+        #             source_url,
+        #             seedbox_uploader,
+        #             source,
+        #             url,
+        #         )
 
-                # Execute downconversion tasks
-                execute_downconversion_tasks(
-                    selected_tasks,
-                    path,
-                    gazelle_site,
-                    group_id,
-                    metadata,
-                    cover_url,
-                    track_data,
-                    hybrid,
-                    lossy_master,
-                    spectral_urls,
-                    spectral_ids,
-                    lossy_comment,
-                    request_id,
-                    source_url,
-                    seedbox_uploader,
-                    source,
-                    url,
-                )
+        # Multi-tracker loop removed
+        # tracker = None
+        # if not remaining_gazelle_sites or not cfg.upload.multi_tracker_upload:
+        #     click.secho("\nDone uploading this release.", fg="green")
+        #     break
 
-        tracker = None
-        if not remaining_gazelle_sites or not cfg.upload.multi_tracker_upload:
-            click.secho("\nDone uploading this release.", fg="green")
-            break
-
+    click.secho("\nDone uploading this release.", fg="green")
     seedbox_uploader.execute_upload()
 
 
 def edit_metadata(
-    path, tags, metadata, source, rls_data, recompress, auto_rename, spectral_ids, skip_integrity_check=False
-):
+    path, tags, metadata, source, rls_data, recompress, skip_integrity_check=False
+):  # auto_rename and spectral_ids removed
     """
     The metadata editing portion of the uploading process. This sticks the user
     into an infinite loop where the metadata process is repeated until the user
@@ -495,14 +509,16 @@ def edit_metadata(
     while True:
         metadata = review_metadata(metadata, metadata_validator)
         if not metadata["scene"]:
-            tag_files(path, tags, metadata, auto_rename)
+            tag_files(path, tags, metadata, False)  # auto_rename always False
 
         tags = check_tags(path)
         if not metadata["scene"] and recompress:
             recompress_path(path)
-        path = rename_folder(path, metadata, auto_rename)
-        if not metadata["scene"]:
-            rename_files(path, tags, metadata, auto_rename, spectral_ids, source)
+        # Folder renaming removed
+        # path = rename_folder(path, metadata, auto_rename)
+        # File renaming removed
+        # if not metadata["scene"]:
+        #     rename_files(path, tags, metadata, auto_rename, spectral_ids, source)
         check_folder_structure(path, metadata["scene"])
 
         if not skip_integrity_check:
@@ -592,259 +608,6 @@ def metadata_validator(metadata):
     return metadata
 
 
-def get_downconversion_options(rls_data, track_data):
-    """
-    Determine available downconversion options based on current format.
-    Returns a list of downconversion tasks
-
-    Tier hierarchy:
-    1. 24bit 176.4 ~ 192 kHz
-    2. 24bit 44.1 ~ 96 kHz
-    3. 16bit 44.1 ~ 48 kHz
-    4. mp3 320
-    5. mp3 v0
-    """
-    if not track_data:
-        return []
-
-    # Get sample rate from first track
-    sample_rate = next(iter(track_data.values()))["sample rate"]
-    encoding = rls_data["encoding"]
-
-    options = []
-
-    # Tier 1: 24bit 176.4~192 kHz
-    if encoding == "24bit Lossless" and sample_rate >= 176400:
-        # Can downconvert to 24bit lower sample rate
-        target_rate = 96000 if sample_rate % 48000 == 0 else 88200
-        options.append(
-            {
-                "name": f"24bit {target_rate / 1000:.1f} kHz",
-                "action": "downconvert",
-                "target_bitdepth": 24,
-                "target_sample_rate": target_rate,
-            }
-        )
-
-    # Tier 2: 24bit 44.1~96 kHz
-    if encoding == "24bit Lossless" and sample_rate >= 44100:
-        # Can downconvert to 16bit
-        target_rate = 48000 if sample_rate % 48000 == 0 else 44100
-        options.append(
-            {
-                "name": f"16bit {target_rate / 1000:.1f} kHz",
-                "action": "downconvert",
-                "target_bitdepth": 16,
-                "target_sample_rate": target_rate,
-            }
-        )
-
-    # Tier 3: 16bit 44.1~48 kHz
-    if (encoding == "Lossless") or (encoding == "24bit Lossless"):
-        # Can transcode to MP3
-        options.extend(
-            [
-                {"name": "MP3 320", "action": "transcode", "encoding": "320"},
-                {"name": "MP3 V0", "action": "transcode", "encoding": "V0"},
-            ]
-        )
-
-    return options
-
-
-def prompt_downconversion_choice(rls_data, track_data):
-    """
-    Prompt user to select downconversion formats.
-    Returns a list of selected task dictionaries.
-    """
-    options = get_downconversion_options(rls_data, track_data)
-
-    if not options:
-        return []
-
-    click.secho("\nDownconversion Options", fg="cyan", bold=True)
-
-    # Get current format info for display
-    encoding = rls_data["encoding"]
-    if track_data:
-        sample_rate = next(iter(track_data.values()))["sample rate"]
-        current_format = f"{encoding}"
-        if encoding == "24bit Lossless" or encoding == "Lossless":
-            current_format += f" ({sample_rate / 1000:.1f} kHz)"
-    else:
-        current_format = encoding
-
-    click.secho(f"Current format: {current_format}", fg="yellow")
-    click.secho("Available downconversion formats:", fg="green")
-
-    for i, option in enumerate(options, 1):
-        click.secho(f"  {i}. {option['name']}", fg="white")
-
-    click.secho("  0. Skip downconversion", fg="white")
-    click.secho("  *. All formats", fg="white")
-
-    selected_tasks = []
-
-    while True:
-        try:
-            choices = click.prompt(
-                click.style(
-                    '\nSelect formats to convert (space-separated list of IDs, "0" for none, "*" for all)', fg="magenta"
-                ),
-                default="*",
-            )
-
-            if choices.strip() == "0":
-                break
-
-            if choices.strip() == "*":
-                selected_tasks = options
-                break
-
-            # Parse choices - now using space separation
-            choice_nums = [int(x.strip()) for x in choices.split() if x.strip().isdigit()]
-
-            # Validate choices
-            invalid_choices = [x for x in choice_nums if x < 1 or x > len(options)]
-            if invalid_choices:
-                click.secho(
-                    f"Invalid choices: {invalid_choices}. Please enter numbers between 1-{len(options)}.", fg="red"
-                )
-                continue
-
-            # Get selected tasks
-            selected_tasks = [options[i - 1] for i in choice_nums]
-
-            # Confirm selection
-            if selected_tasks:
-                display_names = [task["name"] for task in selected_tasks]
-                click.secho(f"\nSelected formats: {', '.join(display_names)}", fg="green")
-                if click.confirm(click.style("Confirm selection?", fg="magenta"), default=True):
-                    break
-            else:
-                break
-
-        except (ValueError, IndexError):
-            click.secho("Invalid input format, please enter numeric options", fg="red")
-            continue
-
-    return selected_tasks
-
-
-def execute_downconversion_tasks(
-    selected_tasks,
-    path,
-    gazelle_site,
-    group_id,
-    metadata,
-    cover_url,
-    track_data,
-    hybrid,
-    lossy_master,
-    spectral_urls,
-    spectral_ids,
-    lossy_comment,
-    request_id,
-    source_url,
-    seedbox_uploader,
-    source,
-    base_url,
-):
-    """Execute the selected downconversion tasks."""
-
-    base_path = path
-
-    override_lossy_comment = (
-        f"Transcode of {base_url}\n[hide=Lossy comment of original torrent]{lossy_comment}[/hide]\n"
-        if lossy_comment
-        else None
-    )
-
-    for task in selected_tasks:
-        click.secho(f"\nProcessing: {task['name']}", fg="cyan", bold=True)
-
-        if task["action"] == "downconvert":
-            # Execute downconversion
-            sample_rate, new_path = convert_folder(
-                base_path, bit_depth=task["target_bitdepth"], sample_rate=task["target_sample_rate"]
-            )
-            time.sleep(0.1)
-
-            # Update metadata for this conversion
-            conversion_metadata = metadata.copy()
-            if task["target_bitdepth"] == 16:
-                conversion_metadata["encoding"] = "Lossless"
-
-            # Generate description for conversion
-            description = generate_conversion_description(base_url, sample_rate)
-            click.secho(f"  Generated description: {description[:100]}...", fg="blue")
-            check_folder_structure(new_path, conversion_metadata["scene"])
-
-            # Upload the converted version
-            torrent_id, group_id, torrent_path, torrent_content, new_url = upload_and_report(
-                gazelle_site,
-                new_path,
-                group_id,
-                conversion_metadata,
-                cover_url,
-                track_data,
-                hybrid,
-                lossy_master,
-                spectral_urls,
-                spectral_ids,
-                lossy_comment,
-                request_id,
-                source_url,
-                seedbox_uploader,
-                source=source,
-                override_description=description,
-                override_lossy_comment=override_lossy_comment,
-            )
-
-            click.secho(f"  ✓ {task['name']} conversion completed", fg="green")
-
-        elif task["action"] == "transcode":
-            # Call transcode function
-            click.secho(f"  Target encoding: {task['encoding']}", fg="white")
-
-            # Execute transcoding
-            transcoded_path = transcode_folder(base_path, task["encoding"])
-            time.sleep(0.1)
-
-            # Update metadata for this transcode
-            transcode_metadata = metadata.copy()
-            transcode_metadata["format"] = "MP3"
-            transcode_metadata["encoding"] = {"320": "320", "V0": "V0 (VBR)"}[task["encoding"]]
-            transcode_metadata["encoding_vbr"] = {"320": False, "V0": True}[task["encoding"]]
-
-            # Generate description for transcode
-            description = generate_transcode_description(base_url, task["encoding"])
-            click.secho(f"  Generated description: {description[:100]}...", fg="blue")
-            check_folder_structure(transcoded_path, transcode_metadata["scene"])
-
-            # Upload the transcoded version
-            torrent_id, group_id, torrent_path, torrent_content, new_url = upload_and_report(
-                gazelle_site,
-                transcoded_path,
-                group_id,
-                transcode_metadata,
-                cover_url,
-                track_data,
-                hybrid,
-                lossy_master,
-                spectral_urls,
-                spectral_ids,
-                lossy_comment,
-                request_id,
-                source_url,
-                seedbox_uploader,
-                source=source,
-                override_description=description,
-                override_lossy_comment=override_lossy_comment,
-            )
-
-            click.secho(f"  ✓ {task['name']} transcode completed", fg="green")
-
 
 def upload_and_report(
     gazelle_site,
@@ -855,10 +618,10 @@ def upload_and_report(
     track_data,
     hybrid,
     lossy_master,
-    spectral_urls,
-    spectral_ids,
-    lossy_comment,
-    request_id,
+    # spectral_urls,  # removed
+    # spectral_ids,  # removed
+    # lossy_comment,  # removed
+    # request_id,  # removed
     source_url,
     seedbox_uploader,
     source=None,
@@ -875,10 +638,10 @@ def upload_and_report(
         "track_data": track_data,
         "hybrid": hybrid,
         "lossy_master": lossy_master,
-        "spectral_urls": spectral_urls,
-        "spectral_ids": spectral_ids,
-        "lossy_comment": lossy_comment,
-        "request_id": request_id,
+        # "spectral_urls": spectral_urls,  # removed
+        # "spectral_ids": spectral_ids,  # removed
+        # "lossy_comment": lossy_comment,  # removed
+        # "request_id": request_id,  # removed
         "source_url": source_url,
         **({"override_description": override_description} if override_description else {}),
     }
@@ -886,17 +649,17 @@ def upload_and_report(
     # Execute upload
     torrent_id, group_id, torrent_path, torrent_content = prepare_and_upload(**upload_kwargs)
 
-    # Handle lossy master reporting
-    if lossy_master:
-        report_lossy_master(
-            gazelle_site,
-            torrent_id,
-            spectral_urls,
-            spectral_ids,
-            source,
-            override_lossy_comment if override_lossy_comment else lossy_comment,
-            source_url=source_url,
-        )
+    # Lossy master reporting removed
+    # if lossy_master:
+    #     report_lossy_master(
+    #         gazelle_site,
+    #         torrent_id,
+    #         spectral_urls,
+    #         spectral_ids,
+    #         source,
+    #         override_lossy_comment if override_lossy_comment else lossy_comment,
+    #         source_url=source_url,
+    #     )
 
     # Generate URL
     url = f"{gazelle_site.base_url}/torrents.php?torrentid={torrent_id}"

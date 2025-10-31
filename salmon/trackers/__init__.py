@@ -3,21 +3,25 @@ from urllib import parse
 import click
 
 from salmon import cfg
-from salmon.trackers import dic, ops, red
+from salmon.trackers import red  # Only RED tracker supported now
+# from salmon.trackers import dic, ops  # Removed
 
 # hard coded as it needs to reflect the imports anyway.
-tracker_classes = {"RED": red.RedApi, "OPS": ops.OpsApi, "DIC": dic.DICApi}
-tracker_url_code_map = {"redacted.sh": "RED", "orpheus.network": "OPS", "dicmusic.com": "DIC"}
+tracker_classes = {"RED": red.RedApi}  # Only RED
+# tracker_classes = {"RED": red.RedApi, "OPS": ops.OpsApi, "DIC": dic.DICApi}  # Removed OPS and DIC
+tracker_url_code_map = {"redacted.sh": "RED"}  # Only RED
+# tracker_url_code_map = {"redacted.sh": "RED", "orpheus.network": "OPS", "dicmusic.com": "DIC"}  # Removed
 
 # tracker_list is used to offer the user choices. Generated if not specified in the config.
 tracker_cfg = cfg.tracker
 tracker_list = []
 if tracker_cfg.red:
     tracker_list.append("RED")
-if tracker_cfg.ops:
-    tracker_list.append("OPS")
-if tracker_cfg.dic:
-    tracker_list.append("DIC")
+# Multi-tracker support removed
+# if tracker_cfg.ops:
+#     tracker_list.append("OPS")
+# if tracker_cfg.dic:
+#     tracker_list.append("DIC")
 
 
 def get_class(site_code):

@@ -9,7 +9,7 @@ from salmon.errors import RequestError, UploadError
 loop = asyncio.get_event_loop()
 
 
-def print_preassumptions(gazelle_site, path, group_id, source, lossy, spectrals, encoding, spectrals_after):
+def print_preassumptions(gazelle_site, path, group_id, source, lossy, encoding):  # spectrals and spectrals_after removed
     """Print what all the passed CLI options will do."""
     click.secho(f"\nProcessing {path}", fg="cyan", bold=True)
     second = []
@@ -24,22 +24,23 @@ def print_preassumptions(gazelle_site, path, group_id, source, lossy, spectrals,
         second.append(f"with lossy master status as {lossy}")
     if second:
         click.secho(f"Uploading {' '.join(second)}.", fg="yellow")
-    if spectrals:
-        if spectrals == (0,):
-            click.secho("Uploading no spectrals.", fg="yellow")
-        else:
-            click.secho(
-                f"Uploading spectrals {', '.join(str(s) for s in spectrals)}.",
-                fg="yellow",
-            )
-    if spectrals_after:
-        click.secho(
-            "Assessing spectrals after upload.",
-            fg="yellow",
-        )
-
-    if lossy and not spectrals:
-        raise UploadError("\nYou cannot report a torrent for lossy master without spectrals.")
+    # Spectral output removed
+    # if spectrals:
+    #     if spectrals == (0,):
+    #         click.secho("Uploading no spectrals.", fg="yellow")
+    #     else:
+    #         click.secho(
+    #             f"Uploading spectrals {', '.join(str(s) for s in spectrals)}.",
+    #             fg="yellow",
+    #         )
+    # if spectrals_after:
+    #     click.secho(
+    #         "Assessing spectrals after upload.",
+    #         fg="yellow",
+    #     )
+    #
+    # if lossy and not spectrals:
+    #     raise UploadError("\nYou cannot report a torrent for lossy master without spectrals.")
 
     if group_id:
         print_group_info(gazelle_site, group_id, source)
