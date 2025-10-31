@@ -7,7 +7,7 @@ import requests
 from brucelee94 import cfg
 
 LOCAL_VERSION_FILE = path.abspath(path.join(path.dirname(path.dirname(__file__)), "data", "version.py"))
-REMOTE_VERSION_URL = "https://raw.githubusercontent.com/smokin-salmon/smoked-salmon/refs/heads/master/data/version.py"
+REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Vincent91-Reaper/Supersalmon/refs/heads/master/data/version.py"
 
 
 def _extract_changelog(content, from_version, to_version):

@@ -1,7 +1,7 @@
 [project]
 name = "brucelee94"
 version = "0.9.7.4"
-description = "A simplified RED music uploader - fork of smoked-salmon."
+description = "A simplified RED music uploader with separate config from smoked-salmon."
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.11"

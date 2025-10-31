@@ -1,8 +1,6 @@
-[![Build and Publish Docker Image](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/docker-image.yml/badge.svg)](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/docker-image.yml) [![Linting](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/lint.yml/badge.svg?branch=master)](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/lint.yml)
-
 # 🥋 BruceLee94
 
-A simplified music uploading tool for RED (Redacted). Based on smoked-salmon but renamed and streamlined with functionality focused on core uploading features.
+A simplified music uploading tool for RED (Redacted). Completely separate from smoked-salmon with its own configuration and data directories.
 
 ## 🌟 Features  
 
@@ -20,7 +18,7 @@ A simplified music uploading tool for RED (Redacted). Based on smoked-salmon but
 
 ## ⚠️ Removed Features
 
-This fork has removed the following features from smoked-salmon:
+These features have been removed from the original smoked-salmon:
 - ❌ Folder renaming
 - ❌ File renaming  
 - ❌ Multi-tracker support (OPS, DIC) - Only RED is supported
@@ -125,24 +123,24 @@ Installing with pip is not recommended because uv (and pipx) manage python versi
 	
 	You'll see:
 	```
-	Could not find configuration path at /home/user/.config/smoked-salmon/config.toml.
-	Do you want smoked-salmon to create a default config file at /home/user/.config/smoked-salmon/config.default.toml? [y/N]:
+	Could not find configuration path at /home/user/.config/brucelee94/config.toml.
+	Do you want BruceLee94 to create a default config file at /home/user/.config/brucelee94/config.default.toml? [y/N]:
 	```
 	
 	Type `y` and press Enter.
 
 2. Copy the default config to the active configuration file:
 	```bash
-	cp ~/.config/smoked-salmon/config.default.toml ~/.config/smoked-salmon/config.toml
+	cp ~/.config/brucelee94/config.default.toml ~/.config/brucelee94/config.toml
 	```
 
 3. Edit the configuration file with your preferred text editor:
 	```bash
 	# Linux/macOS
-	nano ~/.config/smoked-salmon/config.toml
+	nano ~/.config/brucelee94/config.toml
 	
 	# Or use vim, emacs, etc.
-	vim ~/.config/smoked-salmon/config.toml
+	vim ~/.config/brucelee94/config.toml
 	```
 	
 	**Important settings to configure:**
@@ -262,7 +260,9 @@ For bug reports and feature requests, use GitHub Issues at https://github.com/Vi
 
 ## 📝 About BruceLee94
 
-BruceLee94 is a streamlined fork of smoked-salmon with the following modifications:
+BruceLee94 is a streamlined fork of the original smoked-salmon tool with the following modifications:
+
+**Important:** BruceLee94 uses its own separate configuration directory (`~/.config/brucelee94/`) and will not interfere with any existing smoked-salmon installation.
 
 ### What's Different:
 - **Renamed Tool**: Changed from "salmon" to "brucelee94" command
@@ -281,6 +281,6 @@ BruceLee94 is a streamlined fork of smoked-salmon with the following modificatio
 7. MQA detection
 
 ## 🎩 Credits
-* Based on [smoked-salmon](https://github.com/smokin-salmon/smoked-salmon) - originally created by [ligh7s](https://github.com/ligh7s/smoked-salmon)
-* Further development & maintenance of smoked-salmon by elghoto, xmoforf, miandru, redusys and others
-* BruceLee94 modifications by Vincent91-Reaper - renamed from Supersalmon and configured as a simplified RED-only uploader
+* Based on the original [smoked-salmon](https://github.com/smokin-salmon/smoked-salmon) - created by [ligh7s](https://github.com/ligh7s/smoked-salmon)
+* Further development & maintenance of the original smoked-salmon by elghoto, xmoforf, miandru, redusys and others
+* BruceLee94 modifications by Vincent91-Reaper - renamed from Supersalmon and configured as a simplified RED-only uploader with separate config directories

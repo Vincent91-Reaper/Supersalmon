@@ -8,7 +8,7 @@ from platformdirs import user_config_dir
 
 from .validations import Cfg
 
-APPNAME = "smoked-salmon"
+APPNAME = "brucelee94"
 
 root_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
@@ -27,7 +27,7 @@ def get_default_config_path():
         os.makedirs(os.path.dirname(default_config_path), exist_ok=True)
 
         try:
-            github_url = "https://raw.githubusercontent.com/smokin-salmon/smoked-salmon/master/data/config.default.toml"
+            github_url = "https://raw.githubusercontent.com/Vincent91-Reaper/Supersalmon/master/data/config.default.toml"
             response = requests.get(github_url, timeout=30)
             response.raise_for_status()
 
@@ -81,12 +81,12 @@ def setup_config():
         click.secho(f"Could not find configuration path at {cfg_path}.", fg="red")
         if os.path.exists(attempted_default_cfg):
             click.secho(
-                "Hint: Create a config by copying config.default.toml to config.toml. Hope you enjoy your salmon :)",
+                "Hint: Create a config by copying config.default.toml to config.toml.",
                 fg="yellow",
             )
         else:
             user_choice = click.confirm(
-                f"Do you want smoked-salmon to create a default config file at {attempted_default_cfg}?"
+                f"Do you want BruceLee94 to create a default config file at {attempted_default_cfg}?"
             )
             if user_choice:
                 default_cfg = get_default_config_path()

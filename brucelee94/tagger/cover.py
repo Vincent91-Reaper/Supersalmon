@@ -50,7 +50,7 @@ def download_cover_if_nonexistent(path, cover_url):
 def _download_cover(path, cover_url):
     ext = os.path.splitext(cover_url)[1]
     c = "c" if cfg.upload.formatting.lowercase_cover else "C"
-    headers = {"User-Agent": "smoked-salmon-v1"}
+    headers = {"User-Agent": "brucelee94-v1"}
     stream = requests.get(cover_url, stream=True, headers=headers)
 
     if stream.status_code < 400:

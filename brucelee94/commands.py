@@ -363,7 +363,7 @@ def _test_seedbox_connections():
 
 @commandgroup.command()
 def health():
-    """Check the status of smoked-salmon's config files and command line dependencies"""
+    """Check the status of BruceLee94's config files and command line dependencies"""
 
     try:
         config_path = find_config_path()
