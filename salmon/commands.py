@@ -28,43 +28,45 @@ from salmon.tagger.metadata import clean_metadata, remove_various_artists
 from salmon.tagger.retagger import create_artist_str
 from salmon.tagger.sources import run_metadata
 from salmon.uploader.seedbox import UploaderGenerator
-from salmon.uploader.spectrals import (
-    check_spectrals,
-    get_spectrals_path,
-    handle_spectrals_upload_and_deletion,
-    post_upload_spectral_check,
-)
+# Spectral imports removed
+# from salmon.uploader.spectrals import (
+#     check_spectrals,
+#     get_spectrals_path,
+#     handle_spectrals_upload_and_deletion,
+#     post_upload_spectral_check,
+# )
 from salmon.uploader.upload import generate_source_links
 
 loop = asyncio.get_event_loop()
 
 
-@commandgroup.command()
-@click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True), nargs=1)
-@click.option("--no-delete-specs", "-nd", is_flag=True)
-@click.option("--format-output", "-f", is_flag=True)
-def specs(path, no_delete_specs, format_output):
-    """Generate and open spectrals for a folder"""
-    audio_info = gather_audio_info(path, True)
-    _, sids = check_spectrals(path, audio_info, check_lma=False)
-    spath = get_spectrals_path(path)
-    spectral_urls = handle_spectrals_upload_and_deletion(spath, sids, delete_spectrals=not no_delete_specs)
-
-    filenames = list(audio_info.keys())
-    if spectral_urls:
-        output = []
-        for spec_id, urls in spectral_urls.items():
-            if format_output:
-                output.append(f"[hide={filenames[spec_id - 1]}][img={'][img='.join(urls)}][/hide]")
-            else:
-                output.append(f"{filenames[spec_id - 1]}: {' '.join(urls)}")
-        output = "\n".join(output)
-        click.secho(output)
-        if cfg.upload.description.copy_uploaded_url_to_clipboard:
-            pyperclip.copy(output)
-
-    if no_delete_specs:
-        click.secho(f"Spectrals saved to {spath}", fg="green")
+# Spectral commands removed
+# @commandgroup.command()
+# @click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True), nargs=1)
+# @click.option("--no-delete-specs", "-nd", is_flag=True)
+# @click.option("--format-output", "-f", is_flag=True)
+# def specs(path, no_delete_specs, format_output):
+#     """Generate and open spectrals for a folder"""
+#     audio_info = gather_audio_info(path, True)
+#     _, sids = check_spectrals(path, audio_info, check_lma=False)
+#     spath = get_spectrals_path(path)
+#     spectral_urls = handle_spectrals_upload_and_deletion(spath, sids, delete_spectrals=not no_delete_specs)
+#
+#     filenames = list(audio_info.keys())
+#     if spectral_urls:
+#         output = []
+#         for spec_id, urls in spectral_urls.items():
+#             if format_output:
+#                 output.append(f"[hide={filenames[spec_id - 1]}][img={'][img='.join(urls)}][/hide]")
+#             else:
+#                 output.append(f"{filenames[spec_id - 1]}: {' '.join(urls)}")
+#         output = "\n".join(output)
+#         click.secho(output)
+#         if cfg.upload.description.copy_uploaded_url_to_clipboard:
+#             pyperclip.copy(output)
+#
+#     if no_delete_specs:
+#         click.secho(f"Spectrals saved to {spath}", fg="green")
 
 
 @commandgroup.command()
@@ -112,63 +114,64 @@ def compress(path):
                 recompress(filepath)
 
 
-@commandgroup.command()
-@click.option(
-    "--torrent-id",
-    "-i",
-    default=None,
-    help="Torrent id or URL, tracker from URL will overule -t flag.",
-)
-@click.option(
-    "--tracker",
-    "-t",
-    help=f"Tracker choices: ({'/'.join(salmon.trackers.tracker_list)})",
-)
-@click.argument(
-    "path",
-    type=click.Path(exists=True, file_okay=False, resolve_path=True),
-    nargs=1,
-    default=".",
-)
-def checkspecs(tracker, torrent_id, path):
-    """Will check and upload the spectrals of a given torrent\n
-    Based on local files, not the ones on the tracker.
-    By default checks the folder the script is run from.
-    Can add spectrals to a torrent description and report a torrent as lossy web.
-    """
-    if not torrent_id:
-        click.secho("No torrent id provided.", fg="red")
-        torrent_id = click.prompt(
-            click.style(
-                """Input a torrent id or a URL containing one.
-                Tracker in a URL will override -t flag.""",
-                fg="magenta",
-                bold=True,
-            ),
-        )
-    if "/torrents.php" in torrent_id:
-        base_url = parse.urlparse(torrent_id).netloc
-        if base_url in salmon.trackers.tracker_url_code_map:
-            # this will overide -t tracker
-            tracker = salmon.trackers.tracker_url_code_map[base_url]
-        else:
-            click.echo("Unrecognised tracker!")
-            raise click.Abort
-        torrent_id = int(parse.parse_qs(parse.urlparse(torrent_id).query)["torrentid"][0])
-    elif torrent_id.strip().isdigit():
-        torrent_id = int(torrent_id)
-    else:
-        click.echo("Not a valid torrent!")
-        raise click.Abort
-    tracker = salmon.trackers.validate_tracker(None, "tracker", tracker)
-    gazelle_site = salmon.trackers.get_class(tracker)()
-    req = loop.run_until_complete(gazelle_site.request("torrent", id=torrent_id))
-    path = os.path.join(path, html.unescape(req["torrent"]["filePath"]))
-    source_url = None
-    source = req["torrent"]["media"]
-    click.echo(f"Generating spectrals for {source} sourced: {path}")
-    track_data = gather_audio_info(path)
-    post_upload_spectral_check(gazelle_site, path, torrent_id, None, track_data, source, source_url)
+# Checkspecs command removed (spectral functionality)
+# @commandgroup.command()
+# @click.option(
+#     "--torrent-id",
+#     "-i",
+#     default=None,
+#     help="Torrent id or URL, tracker from URL will overule -t flag.",
+# )
+# @click.option(
+#     "--tracker",
+#     "-t",
+#     help=f"Tracker choices: ({'/'.join(salmon.trackers.tracker_list)})",
+# )
+# @click.argument(
+#     "path",
+#     type=click.Path(exists=True, file_okay=False, resolve_path=True),
+#     nargs=1,
+#     default=".",
+# )
+# def checkspecs(tracker, torrent_id, path):
+#     """Will check and upload the spectrals of a given torrent\n
+#     Based on local files, not the ones on the tracker.
+#     By default checks the folder the script is run from.
+#     Can add spectrals to a torrent description and report a torrent as lossy web.
+#     """
+#     if not torrent_id:
+#         click.secho("No torrent id provided.", fg="red")
+#         torrent_id = click.prompt(
+#             click.style(
+#                 """Input a torrent id or a URL containing one.
+#                 Tracker in a URL will override -t flag.""",
+#                 fg="magenta",
+#                 bold=True,
+#             ),
+#         )
+#     if "/torrents.php" in torrent_id:
+#         base_url = parse.urlparse(torrent_id).netloc
+#         if base_url in salmon.trackers.tracker_url_code_map:
+#             # this will overide -t tracker
+#             tracker = salmon.trackers.tracker_url_code_map[base_url]
+#         else:
+#             click.echo("Unrecognised tracker!")
+#             raise click.Abort
+#         torrent_id = int(parse.parse_qs(parse.urlparse(torrent_id).query)["torrentid"][0])
+#     elif torrent_id.strip().isdigit():
+#         torrent_id = int(torrent_id)
+#     else:
+#         click.echo("Not a valid torrent!")
+#         raise click.Abort
+#     tracker = salmon.trackers.validate_tracker(None, "tracker", tracker)
+#     gazelle_site = salmon.trackers.get_class(tracker)()
+#     req = loop.run_until_complete(gazelle_site.request("torrent", id=torrent_id))
+#     path = os.path.join(path, html.unescape(req["torrent"]["filePath"]))
+#     source_url = None
+#     source = req["torrent"]["media"]
+#     click.echo(f"Generating spectrals for {source} sourced: {path}")
+#     track_data = gather_audio_info(path)
+#     post_upload_spectral_check(gazelle_site, path, torrent_id, None, track_data, source, source_url)
 
 
 def _backup_config(config_path):
