@@ -1,35 +1,41 @@
 [![Build and Publish Docker Image](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/docker-image.yml/badge.svg)](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/docker-image.yml) [![Linting](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/lint.yml/badge.svg?branch=master)](https://github.com/smokin-salmon/smoked-salmon/actions/workflows/lint.yml)
 
-# 🐟 smoked-salmon  
+# 🐟 Supersalmon
 
-A simple tool to take the work out of uploading on Gazelle-based trackers. It generates spectrals, gathers metadata, allows re-tagging/renaming files, and automates the upload process.
+A simplified music uploading tool for RED (Redacted). Based on smoked-salmon but with streamlined functionality focused on core uploading features.
 
 ## 🌟 Features  
 
-- **Interactive Uploading** – Supports **multiple trackers** (RED / OPS).
-- **Upconvert Detection** – Checks 24-bit flac files for potential upconverts.
-- **MQA Detection** – Checks files for common MQA markers.
-- **Duplicate Upload Detection** – Prevents redundant uploads.  
-- **Spectral Analysis** – Generates, compresses, and verifies spectrals, exposed via a web interface.  
-- **Spectral Upload** – Can generate spectrals for an existing upload (based on local files), and update the release description.  
-- **Lossy Master Report Generation** – Supports lossy master reports during upload.
+- **RED Upload** – Upload music to RED (Redacted) tracker
+- **Upconvert Detection** – Checks 24-bit flac files for potential upconverts
+- **Duplicate Upload Detection** – Prevents redundant uploads  
 - **Metadata Retrieval** – Fetches metadata from:
-  - Bandcamp, Beatport, Deezer, Discogs, iTunes, JunoDownload, MusicBrainz, Qobuz, Tidal.
+  - Bandcamp, Beatport, Deezer, Discogs, iTunes, JunoDownload, MusicBrainz, Qobuz, Tidal
 - **File Management** –  
-  - Retags and renames files to standard formats (based on metadata).
-  - Checks file integrity and sanitizes if needed.  
-- **Request Filling** – Scans for matching requests on trackers.
-- **Description generation** – Edition description generation (tracklist, sources, available streaming platforms, encoding details...).
-- **Down-convert and Transcode** – Can downconvert 24-bit flac files to 16-bit, and transcode to mp3.
-- **Update Notifications** – Informs users when a new version is available.
+  - Retags files with updated metadata
+  - Checks file integrity and sanitizes if needed
+  - Original folder and file names are preserved
+- **Description generation** – Edition description generation (tracklist, sources, available streaming platforms, encoding details...)
+- **Update Notifications** – Informs users when a new version is available
+
+## ⚠️ Removed Features
+
+This fork has removed the following features from smoked-salmon:
+- ❌ Folder renaming
+- ❌ File renaming  
+- ❌ Multi-tracker support (OPS, DIC) - Only RED is supported
+- ❌ Request filling
+- ❌ Downconversion and transcoding
+- ❌ Spectral image generation and uploading
+- ❌ MQA detection
 
 ## 📥 Installation  
 
 Manual installation instructions can be found on the [Wiki](https://github.com/smokin-salmon/smoked-salmon/wiki/Installation).
 
-### 🔹  Install smoked-salmon 
-These steps use [`uv`](https://github.com/astral-sh/uv) for installing the *smoked-salmon* package. [`pipx`](https://github.com/pypa/pipx) also works.
-Installing with pip is not recommended because uv (and pipx) manage python versions and isolate the *smoked-salmon* installation from the system python installation.
+### 🔹  Install Supersalmon 
+These steps use [`uv`](https://github.com/astral-sh/uv) for installing the *Supersalmon* package. [`pipx`](https://github.com/pypa/pipx) also works.
+Installing with pip is not recommended because uv (and pipx) manage python versions and isolate the installation from the system python installation.
 
 #### Linux
 1. Install system packages:
@@ -42,9 +48,9 @@ Installing with pip is not recommended because uv (and pipx) manage python versi
     curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 
-3. Install smoked-salmon package from github:
+3. Install Supersalmon package from github:
 	```bash
-	uv tool install git+https://github.com/smokin-salmon/smoked-salmon
+	uv tool install git+https://github.com/Vincent91-Reaper/Supersalmon
 	```
 
 #### Windows
@@ -68,9 +74,9 @@ Installing with pip is not recommended because uv (and pipx) manage python versi
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
     ```
 
-4. Install smoked-salmon package from github:
+4. Install Supersalmon package from github:
 	```powershell
-	uv tool install git+https://github.com/smokin-salmon/smoked-salmon
+	uv tool install git+https://github.com/Vincent91-Reaper/Supersalmon
 	```
 
 #### macOS
@@ -89,9 +95,9 @@ Installing with pip is not recommended because uv (and pipx) manage python versi
     curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 
-4. Install smoked-salmon package from github:
+4. Install Supersalmon package from github:
 	```bash
-	uv tool install git+https://github.com/smokin-salmon/smoked-salmon
+	uv tool install git+https://github.com/Vincent91-Reaper/Supersalmon
 	```
 
 ### 🔹  Initial Setup
@@ -107,9 +113,9 @@ Installing with pip is not recommended because uv (and pipx) manage python versi
 	cp ~/.config/smoked-salmon/config.default.toml ~/.config/smoked-salmon/config.toml
 	```
 
-3. Edit the `config.toml` file with your preferred text editor to add your API keys, session cookies and update your preferences (see the [Configuration Wiki](https://github.com/smokin-salmon/smoked-salmon/wiki/Configuration)).
+3. Edit the `config.toml` file with your preferred text editor to add your RED API key and session cookie. Make sure to configure only RED tracker settings (OPS and DIC are not supported).
 
-4. Use the `checkconf` command to verify that the connection to the trackers is working:
+4. Use the `checkconf` command to verify that the connection to RED is working:
 
 	```
 	salmon checkconf

@@ -10,7 +10,8 @@ import pyperclip
 
 import salmon.trackers
 from salmon import cfg
-from salmon.checks import mqa_test
+# MQA checking removed
+# from salmon.checks import mqa_test
 from salmon.checks.integrity import (
     check_integrity,
     format_integrity,
@@ -157,11 +158,12 @@ loop = asyncio.get_event_loop()
     help="For WEB uploads provide the source of the album to be added in release description",
 )
 @click.option("-yyy", is_flag=True, help="Automatically pick the default answer for prompt")
-@click.option(
-    "--skip-mqa",
-    is_flag=True,
-    help="Skip check for MQA marker (on first file only)",
-)
+# MQA check option removed
+# @click.option(
+#     "--skip-mqa",
+#     is_flag=True,
+#     help="Skip check for MQA marker (on first file only)",
+# )
 @click.option(
     "--skip-log-check",
     is_flag=True,
@@ -189,7 +191,7 @@ def up(
     scene,
     source_url,
     yyy,
-    skip_mqa,
+    # skip_mqa,  # removed
     skip_log_check,
     skip_integrity_check,
 ):
@@ -229,7 +231,7 @@ def up(
         # spectrals_after=spectrals_after,  # removed
         # auto_rename=auto_rename,  # removed
         skip_up=skip_up,
-        skip_mqa=skip_mqa,
+        # skip_mqa=skip_mqa,  # removed
         skip_log_check=skip_log_check,
         skip_integrity_check=skip_integrity_check,
     )
@@ -252,7 +254,7 @@ def upload(
     # spectrals_after=False,  # removed
     # auto_rename=False,  # removed
     skip_up=False,
-    skip_mqa=False,
+    # skip_mqa=False,  # removed
     skip_log_check=False,
     skip_integrity_check=False,
 ):
@@ -279,10 +281,11 @@ def upload(
     )
 
     try:
-        if not skip_mqa:
-            click.secho("Checking for MQA release (first file only)", fg="cyan", bold=True)
-            mqa_test(path)
-            click.secho("No MQA release detected", fg="green")
+        # MQA checking removed
+        # if not skip_mqa:
+        #     click.secho("Checking for MQA release (first file only)", fg="cyan", bold=True)
+        #     mqa_test(path)
+        #     click.secho("No MQA release detected", fg="green")
 
         if rls_data["encoding"] == "24bit Lossless" and not skip_up:
             if not cfg.upload.yes_all:
