@@ -11,15 +11,10 @@ from brucelee94.tagger.sources import METASOURCES
 from brucelee94.tagger.sources.base import determine_label_type, generate_artists, standardize_genres
 
 PREFERENCES = [
-    "Tidal",
     "Deezer",
     "Qobuz",
-    "Bandcamp",
-    "MusicBrainz",
-    "Junodownload",
-    "Discogs",
     "Beatport",
-    "iTunes",  # scraping half-broken, might want to put it back higher when fixed
+    "iTunes",
 ]
 
 

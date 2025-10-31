@@ -270,33 +270,28 @@ def _iter_which(deps):
 
 
 def _test_metadata_sources():
-    """Test metadata sources connections (Discogs, Tidal, Qobuz, Beatport, iTunes)"""
+    """Test metadata sources connections (Qobuz, Deezer, iTunes, Beatport)"""
     click.secho("\n[ Testing Metadata Sources ]", fg="cyan", bold=True)
 
     metadata_sources = {
-        "Discogs": {
-            "class": brucelee94.sources.DiscogsBase,
-            "test_url": "https://www.discogs.com/release/432932",
-            "config_check": lambda: bool(cfg.metadata.discogs_token),
-        },
-        "Tidal": {
-            "class": brucelee94.sources.TidalBase,
-            "test_url": "http://www.tidal.com/album/75194842",
-            "config_check": lambda: bool(cfg.metadata.tidal.token and cfg.metadata.tidal.fetch_regions),
-        },
         "Qobuz": {
             "class": brucelee94.sources.QobuzBase,
             "test_url": "https://www.qobuz.com/album/-/0886446576442",
             "config_check": lambda: bool(cfg.metadata.qobuz.app_id and cfg.metadata.qobuz.user_auth_token),
         },
-        "Beatport": {
-            "class": brucelee94.sources.BeatportBase,
-            "test_url": "https://www.beatport.com/release/test/1000000",
+        "Deezer": {
+            "class": brucelee94.sources.DeezerBase,
+            "test_url": "https://www.deezer.com/album/1000000",
             "config_check": lambda: True,  # No authentication required
         },
         "iTunes": {
             "class": brucelee94.sources.iTunesBase,
             "test_url": "https://music.apple.com/us/album/test/1000000000",
+            "config_check": lambda: True,  # No authentication required
+        },
+        "Beatport": {
+            "class": brucelee94.sources.BeatportBase,
+            "test_url": "https://www.beatport.com/release/test/1000000",
             "config_check": lambda: True,  # No authentication required
         },
     }

@@ -4,27 +4,17 @@ import click
 
 from brucelee94.errors import ScrapeError
 from brucelee94.tagger.sources import (
-    bandcamp,
     beatport,
     deezer,
-    discogs,
     itunes,
-    junodownload,
-    musicbrainz,
     qobuz,
-    tidal,
 )
 
 METASOURCES = {
-    "MusicBrainz": musicbrainz,
     "iTunes": itunes,
-    "Junodownload": junodownload,
     "Deezer": deezer,
-    "Discogs": discogs,
     "Beatport": beatport,
     "Qobuz": qobuz,
-    "Tidal": tidal,
-    "Bandcamp": bandcamp,  # Must be last due to the catch-all nature of its URLs.
 }
 
 loop = asyncio.get_event_loop()

@@ -13,27 +13,17 @@ from brucelee94.common import (
     re_strip,
 )
 from brucelee94.search import (
-    bandcamp,
     beatport,
     deezer,
-    discogs,
     itunes,
-    junodownload,
-    musicbrainz,
     qobuz,
-    tidal,
 )
 
 SEARCHSOURCES = {
-    "Bandcamp": bandcamp,
-    "MusicBrainz": musicbrainz,
-    "iTunes": itunes,
-    "Junodownload": junodownload,
-    "Discogs": discogs,
-    "Beatport": beatport,
     "Qobuz": qobuz,
-    "Tidal": tidal,
     "Deezer": deezer,
+    "iTunes": itunes,
+    "Beatport": beatport,
 }
 
 loop = asyncio.get_event_loop()
