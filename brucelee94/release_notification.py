@@ -59,10 +59,10 @@ def _get_remote_version(url):
                 click.secho("Version not found in remote file.", fg="red")
                 return None, None
         else:
-            click.secho(f"Failed to fetch remote version file. Status code: {response.status_code}", fg="red")
+            # Silently return None for 404 or other errors - just means no remote version file exists
             return None, None
-    except requests.RequestException as e:
-        click.secho(f"An error occurred while fetching the remote version file: {e}", fg="red")
+    except requests.RequestException:
+        # Silently return None for network errors
         return None, None
 
 
@@ -80,6 +80,8 @@ def show_release_notification():
 
     remote_version, remote_content = _get_remote_version(REMOTE_VERSION_URL)
     if not remote_version:
+        # No remote version available - treat as no update available
+        click.secho("No new version available.", fg="green")
         return
 
     if _parse_version(remote_version) > _parse_version(local_version):
