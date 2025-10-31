@@ -11,9 +11,10 @@ from salmon.constants import ARTIST_IMPORTANCES
 from salmon.errors import RequestError
 from salmon.sources import SOURCE_ICONS
 from salmon.tagger.sources import METASOURCES
-from salmon.uploader.spectrals import (
-    make_spectral_bbcode,
-)
+# Spectral imports removed
+# from salmon.uploader.spectrals import (
+#     make_spectral_bbcode,
+# )
 
 loop = asyncio.get_event_loop()
 
@@ -27,10 +28,10 @@ def prepare_and_upload(
     track_data,
     hybrid,
     lossy_master,
-    spectral_urls,
-    spectral_ids,
-    lossy_comment,
-    request_id,
+    # spectral_urls,  # removed
+    # spectral_ids,  # removed
+    # lossy_comment,  # removed
+    # request_id,  # removed
     source_url=None,
     override_description=None,
 ):
@@ -43,10 +44,10 @@ def prepare_and_upload(
             track_data,
             hybrid,
             cover_url,
-            spectral_urls,
-            spectral_ids,
-            lossy_comment,
-            request_id,
+            # spectral_urls,  # removed
+            # spectral_ids,  # removed
+            # lossy_comment,  # removed
+            # request_id,  # removed
             source_url=source_url,
         )
     else:
@@ -57,10 +58,10 @@ def prepare_and_upload(
             metadata,
             track_data,
             hybrid,
-            spectral_urls,
-            spectral_ids,
-            lossy_comment,
-            request_id,
+            # spectral_urls,  # removed
+            # spectral_ids,  # removed
+            # lossy_comment,  # removed
+            # request_id,  # removed
             source_url=source_url,
             override_description=override_description,
         )
@@ -91,10 +92,10 @@ def compile_data_new_group(
     track_data,
     hybrid,
     cover_url,
-    spectral_urls,
-    spectral_ids,
-    lossy_comment,
-    request_id=None,
+    # spectral_urls,  # removed
+    # spectral_ids,  # removed
+    # lossy_comment,  # removed
+    # request_id=None,  # removed
     source_url=None,
 ):
     """
@@ -126,9 +127,9 @@ def compile_data_new_group(
         "image": cover_url,
         "album_desc": generate_description(track_data, metadata),
         "release_desc": generate_t_description(
-            metadata, track_data, hybrid, metadata["urls"], spectral_urls, spectral_ids, lossy_comment, source_url
+            metadata, track_data, hybrid, metadata["urls"], source_url  # spectral params removed
         ),
-        "requestid": request_id,
+        # "requestid": request_id,  # removed
     }
 
 
@@ -139,10 +140,10 @@ def compile_data_existing_group(
     metadata,
     track_data,
     hybrid,
-    spectral_urls,
-    spectral_ids,
-    lossy_comment,
-    request_id,
+    # spectral_urls,  # removed
+    # spectral_ids,  # removed
+    # lossy_comment,  # removed
+    # request_id,  # removed
     source_url=None,
     override_description=None,
 ):
@@ -166,9 +167,9 @@ def compile_data_existing_group(
         "release_desc": override_description
         if override_description
         else generate_t_description(
-            metadata, track_data, hybrid, metadata["urls"], spectral_urls, spectral_ids, lossy_comment, source_url
+            metadata, track_data, hybrid, metadata["urls"], source_url  # spectral params removed
         ),
-        "requestid": request_id,
+        # "requestid": request_id,  # removed
     }
 
 
@@ -263,15 +264,16 @@ def generate_description(track_data, metadata):
 
 
 def generate_t_description(
-    metadata, track_data, hybrid, metadata_urls, spectral_urls, spectral_ids, lossy_comment, source_url
+    metadata, track_data, hybrid, metadata_urls, source_url  # spectral params removed
 ):
     """
-    Generate the torrent description. Add information about each file, and
-    add the specrals URLs if any were specified.
+    Generate the torrent description. Add information about each file.
+    Spectral URLs have been removed.
     """
     description = ""
-    if spectral_urls:
-        description += make_spectral_bbcode(spectral_ids, spectral_urls)
+    # Spectral bbcode removed
+    # if spectral_urls:
+    #     description += make_spectral_bbcode(spectral_ids, spectral_urls)
 
     if not hybrid:
         track = next(iter(track_data.values()))
@@ -303,8 +305,9 @@ def generate_t_description(
             description += "\n"
         description += "\n"
 
-    if lossy_comment and cfg.upload.compression.lma_comment_in_t_desc:
-        description += f"[u]Lossy Notes:[/u]\n{lossy_comment}\n\n"
+    # Lossy comment removed
+    # if lossy_comment and cfg.upload.compression.lma_comment_in_t_desc:
+    #     description += f"[u]Lossy Notes:[/u]\n{lossy_comment}\n\n"
 
     if source_url is not None:
         matched = False

@@ -450,15 +450,15 @@ def upload(
         # request_id,  # removed
         source_url,
         seedbox_uploader,
-            source=source,
-        )
+        source=source,
+    )
 
-        # request_id = None  # removed
+    # request_id = None  # removed
 
-        torrent_content.comment = url
-        torrent_content.write(torrent_path, overwrite=True)
+    torrent_content.comment = url
+    torrent_content.write(torrent_path, overwrite=True)
 
-        print_torrents(gazelle_site, group_id, highlight_torrent_id=torrent_id)
+    print_torrents(gazelle_site, group_id, highlight_torrent_id=torrent_id)
 
         # Downconversion removed
         # if cfg.upload.yes_all or click.confirm(
