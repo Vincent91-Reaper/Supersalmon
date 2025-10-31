@@ -8,11 +8,11 @@ import shutil
 
 import click
 
-import salmon.commands
-from salmon.common import commandgroup
-from salmon.errors import FilterError, LoginError, UploadError
-from salmon.release_notification import show_release_notification
-from salmon import cfg
+import brucelee94.commands
+from brucelee94.common import commandgroup
+from brucelee94.errors import FilterError, LoginError, UploadError
+from brucelee94.release_notification import show_release_notification
+from brucelee94 import cfg
 
 
 def cleanup_tmp_dir():

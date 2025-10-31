@@ -1,7 +1,7 @@
 [project]
-name = "salmon"
+name = "brucelee94"
 version = "0.9.7.4"
-description = "An uploading script for Gazelle-based music trackers."
+description = "A simplified RED music uploader - fork of smoked-salmon."
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -40,14 +40,14 @@ dependencies = [
 ]
 
 [project.scripts]
-salmon = "run:main"
+brucelee94 = "run:main"
 
 [build-system]
 requires = ["setuptools >= 61.0", "setuptools-scm >= 8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["salmon", "data"]
+packages = ["brucelee94", "data"]
 py-modules = ["run"]
 
 [dependency-groups]
