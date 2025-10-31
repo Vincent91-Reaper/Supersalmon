@@ -274,9 +274,6 @@ salmon up /data/path/to/album -s WEB
 
 You can get help directly from the CLI by appending --help to any command. This is especially useful for the up command which has a lot of possible options.
 
-### 🌐 Spectral Web Interface
-Spectrals are viewable via a built-in web server. By default, access it at: http://localhost:55110/spectrals
-
 ## 🔄 Updating
 
 For **normal installs**:
@@ -286,28 +283,34 @@ uv tool update salmon
 
 For **manual installs**:
 ```bash
-cd smoked-salmon
+cd Supersalmon
 git pull
 uv sync
 ```
 
-For **Docker users**:
-```bash
-docker pull ghcr.io/smokin-salmon/smoked-salmon:latest
-```
-
 ## 📞 Support
-For bug reports and feature requests, use GitHub Issues. Or use the forums.
+For bug reports and feature requests, use GitHub Issues at https://github.com/Vincent91-Reaper/Supersalmon
 
+## 📝 Changes from smoked-salmon
 
-## 🎭 Testimonials
-```
-"Salmon filled the void in my heart. I no longer chase after girls." ~boot
-"With the help of salmon, I overcame my addiction to kpop thots." ~b
-"I warn 5 people every day on the forums using salmon!" ~jon
-```
+Supersalmon is a streamlined fork of smoked-salmon with the following modifications:
+
+### What's Different:
+- **Simplified Upload Process**: File and folder names are preserved in their original state - no automatic renaming
+- **RED-Only**: Focused exclusively on uploading to RED (Redacted), removing complexity of multi-tracker support
+- **Streamlined Workflow**: Removed spectral generation, MQA detection, request filling, and downconversion features
+- **Core Functionality**: Retains essential features like metadata retrieval, file tagging, duplicate detection, and upconvert checking
+
+### Removed Features:
+1. Folder renaming (original folder names are kept)
+2. File renaming (original file names are kept)
+3. Multi-tracker support (OPS and DIC removed)
+4. Request filling
+5. Downconversion and transcoding
+6. Spectral image generation and uploading
+7. MQA detection
 
 ## 🎩 Credits
-* Originally created by [ligh7s](https://github.com/ligh7s/smoked-salmon). Huge thanks!
-* Further development & maintenance by elghoto, xmoforf, miandru, redusys and others. Keeping the dream alive.
-* Docker image build workflow and update notification mechanisms heavily inspired from the awesome work of Audionut on his [Upload Assistant tool](https://github.com/Audionut/Upload-Assistant) !
+* Based on [smoked-salmon](https://github.com/smokin-salmon/smoked-salmon) - originally created by [ligh7s](https://github.com/ligh7s/smoked-salmon)
+* Further development & maintenance of smoked-salmon by elghoto, xmoforf, miandru, redusys and others
+* Supersalmon modifications by Vincent91-Reaper to create a simplified RED-only uploader
