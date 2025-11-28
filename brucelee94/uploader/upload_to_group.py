@@ -35,7 +35,7 @@ def _prompt_for_group_id(gazelle_site, offer_deletion):
         )
         if group_id.strip().isdigit():
             group_id_num = int(group_id)
-            click.echo(f"Interpreting {group_id_num} as a group Id")
+            click.echo(f"Interpreting {group_id_num} as a group ID")
             return group_id_num
 
         elif group_id.strip().lower().startswith(gazelle_site.base_url + "/torrents.php"):
