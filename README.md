@@ -6,7 +6,6 @@ A simplified music uploading tool for RED (Redacted). Completely separate from s
 
 - **RED Upload** – Upload music to RED (Redacted) tracker
 - **Upconvert Detection** – Checks 24-bit flac files for potential upconverts
-- **Duplicate Upload Detection** – Prevents redundant uploads  
 - **Metadata Retrieval** – Fetches metadata from:
   - Bandcamp, Beatport, Deezer, Discogs, iTunes, JunoDownload, MusicBrainz, Qobuz, Tidal
 - **File Management** –  
@@ -26,6 +25,7 @@ These features have been removed from the original smoked-salmon:
 - ❌ Downconversion and transcoding
 - ❌ Spectral image generation and uploading
 - ❌ MQA detection
+- ❌ Duplicate upload detection
 
 ## 📥 Installation  
 
@@ -268,8 +268,8 @@ BruceLee94 is a streamlined fork of the original smoked-salmon tool with the fol
 - **Renamed Tool**: Changed from "salmon" to "brucelee94" command
 - **Simplified Upload Process**: File and folder names are preserved in their original state - no automatic renaming
 - **RED-Only**: Focused exclusively on uploading to RED (Redacted), removing complexity of multi-tracker support
-- **Streamlined Workflow**: Removed spectral generation, MQA detection, request filling, and downconversion features
-- **Core Functionality**: Retains essential features like metadata retrieval, file tagging, duplicate detection, and upconvert checking
+- **Streamlined Workflow**: Removed spectral generation, MQA detection, request filling, duplicate detection, and downconversion features
+- **Core Functionality**: Retains essential features like metadata retrieval, file tagging, and upconvert checking
 
 ### Removed Features:
 1. Folder renaming (original folder names are kept)
@@ -279,6 +279,7 @@ BruceLee94 is a streamlined fork of the original smoked-salmon tool with the fol
 5. Downconversion and transcoding
 6. Spectral image generation and uploading
 7. MQA detection
+8. Duplicate upload detection
 
 ## 🎩 Credits
 * Based on the original [smoked-salmon](https://github.com/smokin-salmon/smoked-salmon) - created by [ligh7s](https://github.com/ligh7s/smoked-salmon)

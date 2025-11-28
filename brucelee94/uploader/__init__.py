@@ -3,7 +3,6 @@ import os
 import platform
 import re
 import shutil
-import time
 
 import click
 import pyperclip
@@ -51,11 +50,8 @@ from brucelee94.tagger.pre_data import construct_rls_data
 from brucelee94.tagger.retagger import tag_files  # rename_files removed
 from brucelee94.tagger.review import review_metadata
 from brucelee94.tagger.tags import check_tags, gather_tags, standardize_tags
-from brucelee94.uploader.dupe_checker import (
+from brucelee94.uploader.upload_to_group import (
     check_existing_group,
-    dupe_check_recent_torrents,
-    generate_dupe_check_searchstrs,
-    print_recent_upload_results,
     print_torrents,
 )
 from brucelee94.uploader.preassumptions import print_preassumptions
@@ -324,9 +320,8 @@ def upload(
                                 click.secho(f"Error checking log: {e}", fg="red")
 
         if group_id is None:
-            searchstrs = generate_dupe_check_searchstrs(rls_data["artists"], rls_data["title"], rls_data["catno"])
-            if len(searchstrs) > 0:
-                group_id = check_existing_group(gazelle_site, searchstrs)
+            # Dupe checking removed - just prompt for group selection
+            group_id = check_existing_group(gazelle_site)
 
         # Spectral checking removed
         # spectral_ids = None
@@ -346,7 +341,7 @@ def upload(
         )
 
         if not group_id:
-            group_id = recheck_dupe(gazelle_site, searchstrs, metadata)
+            # Dupe recheck removed - directly proceed
             click.echo()
         track_data = concat_track_data(tags, audio_info)
     except click.Abort:
@@ -381,12 +376,8 @@ def upload(
     #     last_min_dupe_check(gazelle_site, searchstrs)
 
     # Multi-tracker upload removed - only upload to RED
-    # remaining_gazelle_sites = list(brucelee94.trackers.tracker_list)
-    tracker = gazelle_site.site_code
     torrent_id = None
     cover_url = None
-    # stored_cover_url = None  # Store the cover URL for reuse across trackers - not needed anymore
-    # searchstrs = generate_dupe_check_searchstrs(rls_data["artists"], rls_data["title"], rls_data["catno"])
 
     seedbox_uploader = UploadManager()
 
@@ -564,40 +555,6 @@ def edit_metadata(
     audio_info = gather_audio_info(path)
     return path, metadata, tags, audio_info
 
-
-def recheck_dupe(gazelle_site, searchstrs, metadata):
-    "Rechecks for a dupe if the artist, album or catno have changed."
-    new_searchstrs = generate_dupe_check_searchstrs(metadata["artists"], metadata["title"], metadata["catno"])
-    if searchstrs and any(n not in searchstrs for n in new_searchstrs) or not searchstrs and new_searchstrs:
-        click.secho(
-            f"\nRechecking for dupes on {gazelle_site.site_string} due to metadata changes...",
-            fg="cyan",
-            bold=True,
-            nl=False,
-        )
-        return check_existing_group(gazelle_site, new_searchstrs)
-
-
-def last_min_dupe_check(gazelle_site, searchstrs):
-    "Check for dupes in the log on last time before upload."
-    "Helpful if you are uploading something in race like conditions."
-
-    # Should really avoid asking if already shown the same releases from the log.
-    click.secho(f"Last Minuite Dupe Check on {gazelle_site.site_code}", fg="cyan")
-    recent_uploads = dupe_check_recent_torrents(gazelle_site, searchstrs)
-    if recent_uploads:
-        print_recent_upload_results(gazelle_site, recent_uploads, " / ".join(searchstrs))
-        if not click.confirm(
-            click.style(
-                "\nWould you still like to upload?",
-                fg="red",
-                bold=True,
-            ),
-            default=False,
-        ):
-            raise click.Abort
-    else:
-        click.secho(f"Nothing found on {gazelle_site.site_code}", fg="green")
 
 
 def metadata_validator(metadata):
