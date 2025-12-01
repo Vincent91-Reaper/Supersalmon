@@ -78,8 +78,8 @@ def _generate_album_artist(artists):
 def create_track_changes(tags, metadata):
     """
     Compare the track data in the metadata to the track data in the tags
-    and record all differences. Only proposes artist changes (not track numbers,
-    titles, ISRCs, disc numbers, etc.).
+    and record artist differences per track. Album-level tags (genre, label, 
+    catno, albumartist) are handled separately in collect_album_data().
     """
     changes = {}
     tracks = metadata_to_track_list(metadata["tracks"])
@@ -95,18 +95,6 @@ def create_track_changes(tags, metadata):
         if old_artist_str != new_artist_str:
             changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
-        # Track number, title, ISRC, disc number changes removed - only propose artist changes
-        # for tagfield, metafield in [
-        #     ("title", "title"),
-        #     ("isrc", "isrc"),
-        #     ("tracknumber", "track#"),
-        #     ("discnumber", "disc#"),
-        #     ("tracktotal", "tracktotal"),
-        #     ("disctotal", "disctotal"),
-        # ]:
-        #     change = _compare_tag(tagfield, metafield, tagset, trackmeta)
-        #     if change:
-        #         changes[filename].append(change)
     return changes
 
 
