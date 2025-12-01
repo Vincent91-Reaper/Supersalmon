@@ -9,8 +9,9 @@ from brucelee94.errors import RequestError, UploadError
 loop = asyncio.get_event_loop()
 
 
-def print_preassumptions(gazelle_site, path, group_id, source, lossy, encoding):  # spectrals and spectrals_after removed
-    """Print what all the passed CLI options will do."""
+def print_preassumptions(gazelle_site, path, group_id, source, encoding):
+    """Print what all the passed CLI options will do.
+    Note: lossy, spectrals and spectrals_after parameters have been removed."""
     click.secho(f"\nProcessing {path}", fg="cyan", bold=True)
     second = []
     if source:
@@ -20,8 +21,9 @@ def print_preassumptions(gazelle_site, path, group_id, source, lossy, encoding):
         if encoding[1]:
             text += " (VBR)"
         second.append(text)
-    if lossy is not None:
-        second.append(f"with lossy master status as {lossy}")
+    # Lossy output removed
+    # if lossy is not None:
+    #     second.append(f"with lossy master status as {lossy}")
     if second:
         click.secho(f"Uploading {' '.join(second)}.", fg="yellow")
     # Spectral output removed

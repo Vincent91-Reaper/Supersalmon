@@ -9,7 +9,7 @@ A simplified music uploading tool for RED (Redacted). Completely separate from s
 - **Metadata Retrieval** – Fetches metadata from:
   - Bandcamp, Beatport, Deezer, Discogs, iTunes, JunoDownload, MusicBrainz, Qobuz, Tidal
 - **File Management** –  
-  - Retags files with updated metadata
+  - Retags files with updated metadata (artists, catalog #/UPC, label, genres only)
   - Checks file integrity and sanitizes if needed
   - Original folder and file names are preserved
 - **Description generation** – Edition description generation (tracklist, sources, available streaming platforms, encoding details...)
@@ -26,6 +26,7 @@ These features have been removed from the original smoked-salmon:
 - ❌ Spectral image generation and uploading
 - ❌ MQA detection
 - ❌ Duplicate upload detection
+- ❌ Lossy master detection
 
 ## 📥 Installation  
 
@@ -268,7 +269,8 @@ BruceLee94 is a streamlined fork of the original smoked-salmon tool with the fol
 - **Renamed Tool**: Changed from "salmon" to "brucelee94" command
 - **Simplified Upload Process**: File and folder names are preserved in their original state - no automatic renaming
 - **RED-Only**: Focused exclusively on uploading to RED (Redacted), removing complexity of multi-tracker support
-- **Streamlined Workflow**: Removed spectral generation, MQA detection, request filling, duplicate detection, and downconversion features
+- **Streamlined Workflow**: Removed spectral generation, MQA detection, request filling, duplicate detection, lossy master detection, and downconversion features
+- **Simplified Tagging**: Only proposes tag updates for artists, catalog #/UPC, label, and genres
 - **Core Functionality**: Retains essential features like metadata retrieval, file tagging, and upconvert checking
 
 ### Removed Features:
@@ -280,6 +282,7 @@ BruceLee94 is a streamlined fork of the original smoked-salmon tool with the fol
 6. Spectral image generation and uploading
 7. MQA detection
 8. Duplicate upload detection
+9. Lossy master detection
 
 ## 🎩 Credits
 * Based on the original [smoked-salmon](https://github.com/smokin-salmon/smoked-salmon) - created by [ligh7s](https://github.com/ligh7s/smoked-salmon)

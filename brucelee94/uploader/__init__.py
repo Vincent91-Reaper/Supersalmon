@@ -85,12 +85,13 @@ loop = asyncio.get_event_loop()
     callback=validate_source,
     help=f"Source of files ({'/'.join(SOURCES.values())})",
 )
-@click.option(
-    "--lossy/--not-lossy",
-    "-l/-L",
-    default=None,
-    help="Whether or not the files are lossy mastered",
-)
+# Lossy master option removed
+# @click.option(
+#     "--lossy/--not-lossy",
+#     "-l/-L",
+#     default=None,
+#     help="Whether or not the files are lossy mastered",
+# )
 # Spectral options removed
 # @click.option(
 #     "--spectrals",
@@ -174,7 +175,7 @@ def up(
     path,
     group_id,
     source,
-    lossy,
+    # lossy,  # removed
     # spectrals,  # removed
     overwrite,
     encoding,
@@ -204,7 +205,7 @@ def up(
         path,
         group_id,
         source,
-        lossy,
+        # lossy,  # removed
         # spectrals,  # removed
         encoding,
         # spectrals_after,  # removed
@@ -216,7 +217,7 @@ def up(
         path,
         group_id,
         source,
-        lossy,
+        # lossy,  # removed
         # spectrals,  # removed
         encoding,
         source_url=source_url,
@@ -238,7 +239,7 @@ def upload(
     path,
     group_id,
     source,
-    lossy,
+    # lossy,  # removed
     # spectrals,  # removed
     encoding,
     scene=False,
@@ -323,14 +324,7 @@ def upload(
             # Dupe checking removed - just prompt for group selection
             group_id = check_existing_group(gazelle_site)
 
-        # Spectral checking removed
-        # spectral_ids = None
-        # if spectrals_after:
-        #     lossy_master = False
-        #     # We tell the uploader not to worry about it being lossy until later.
-        # else:
-        #     lossy_master, spectral_ids = check_spectrals(path, audio_info, lossy, spectrals, format=rls_data["format"])
-        lossy_master = False  # Always set to False since spectral checking is removed
+        # Spectral and lossy checking removed
 
         metadata, new_source_url = get_metadata(path, tags, rls_data)
         if new_source_url is not None:
@@ -434,7 +428,7 @@ def upload(
         cover_url,
         track_data,
         hybrid,
-        lossy_master,
+        # lossy_master,  # removed
         # spectral_urls,  # removed
         # spectral_ids,  # removed
         # lossy_comment,  # removed
@@ -577,7 +571,7 @@ def upload_and_report(
     cover_url,
     track_data,
     hybrid,
-    lossy_master,
+    # lossy_master,  # removed
     # spectral_urls,  # removed
     # spectral_ids,  # removed
     # lossy_comment,  # removed
@@ -586,7 +580,7 @@ def upload_and_report(
     seedbox_uploader,
     source=None,
     override_description=None,
-    override_lossy_comment=None,
+    # override_lossy_comment=None,  # removed
 ):
     # Prepare upload parameters
     upload_kwargs = {
@@ -597,7 +591,7 @@ def upload_and_report(
         "cover_url": cover_url,
         "track_data": track_data,
         "hybrid": hybrid,
-        "lossy_master": lossy_master,
+        # "lossy_master": lossy_master,  # removed
         # "spectral_urls": spectral_urls,  # removed
         # "spectral_ids": spectral_ids,  # removed
         # "lossy_comment": lossy_comment,  # removed

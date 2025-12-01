@@ -27,7 +27,7 @@ def prepare_and_upload(
     cover_url,
     track_data,
     hybrid,
-    lossy_master,
+    # lossy_master,  # removed
     # spectral_urls,  # removed
     # spectral_ids,  # removed
     # lossy_comment,  # removed

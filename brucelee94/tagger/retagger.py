@@ -51,22 +51,17 @@ def check_whether_to_tag(tags, metadata):
 
 
 def collect_album_data(metadata):
-    """Create a dictionary of the proposed album tags (consistent across every track)."""
-    if cfg.upload.formatting.add_edition_title_to_album_tag and metadata["edition_title"]:
-        title = f"{metadata['title']} ({metadata['edition_title']})"
-    else:
-        title = metadata["title"]
+    """Create a dictionary of the proposed album tags (consistent across every track).
+    Only includes: genre, label, catno (or upc if no catno), and albumartist (4 fields as requested)."""
+    # Use catno if available, otherwise fall back to upc
+    catno_value = metadata["catno"] if metadata["catno"] else metadata.get("upc")
     return {
         k: v
         for k, v in {
-            "album": title,
             "genre": "; ".join(sorted(metadata["genres"])),
-            "date": metadata["group_year"],
             "label": metadata["label"],
-            "catno": metadata["catno"],
+            "catno": catno_value,
             "albumartist": _generate_album_artist(metadata["artists"]),
-            "upc": metadata["upc"],
-            "comment": metadata["comment"] if cfg.upload.description.review_as_comment_tag else None,
         }.items()
         if v
     }
@@ -83,7 +78,8 @@ def _generate_album_artist(artists):
 def create_track_changes(tags, metadata):
     """
     Compare the track data in the metadata to the track data in the tags
-    and record all differences.
+    and record all differences. Only proposes artist changes (not track numbers,
+    titles, ISRCs, disc numbers, etc.).
     """
     changes = {}
     tracks = metadata_to_track_list(metadata["tracks"])
@@ -99,23 +95,18 @@ def create_track_changes(tags, metadata):
         if old_artist_str != new_artist_str:
             changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
-        if cfg.upload.formatting.guests_in_track_title:
-            trackmeta["title"] = append_guests_to_track_titles(trackmeta)
-
-        if cfg.upload.description.empty_track_comment_tag and getattr(tagset, "comment", False):
-            changes[filename].append(Change("comment", tagset.comment, ""))
-
-        for tagfield, metafield in [
-            ("title", "title"),
-            ("isrc", "isrc"),
-            ("tracknumber", "track#"),
-            ("discnumber", "disc#"),
-            ("tracktotal", "tracktotal"),
-            ("disctotal", "disctotal"),
-        ]:
-            change = _compare_tag(tagfield, metafield, tagset, trackmeta)
-            if change:
-                changes[filename].append(change)
+        # Track number, title, ISRC, disc number changes removed - only propose artist changes
+        # for tagfield, metafield in [
+        #     ("title", "title"),
+        #     ("isrc", "isrc"),
+        #     ("tracknumber", "track#"),
+        #     ("discnumber", "disc#"),
+        #     ("tracktotal", "tracktotal"),
+        #     ("disctotal", "disctotal"),
+        # ]:
+        #     change = _compare_tag(tagfield, metafield, tagset, trackmeta)
+        #     if change:
+        #         changes[filename].append(change)
     return changes
 
 
