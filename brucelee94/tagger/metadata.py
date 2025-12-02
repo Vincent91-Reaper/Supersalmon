@@ -17,18 +17,48 @@ loop = asyncio.get_event_loop()
 
 def get_metadata(path, tags, rls_data=None):
     """
-    Get metadata pertaining to a release from various metadata sources. Have the user
-    decide which sources to use, and then combine their information.
+    Get metadata from a URL provided by the user. Skip automatic search.
     """
-    click.secho("\nChecking metadata...", fg="cyan", bold=True)
-    searchstrs = make_searchstrs(rls_data["artists"], rls_data["title"])
-    click.secho(f"Searching for '{searchstrs}' releases...")
-    kwargs = dict(artists=[a for a, _ in rls_data["artists"]], album=rls_data["title"]) if rls_data else {}
-    search_results = run_metasearch(searchstrs, filter=False, track_count=len(tags), **kwargs)
-    choices = _print_search_results(search_results, rls_data)
-    metadata, source_url = _select_choice(choices, rls_data)
-    remove_various_artists(metadata["tracks"])
-    return metadata, source_url
+    click.secho("\nMetadata retrieval...", fg="cyan", bold=True)
+    
+    # Directly ask for URL without searching
+    while True:
+        url = click.prompt(
+            click.style(
+                "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort)",
+                fg="magenta",
+            ),
+            type=click.STRING,
+        )
+        
+        if url.lower().startswith("m"):
+            return _get_manual_metadata(rls_data or {}), None
+        elif url.lower().startswith("a"):
+            raise click.Abort
+        
+        url = url.strip()
+        if not url.lower().startswith("http"):
+            click.secho("Please provide a valid HTTP/HTTPS URL", fg="red")
+            continue
+            
+        # Try to scrape the URL
+        for name, source in METASOURCES.items():
+            if source.Scraper.regex.match(url):
+                click.secho(f"Scraping metadata from {name}...", fg="cyan")
+                scraper = source.Scraper()
+                try:
+                    metadata = loop.run_until_complete(handle_scrape_errors(scraper.scrape_release(url)))
+                    if metadata:
+                        remove_various_artists(metadata["tracks"])
+                        return metadata, url
+                    else:
+                        click.secho(f"Failed to scrape metadata from {url}", fg="red")
+                except Exception as e:
+                    click.secho(f"Error scraping: {e}", fg="red")
+                break
+        else:
+            click.secho(f"No scraper found for URL: {url}", fg="red")
+            click.secho("Supported sources: " + ", ".join(METASOURCES.keys()), fg="yellow")
 
 
 def _print_search_results(results, rls_data=None):

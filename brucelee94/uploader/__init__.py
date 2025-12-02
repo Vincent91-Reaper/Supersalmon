@@ -495,14 +495,19 @@ def edit_metadata(
     path, tags, metadata, source, rls_data, recompress
 ):  # auto_rename, spectral_ids, and skip_integrity_check removed
     """
-    The metadata editing portion of the uploading process. This sticks the user
-    into an infinite loop where the metadata process is repeated until the user
-    decides it is ready for upload.
+    The metadata editing portion of the uploading process. Metadata review
+    and tagging prompts have been removed - tags are applied automatically.
     """
     while True:
-        metadata = review_metadata(metadata, metadata_validator)
+        # Skip review_metadata - no longer prompting for edits
+        # metadata = review_metadata(metadata, metadata_validator)
+        
+        # Validate metadata automatically
+        metadata = metadata_validator(metadata)
+        
         if not metadata["scene"]:
-            tag_files(path, tags, metadata, False)  # auto_rename always False
+            # Auto-tag files without prompting
+            tag_files(path, tags, metadata, True)  # auto_rename=True to skip prompt
 
         tags = check_tags(path)
         if not metadata["scene"] and recompress:
@@ -541,15 +546,9 @@ def edit_metadata(
         #         else:
         #             click.secho("Some files failed sanitization", fg="red", bold=True)
 
-        if cfg.upload.yes_all or click.confirm(
-            click.style("\nWould you like to upload the torrent? (No to re-run metadata section)", fg="magenta"),
-            default=True,
-        ):
-            metadata["tags"] = convert_genres(metadata["genres"])
-            break
-
-        # Refresh tags to accomodate differences in file structure.
-        tags = gather_tags(path)
+        # Automatically proceed to upload without prompting
+        metadata["tags"] = convert_genres(metadata["genres"])
+        break
 
     tags = gather_tags(path)
     audio_info = gather_audio_info(path)
