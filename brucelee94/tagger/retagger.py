@@ -21,8 +21,7 @@ Change = namedtuple("Change", ["tag", "old", "new"])
 def tag_files(path, tags, metadata, auto_rename):
     """
     Wrapper function that calls the functions that create and print the
-    proposed changes, and then applies tags. Auto-tag prompt removed when
-    auto_rename is True.
+    proposed changes, and then prompts for confirmation to retag the file.
     """
     click.secho("\nRetagging files...", fg="cyan", bold=True)
     if not check_whether_to_tag(tags, metadata):
@@ -30,10 +29,7 @@ def tag_files(path, tags, metadata, auto_rename):
     album_changes = collect_album_data(metadata)
     track_changes = create_track_changes(tags, metadata)
     print_changes(album_changes, track_changes, next(iter(tags.values())))
-    if auto_rename:
-        # Auto-apply tags without prompting
-        retag_files(path, album_changes, track_changes)
-    elif click.confirm(
+    if auto_rename or click.confirm(
         click.style("\nWould you like to auto-tag the files with the updated metadata?", fg="magenta"),
         default=True,
     ):

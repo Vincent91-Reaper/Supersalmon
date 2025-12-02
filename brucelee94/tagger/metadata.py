@@ -17,13 +17,15 @@ loop = asyncio.get_event_loop()
 
 def get_metadata(path, tags, rls_data=None):
     """
-    Get metadata from a URL provided by the user. Skip automatic search.
+    Get metadata from a URL provided by the user. Skips automatic search.
     """
-    click.secho("\nMetadata retrieval...", fg="cyan", bold=True)
+    # Initialize rls_data if needed
+    rls_data = rls_data or {}
+    if "urls" not in rls_data:
+        rls_data["urls"] = []
     
-    # Directly ask for URL without searching
     while True:
-        url = click.prompt(
+        url_input = click.prompt(
             click.style(
                 "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort)",
                 fg="magenta",
@@ -31,37 +33,38 @@ def get_metadata(path, tags, rls_data=None):
             type=click.STRING,
         )
         
-        if url.lower().startswith("m"):
-            return _get_manual_metadata(rls_data or {}), None
-        elif url.lower().startswith("a"):
-            raise click.Abort
+        url_input = url_input.strip()
         
-        url = url.strip()
-        if not url.lower().startswith("http"):
-            click.secho("Please provide a valid HTTP/HTTPS URL", fg="red")
-            continue
-            
-        # Try to scrape the URL
-        found_scraper = False
+        if url_input.lower().startswith("m"):
+            metadata = _get_manual_metadata(rls_data)
+            return metadata, None
+        elif url_input.lower().startswith("a"):
+            raise click.Abort()
+        
+        # Try to scrape from the URL
+        source_url = None
+        metadata = None
+        
         for name, source in METASOURCES.items():
-            if source.Scraper.regex.match(url):
-                found_scraper = True
+            if source.Scraper.regex.match(url_input):
                 click.secho(f"Scraping metadata from {name}...", fg="cyan")
+                source_url = url_input
+                if url_input not in rls_data["urls"]:
+                    rls_data["urls"].append(url_input)
+                
                 scraper = source.Scraper()
-                try:
-                    metadata = loop.run_until_complete(handle_scrape_errors(scraper.scrape_release(url)))
-                    if metadata:
-                        remove_various_artists(metadata["tracks"])
-                        return metadata, url
-                    else:
-                        click.secho(f"Failed to scrape metadata from {url}", fg="red")
-                except Exception as e:
-                    click.secho(f"Error scraping: {e}", fg="red")
-                break
+                metadata = handle_scrape_errors(scraper.scrape_release(url_input))
+                
+                if metadata:
+                    click.secho(f"New Source URL: {source_url}", fg="yellow")
+                    remove_various_artists(metadata["tracks"])
+                    return metadata, source_url
+                else:
+                    click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
+                    break
         
-        if not found_scraper:
-            click.secho(f"No scraper found for URL: {url}", fg="red")
-            click.secho("Supported sources: " + ", ".join(METASOURCES.keys()), fg="yellow")
+        if not metadata:
+            click.secho(f"URL not recognized or failed to scrape. Please try again.", fg="red")
 
 
 def _print_search_results(results, rls_data=None):

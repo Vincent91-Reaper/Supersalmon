@@ -21,7 +21,7 @@ from brucelee94.checks.logs import check_log_cambia
 # Upconvert check removed
 # from brucelee94.checks.upconverts import upload_upconvert_test
 from brucelee94.common import commandgroup
-from brucelee94.constants import ENCODINGS, FORMATS, SOURCES, TAG_ENCODINGS, RELEASE_TYPES
+from brucelee94.constants import ENCODINGS, FORMATS, SOURCES, TAG_ENCODINGS
 # Downconversion removed
 # from salmon.converter.downconverting import (
 #     convert_folder,
@@ -50,7 +50,7 @@ from brucelee94.tagger.folderstructure import check_folder_structure
 from brucelee94.tagger.metadata import get_metadata
 from brucelee94.tagger.pre_data import construct_rls_data
 from brucelee94.tagger.retagger import tag_files  # rename_files removed
-# review_metadata import removed - validation is now inlined
+from brucelee94.tagger.review import review_metadata
 from brucelee94.tagger.tags import check_tags, gather_tags, standardize_tags
 from brucelee94.uploader.upload_to_group import (
     check_existing_group,
@@ -495,94 +495,22 @@ def edit_metadata(
     path, tags, metadata, source, rls_data, recompress
 ):  # auto_rename, spectral_ids, and skip_integrity_check removed
     """
-    The metadata editing portion of the uploading process. Metadata review
-    and tagging prompts have been removed - tags are applied automatically.
+    The metadata editing portion of the uploading process. Tags are automatically
+    applied without prompting for review.
     """
-    while True:
-        # Check for required empty fields (inlined from review.py)
-        # Check for empty release type
-        if not metadata["rls_type"]:
-            # Prompt for release type
-            types = {r.lower(): r for r in RELEASE_TYPES}
-            click.secho("\nRelease Types:", fg="yellow", bold=True)
-            types_list = list(RELEASE_TYPES.keys())
-            
-            # Display release types in two columns
-            if types_list:
-                even_items = [types_list[i] for i in range(0, len(types_list), 2)]
-                longest = max(len(r) for r in even_items) if even_items else 0
-                for i in range(0, len(types_list), 2):
-                    left = types_list[i].ljust(longest + 4)
-                    right = types_list[i + 1] if i + 1 < len(types_list) else ""
-                    click.echo(f"{left}{right}")
-            
-            while True:
-                rtype = (
-                    click.prompt(
-                        click.style("\nWhich release type corresponds to this release? (case insensitive)", fg="magenta"),
-                        type=click.STRING,
-                    )
-                    .strip()
-                    .lower()
-                )
-                if rtype in types:
-                    metadata["rls_type"] = types[rtype]
-                    break
-                click.secho(f"{rtype} is not a valid release type.", fg="red")
-        
-        # Check for empty genre list
-        # Note: Files typically have genres, so just ensure the list exists
-        if not metadata.get("genres"):
-            metadata["genres"] = ["Electronic"]  # Fallback if somehow missing
-        
-        # Validate metadata automatically
-        metadata = metadata_validator(metadata)
-        
-        if not metadata["scene"]:
-            # Auto-tag files without prompting
-            tag_files(path, tags, metadata, True)  # auto_rename=True to skip prompt
+    # Auto-tag files without prompting
+    if not metadata["scene"]:
+        tag_files(path, tags, metadata, False)  # auto_rename always False
 
-        tags = check_tags(path)
-        if not metadata["scene"] and recompress:
-            recompress_path(path)
-        # Folder renaming removed
-        # path = rename_folder(path, metadata, auto_rename)
-        # File renaming removed
-        # if not metadata["scene"]:
-        #     rename_files(path, tags, metadata, auto_rename, spectral_ids, source)
-        check_folder_structure(path, metadata["scene"])
+    tags = check_tags(path)
+    if not metadata["scene"] and recompress:
+        recompress_path(path)
+    check_folder_structure(path, metadata["scene"])
 
-        # Integrity check removed
-        # if not skip_integrity_check:
-        #     click.secho("\nChecking integrity of audio files...", fg="cyan", bold=True)
-        #     result = check_integrity(path)
-        #     click.echo(format_integrity(result))
-        #
-        #     if not result[0] and metadata["scene"]:
-        #         click.secho(
-        #             "Some files failed sanitization, and this a scene release. "
-        #             "You need to sanitize and de-scene before uploading. Aborting.",
-        #             fg="red",
-        #             bold=True,
-        #         )
-        #         raise click.Abort()
-        #     if not result[0] and (
-        #         cfg.upload.yes_all
-        #         or click.confirm(
-        #             click.style("\nDo you want to sanitize this upload?", fg="magenta"),
-        #             default=True,
-        #         )
-        #     ):
-        #         click.secho("\nSanitizing files...", fg="cyan", bold=True)
-        #         if sanitize_integrity(path):
-        #             click.secho("Sanitization complete", fg="green")
-        #         else:
-        #             click.secho("Some files failed sanitization", fg="red", bold=True)
+    # Convert genres to tags
+    metadata["tags"] = convert_genres(metadata["genres"])
 
-        # Automatically proceed to upload without prompting
-        metadata["tags"] = convert_genres(metadata["genres"])
-        break
-
+    # Refresh tags to accommodate differences in file structure
     tags = gather_tags(path)
     audio_info = gather_audio_info(path)
     return path, metadata, tags, audio_info
