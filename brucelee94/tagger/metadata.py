@@ -7,6 +7,7 @@ import click
 
 from brucelee94 import cfg
 from brucelee94.common import handle_scrape_errors, make_searchstrs, re_strip
+from brucelee94.constants import RELEASE_TYPES
 from brucelee94.search import SEARCHSOURCES, run_metasearch
 from brucelee94.tagger.combine import combine_metadatas
 from brucelee94.tagger.sources import METASOURCES
@@ -24,6 +25,20 @@ def _get_event_loop():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             return loop
+
+
+def _prompt_for_release_type():
+    """Prompt user to select a release type if not found in metadata."""
+    types_list = list(RELEASE_TYPES.keys())
+    click.echo("Available release types:")
+    for i, rls_type in enumerate(types_list, 1):
+        click.echo(f"  {i}. {rls_type}")
+    
+    while True:
+        choice = click.prompt("Enter the number for the release type", type=int)
+        if 1 <= choice <= len(types_list):
+            return types_list[choice - 1]
+        click.secho(f"Invalid choice. Please enter a number between 1 and {len(types_list)}", fg="red")
 
 
 def get_metadata(path, tags, rls_data=None):
@@ -74,6 +89,12 @@ def get_metadata(path, tags, rls_data=None):
                     # Clean and prepare metadata
                     metadata = clean_metadata(metadata)
                     remove_various_artists(metadata["tracks"])
+                    
+                    # Validate required fields
+                    if not metadata.get("rls_type"):
+                        click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
+                        metadata["rls_type"] = _prompt_for_release_type()
+                    
                     return metadata, source_url
                 else:
                     click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
