@@ -506,11 +506,15 @@ def edit_metadata(
             types = {r.lower(): r for r in RELEASE_TYPES}
             click.secho("\nRelease Types:", fg="yellow", bold=True)
             types_list = list(RELEASE_TYPES.keys())
-            longest = max(len(r) for i, r in enumerate(types_list) if i % 2 == 0)
-            for i in range(0, len(types_list), 2):
-                left = types_list[i].ljust(longest + 4)
-                right = types_list[i + 1] if i + 1 < len(types_list) else ""
-                click.echo(f"{left}{right}")
+            
+            # Display release types in two columns
+            if types_list:
+                even_items = [types_list[i] for i in range(0, len(types_list), 2)]
+                longest = max(len(r) for r in even_items) if even_items else 0
+                for i in range(0, len(types_list), 2):
+                    left = types_list[i].ljust(longest + 4)
+                    right = types_list[i + 1] if i + 1 < len(types_list) else ""
+                    click.echo(f"{left}{right}")
             
             while True:
                 rtype = (
@@ -535,9 +539,13 @@ def edit_metadata(
                 ),
                 default="",
             )
-            genres = click.edit("\n".join(metadata["genres"]), editor=cfg.upload.default_editor)
+            # Start with empty content for editor
+            genres = click.edit("", editor=cfg.upload.default_editor)
             if genres:
-                metadata["genres"] = [g for g in genres.split("\n") if g.strip()]
+                metadata["genres"] = [g.strip() for g in genres.split("\n") if g.strip()]
+            # If still no genres after editing, set a default or loop
+            if not metadata["genres"]:
+                metadata["genres"] = ["Electronic"]  # Provide a fallback
         
         # Validate metadata automatically
         metadata = metadata_validator(metadata)
