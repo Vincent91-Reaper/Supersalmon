@@ -531,21 +531,9 @@ def edit_metadata(
                 click.secho(f"{rtype} is not a valid release type.", fg="red")
         
         # Check for empty genre list
-        if not metadata["genres"]:
-            click.prompt(
-                click.style(
-                    "\nNo genres were found for this release, but one must be added. Press enter to open the genre editor.",
-                    fg="magenta",
-                ),
-                default="",
-            )
-            # Start with empty content for editor
-            genres = click.edit("", editor=cfg.upload.default_editor)
-            if genres:
-                metadata["genres"] = [g.strip() for g in genres.split("\n") if g.strip()]
-            # If still no genres after editing, set a default or loop
-            if not metadata["genres"]:
-                metadata["genres"] = ["Electronic"]  # Provide a fallback
+        # Note: Files typically have genres, so just ensure the list exists
+        if not metadata.get("genres"):
+            metadata["genres"] = ["Electronic"]  # Fallback if somehow missing
         
         # Validate metadata automatically
         metadata = metadata_validator(metadata)
