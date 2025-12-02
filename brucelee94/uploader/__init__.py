@@ -50,7 +50,7 @@ from brucelee94.tagger.folderstructure import check_folder_structure
 from brucelee94.tagger.metadata import get_metadata
 from brucelee94.tagger.pre_data import construct_rls_data
 from brucelee94.tagger.retagger import tag_files  # rename_files removed
-from brucelee94.tagger.review import review_metadata
+# review_metadata import removed - validation is now inlined
 from brucelee94.tagger.tags import check_tags, gather_tags, standardize_tags
 from brucelee94.uploader.upload_to_group import (
     check_existing_group,
