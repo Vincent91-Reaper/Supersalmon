@@ -10,7 +10,18 @@ from brucelee94.database import DB_PATH
 from brucelee94.errors import ImageUploadFailed
 from brucelee94.images import catbox, emp, oeimg, ptpimg, ptscreens
 
-loop = asyncio.get_event_loop()
+
+def _get_event_loop():
+    """Get or create an event loop for async operations."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
 
 HOSTS = {
     "ptpimg": ptpimg,
@@ -49,6 +60,7 @@ def images():
 )
 def up(filepaths, image_host):
     """Upload images to an image host"""
+    loop = _get_event_loop()
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -112,6 +124,7 @@ def upload_cover(cover_path):
         click.secho("\nNo Cover Image Path was provided to upload...", fg="red", nl=False)
         return None
     click.secho(f"Uploading cover to {cfg.image.cover_uploader}...", fg="yellow", nl=False)
+    loop = _get_event_loop()
     try:
         try:
             url = loop.run_until_complete(
@@ -135,6 +148,7 @@ def upload_spectrals(spectrals, uploader=HOSTS[cfg.image.specs_uploader], succes
     to the coroutine upload handler and return a dictionary of filenames
     and spectral urls.
     """
+    loop = _get_event_loop()
     response = {}
     successful = successful or set()
     one_failed = False
@@ -175,6 +189,7 @@ def _handle_failed_spectrals(spectrals, successful):
 
 async def _spectrals_handler(spec_id, filename, spectral_paths, uploader):
     try:
+        loop = _get_event_loop()
         click.secho(f"Uploading spectrals for {filename}...", fg="yellow")
         tasks = [loop.run_in_executor(None, lambda f=f: uploader(f)[0]) for f in spectral_paths]
         return spec_id, await asyncio.gather(*tasks)

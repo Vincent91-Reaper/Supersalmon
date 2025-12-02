@@ -12,7 +12,18 @@ from brucelee94.tagger.combine import combine_metadatas
 from brucelee94.tagger.sources import METASOURCES
 from brucelee94.tagger.sources.base import generate_artists
 
-loop = asyncio.get_event_loop()
+
+def _get_event_loop():
+    """Get or create an event loop for async operations."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
 
 
 def get_metadata(path, tags, rls_data=None):
@@ -54,6 +65,7 @@ def get_metadata(path, tags, rls_data=None):
                 
                 scraper = source.Scraper()
                 # Create async task and run it
+                loop = _get_event_loop()
                 task = handle_scrape_errors(scraper.scrape_release(url_input))
                 metadata = loop.run_until_complete(task)
                 
@@ -188,6 +200,7 @@ def _select_choice(choices, rls_data):
                 return meta, source_url
             continue
 
+        loop = _get_event_loop()
         metadatas = loop.run_until_complete(asyncio.gather(*tasks))
         meta = combine_metadatas(
             *((s, m) for s, m in zip(sources, metadatas, strict=False) if m), base=rls_data, source_url=source_url

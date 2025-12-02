@@ -16,7 +16,18 @@ from brucelee94.errors import RequestError
 #     make_spectral_bbcode,
 # )
 
-loop = asyncio.get_event_loop()
+
+def _get_event_loop():
+    """Get or create an event loop for async operations."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
 
 
 def prepare_and_upload(
@@ -70,6 +81,7 @@ def prepare_and_upload(
 
     click.secho("Uploading torrent...", fg="yellow")
     try:
+        loop = _get_event_loop()
         torrent_id, group_id = loop.run_until_complete(gazelle_site.upload(data, files))
         return torrent_id, group_id, torrent_path, torrent_content
     except RequestError as e:
