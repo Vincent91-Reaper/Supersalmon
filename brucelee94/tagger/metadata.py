@@ -42,8 +42,10 @@ def get_metadata(path, tags, rls_data=None):
             continue
             
         # Try to scrape the URL
+        found_scraper = False
         for name, source in METASOURCES.items():
             if source.Scraper.regex.match(url):
+                found_scraper = True
                 click.secho(f"Scraping metadata from {name}...", fg="cyan")
                 scraper = source.Scraper()
                 try:
@@ -56,7 +58,8 @@ def get_metadata(path, tags, rls_data=None):
                 except Exception as e:
                     click.secho(f"Error scraping: {e}", fg="red")
                 break
-        else:
+        
+        if not found_scraper:
             click.secho(f"No scraper found for URL: {url}", fg="red")
             click.secho("Supported sources: " + ", ".join(METASOURCES.keys()), fg="yellow")
 
