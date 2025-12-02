@@ -1,6 +1,5 @@
 import asyncio
 import os
-import re
 
 import click
 from torf import Torrent
@@ -9,8 +8,9 @@ from brucelee94 import cfg
 from brucelee94.common import str_to_int_if_int
 from brucelee94.constants import ARTIST_IMPORTANCES
 from brucelee94.errors import RequestError
-from brucelee94.sources import SOURCE_ICONS
-from brucelee94.tagger.sources import METASOURCES
+# Source icons and metasources removed (no longer used in descriptions)
+# from brucelee94.sources import SOURCE_ICONS
+# from brucelee94.tagger.sources import METASOURCES
 # Spectral imports removed
 # from salmon.uploader.spectrals import (
 #     make_spectral_bbcode,
@@ -290,37 +290,5 @@ def generate_t_description(
                 description += " [{} bit / {} kHz]".format(track["precision"], track["sample rate"] / 1000)
 
             description += "\n"
-        description += "\n"
 
     return description
-
-
-def generate_source_links(metadata_urls, source_url=None):
-    links = []
-    unmatched_urls = []
-
-    for url in metadata_urls:
-        matched = False
-        for name, source in METASOURCES.items():
-            if source.Scraper.regex.match(url):
-                if cfg.upload.description.icons_in_descriptions:
-                    links.append(f"[pad=0|3][url={url}][img]{SOURCE_ICONS[name]}[/img] {name}[/url][/pad]")
-                else:
-                    links.append(f"[url={url}]{name}[/url]")
-                matched = True
-                break
-
-        if not matched:
-            # Extract hostname without TLD for unmatched URLs
-            hostname = re.match(r"https?://(?:www\.)?([^/]+)", url)
-            if hostname:
-                unmatched_urls.append(f"[url={url}]{hostname.group(1)}[/url]")
-
-    result = " ".join(links) if cfg.upload.description.icons_in_descriptions else " | ".join(links)
-
-    if unmatched_urls:
-        if links:
-            result += " | "
-        result += " | ".join(unmatched_urls)
-
-    return result
