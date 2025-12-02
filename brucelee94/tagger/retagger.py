@@ -52,13 +52,13 @@ def check_whether_to_tag(tags, metadata):
 
 def collect_album_data(metadata):
     """Create a dictionary of the proposed album tags (consistent across every track).
-    Only includes: genre, label, catno (or upc if no catno), and albumartist (4 fields as requested)."""
+    Only includes: label, catno (or upc if no catno), and albumartist (3 fields as requested).
+    Genre is not modified - kept as original on files."""
     # Use catno if available, otherwise fall back to upc
     catno_value = metadata["catno"] if metadata["catno"] else metadata.get("upc")
     return {
         k: v
         for k, v in {
-            "genre": "; ".join(sorted(metadata["genres"])),
             "label": metadata["label"],
             "catno": catno_value,
             "albumartist": _generate_album_artist(metadata["artists"]),

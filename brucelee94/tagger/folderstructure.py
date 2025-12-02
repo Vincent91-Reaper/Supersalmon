@@ -11,16 +11,13 @@ from brucelee94.errors import NoncompliantFolderStructure
 def check_folder_structure(path, scene):
     """
     Run through every filesystem check that causes uploads to violate the rules
-    or be rejected on the upload form. Verify that path lengths <180, that there
-    are no zero length folders, and that the file extensions are valid.
+    or be rejected on the upload form. Only verify that path lengths <180.
     """
     while True:
         click.secho("\nChecking folder structure...", fg="cyan", bold=True)
         try:
             _check_illegal_folders(path)
             _check_path_lengths(path, scene)
-            _check_zero_len_folder(path)
-            _check_extensions(path, scene)
             return
         except NoncompliantFolderStructure:
             if scene:

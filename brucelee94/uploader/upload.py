@@ -227,7 +227,7 @@ def generate_torrent(gazelle_site, path):
 
 
 def generate_description(track_data, metadata):
-    """Generate the group description with the tracklist and metadata source links."""
+    """Generate the group description with the tracklist."""
     description = "[b][size=4]Tracklist[/b]\n"
     multi_disc = any(
         (
@@ -257,9 +257,6 @@ def generate_description(track_data, metadata):
     if metadata["comment"]:
         description += f"\n{metadata['comment']}\n"
 
-    if metadata["urls"]:
-        description += "\n[b]More info:[/b] " + generate_source_links(metadata["urls"])
-
     return description
 
 
@@ -267,30 +264,20 @@ def generate_t_description(
     metadata, track_data, hybrid, metadata_urls, source_url  # spectral params removed
 ):
     """
-    Generate the torrent description. Add information about each file.
-    Spectral URLs have been removed.
+    Generate the torrent description. Only print bitrates and bit depth.
+    Icons, images, release date, source links, and more info have been removed.
     """
     description = ""
-    # Spectral bbcode removed
-    # if spectral_urls:
-    #     description += make_spectral_bbcode(spectral_ids, spectral_urls)
 
     if not hybrid:
         track = next(iter(track_data.values()))
         if track["precision"]:
-            if cfg.upload.description.icons_in_descriptions:
-                description += "[img]https://ptpimg.me/pu93q2.png[/img]"
-            else:
-                description += "Encode Specifics:"
-            description += " [b]{} bit [color=#2E86C1]{:.01f}[/color] kHz[/b]".format(
+            description += "[b]{} bit [color=#2E86C1]{:.01f}[/color] kHz[/b]".format(
                 track["precision"], track["sample rate"] / 1000
             )
             description += "\n"
         else:
-            description += "Encode Specifics: {:.01f} kHz\n".format(track["sample rate"] / 1000)
-
-    if metadata["date"]:
-        description += f"Released on [b]{metadata['date']}[/b]\n"
+            description += "{:.01f} kHz\n".format(track["sample rate"] / 1000)
 
     if cfg.upload.description.include_tracklist_in_t_desc or hybrid:
         for filename, track in track_data.items():
@@ -303,34 +290,6 @@ def generate_t_description(
                 description += " [{} bit / {} kHz]".format(track["precision"], track["sample rate"] / 1000)
 
             description += "\n"
-        description += "\n"
-
-    # Lossy comment removed
-    # if lossy_comment and cfg.upload.compression.lma_comment_in_t_desc:
-    #     description += f"[u]Lossy Notes:[/u]\n{lossy_comment}\n\n"
-
-    if source_url is not None:
-        matched = False
-        for name, source in METASOURCES.items():
-            if source.Scraper.regex.match(source_url):
-                if cfg.upload.description.icons_in_descriptions:
-                    description += (
-                        f"[b]Source:[/b] [pad=0|3][url={source_url}][img]"
-                        f"{SOURCE_ICONS[name]}[/img] {name}[/url][/pad]\n\n"
-                    )
-                else:
-                    description += f"[b]Source:[/b] [url={source_url}]{name}[/url]\n\n"
-                matched = True
-                break
-
-        if not matched:
-            # Extract hostname without TLD for unmatched URLs
-            hostname = re.match(r"https?://(?:www\.)?([^/]+)", source_url)
-            if hostname:
-                description += f"[b]Source:[/b] [url={source_url}]{hostname.group(1)}[/url]\n\n"
-
-    if metadata_urls:
-        description += "[b]More info:[/b] " + generate_source_links(metadata_urls, source_url)
         description += "\n"
 
     return description

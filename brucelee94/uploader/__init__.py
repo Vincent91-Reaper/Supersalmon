@@ -11,13 +11,15 @@ import brucelee94.trackers
 from brucelee94 import cfg
 # MQA checking removed
 # from salmon.checks import mqa_test
-from brucelee94.checks.integrity import (
-    check_integrity,
-    format_integrity,
-    sanitize_integrity,
-)
+# Integrity check removed
+# from brucelee94.checks.integrity import (
+#     check_integrity,
+#     format_integrity,
+#     sanitize_integrity,
+# )
 from brucelee94.checks.logs import check_log_cambia
-from brucelee94.checks.upconverts import upload_upconvert_test
+# Upconvert check removed
+# from brucelee94.checks.upconverts import upload_upconvert_test
 from brucelee94.common import commandgroup
 from brucelee94.constants import ENCODINGS, FORMATS, SOURCES, TAG_ENCODINGS
 # Downconversion removed
@@ -142,11 +144,12 @@ loop = asyncio.get_event_loop()
 #     is_flag=True,
 #     help="Rename files and folders automatically",
 # )
-@click.option(
-    "--skip-up",
-    is_flag=True,
-    help="Skip check for 24 bit upconversion",
-)
+# Upconvert check option removed
+# @click.option(
+#     "--skip-up",
+#     is_flag=True,
+#     help="Skip check for 24 bit upconversion",
+# )
 @click.option("--scene", is_flag=True, help="Is this a scene release (default: False)")
 @click.option(
     "--source-url",
@@ -166,11 +169,12 @@ loop = asyncio.get_event_loop()
     is_flag=True,
     help="Skip checking CD logs",
 )
-@click.option(
-    "--skip-integrity-check",
-    is_flag=True,
-    help="Skip integrity check of audio files",
-)
+# Integrity check option removed
+# @click.option(
+#     "--skip-integrity-check",
+#     is_flag=True,
+#     help="Skip integrity check of audio files",
+# )
 def up(
     path,
     group_id,
@@ -184,13 +188,13 @@ def up(
     # request,  # removed
     # spectrals_after,  # removed
     # auto_rename,  # removed
-    skip_up,
+    # skip_up,  # removed
     scene,
     source_url,
     yyy,
     # skip_mqa,  # removed
     skip_log_check,
-    skip_integrity_check,
+    # skip_integrity_check,  # removed
 ):
     """Command to upload an album folder to a Gazelle Site."""
     if yyy:
@@ -227,10 +231,10 @@ def up(
         # request_id=request,  # removed
         # spectrals_after=spectrals_after,  # removed
         # auto_rename=auto_rename,  # removed
-        skip_up=skip_up,
+        # skip_up=skip_up,  # removed
         # skip_mqa=skip_mqa,  # removed
         skip_log_check=skip_log_check,
-        skip_integrity_check=skip_integrity_check,
+        # skip_integrity_check=skip_integrity_check,  # removed
     )
 
 
@@ -250,10 +254,10 @@ def upload(
     # request_id=None,  # removed
     # spectrals_after=False,  # removed
     # auto_rename=False,  # removed
-    skip_up=False,
+    # skip_up=False,  # removed
     # skip_mqa=False,  # removed
     skip_log_check=False,
-    skip_integrity_check=False,
+    # skip_integrity_check=False,  # removed
 ):
     """Upload an album folder to RED (Gazelle Site)
     Multi-tracker upload removed."""
@@ -284,15 +288,16 @@ def upload(
         #     mqa_test(path)
         #     click.secho("No MQA release detected", fg="green")
 
-        if rls_data["encoding"] == "24bit Lossless" and not skip_up:
-            if not cfg.upload.yes_all:
-                if click.confirm(
-                    click.style("\n24bit detected. Do you want to check whether might be upconverted?", fg="magenta"),
-                    default=True,
-                ):
-                    upload_upconvert_test(path)
-            else:
-                upload_upconvert_test(path)
+        # Upconvert check removed
+        # if rls_data["encoding"] == "24bit Lossless" and not skip_up:
+        #     if not cfg.upload.yes_all:
+        #         if click.confirm(
+        #             click.style("\n24bit detected. Do you want to check whether might be upconverted?", fg="magenta"),
+        #             default=True,
+        #         ):
+        #             upload_upconvert_test(path)
+        #     else:
+        #         upload_upconvert_test(path)
 
         if source == "CD" and not skip_log_check:
             click.secho("\nChecking logs", fg="green")
@@ -331,7 +336,7 @@ def upload(
             source_url = new_source_url
             click.secho(f"New Source URL: {source_url}", fg="yellow")
         path, metadata, tags, audio_info = edit_metadata(
-            path, tags, metadata, source, rls_data, recompress, skip_integrity_check
+            path, tags, metadata, source, rls_data, recompress
         )
 
         if not group_id:
@@ -487,8 +492,8 @@ def upload(
 
 
 def edit_metadata(
-    path, tags, metadata, source, rls_data, recompress, skip_integrity_check=False
-):  # auto_rename and spectral_ids removed
+    path, tags, metadata, source, rls_data, recompress
+):  # auto_rename, spectral_ids, and skip_integrity_check removed
     """
     The metadata editing portion of the uploading process. This sticks the user
     into an infinite loop where the metadata process is repeated until the user
@@ -509,31 +514,32 @@ def edit_metadata(
         #     rename_files(path, tags, metadata, auto_rename, spectral_ids, source)
         check_folder_structure(path, metadata["scene"])
 
-        if not skip_integrity_check:
-            click.secho("\nChecking integrity of audio files...", fg="cyan", bold=True)
-            result = check_integrity(path)
-            click.echo(format_integrity(result))
-
-            if not result[0] and metadata["scene"]:
-                click.secho(
-                    "Some files failed sanitization, and this a scene release. "
-                    "You need to sanitize and de-scene before uploading. Aborting.",
-                    fg="red",
-                    bold=True,
-                )
-                raise click.Abort()
-            if not result[0] and (
-                cfg.upload.yes_all
-                or click.confirm(
-                    click.style("\nDo you want to sanitize this upload?", fg="magenta"),
-                    default=True,
-                )
-            ):
-                click.secho("\nSanitizing files...", fg="cyan", bold=True)
-                if sanitize_integrity(path):
-                    click.secho("Sanitization complete", fg="green")
-                else:
-                    click.secho("Some files failed sanitization", fg="red", bold=True)
+        # Integrity check removed
+        # if not skip_integrity_check:
+        #     click.secho("\nChecking integrity of audio files...", fg="cyan", bold=True)
+        #     result = check_integrity(path)
+        #     click.echo(format_integrity(result))
+        #
+        #     if not result[0] and metadata["scene"]:
+        #         click.secho(
+        #             "Some files failed sanitization, and this a scene release. "
+        #             "You need to sanitize and de-scene before uploading. Aborting.",
+        #             fg="red",
+        #             bold=True,
+        #         )
+        #         raise click.Abort()
+        #     if not result[0] and (
+        #         cfg.upload.yes_all
+        #         or click.confirm(
+        #             click.style("\nDo you want to sanitize this upload?", fg="magenta"),
+        #             default=True,
+        #         )
+        #     ):
+        #         click.secho("\nSanitizing files...", fg="cyan", bold=True)
+        #         if sanitize_integrity(path):
+        #             click.secho("Sanitization complete", fg="green")
+        #         else:
+        #             click.secho("Some files failed sanitization", fg="red", bold=True)
 
         if cfg.upload.yes_all or click.confirm(
             click.style("\nWould you like to upload the torrent? (No to re-run metadata section)", fg="magenta"),
