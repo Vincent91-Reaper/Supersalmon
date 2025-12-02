@@ -53,10 +53,14 @@ def get_metadata(path, tags, rls_data=None):
                     rls_data["urls"].append(url_input)
                 
                 scraper = source.Scraper()
-                metadata = handle_scrape_errors(scraper.scrape_release(url_input))
+                # Create async task and run it
+                task = handle_scrape_errors(scraper.scrape_release(url_input))
+                metadata = loop.run_until_complete(task)
                 
                 if metadata:
                     click.secho(f"New Source URL: {source_url}", fg="yellow")
+                    # Clean and prepare metadata
+                    metadata = clean_metadata(metadata)
                     remove_various_artists(metadata["tracks"])
                     return metadata, source_url
                 else:
