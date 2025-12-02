@@ -21,7 +21,7 @@ from brucelee94.checks.logs import check_log_cambia
 # Upconvert check removed
 # from brucelee94.checks.upconverts import upload_upconvert_test
 from brucelee94.common import commandgroup
-from brucelee94.constants import ENCODINGS, FORMATS, SOURCES, TAG_ENCODINGS
+from brucelee94.constants import ENCODINGS, FORMATS, SOURCES, TAG_ENCODINGS, RELEASE_TYPES
 # Downconversion removed
 # from salmon.converter.downconverting import (
 #     convert_folder,
@@ -499,11 +499,45 @@ def edit_metadata(
     and tagging prompts have been removed - tags are applied automatically.
     """
     while True:
-        # Skip review_metadata - no longer prompting for edits
-        # But still need to check for required empty fields
-        from brucelee94.tagger.review import _check_for_empty_release_type, _check_for_empty_genre_list
-        _check_for_empty_release_type(metadata)
-        _check_for_empty_genre_list(metadata)
+        # Check for required empty fields (inlined from review.py)
+        # Check for empty release type
+        if not metadata["rls_type"]:
+            # Prompt for release type
+            types = {r.lower(): r for r in RELEASE_TYPES}
+            click.secho("\nRelease Types:", fg="yellow", bold=True)
+            types_list = list(RELEASE_TYPES.keys())
+            longest = max(len(r) for i, r in enumerate(types_list) if i % 2 == 0)
+            for i in range(0, len(types_list), 2):
+                left = types_list[i].ljust(longest + 4)
+                right = types_list[i + 1] if i + 1 < len(types_list) else ""
+                click.echo(f"{left}{right}")
+            
+            while True:
+                rtype = (
+                    click.prompt(
+                        click.style("\nWhich release type corresponds to this release? (case insensitive)", fg="magenta"),
+                        type=click.STRING,
+                    )
+                    .strip()
+                    .lower()
+                )
+                if rtype in types:
+                    metadata["rls_type"] = types[rtype]
+                    break
+                click.secho(f"{rtype} is not a valid release type.", fg="red")
+        
+        # Check for empty genre list
+        if not metadata["genres"]:
+            click.prompt(
+                click.style(
+                    "\nNo genres were found for this release, but one must be added. Press enter to open the genre editor.",
+                    fg="magenta",
+                ),
+                default="",
+            )
+            genres = click.edit("\n".join(metadata["genres"]), editor=cfg.upload.default_editor)
+            if genres:
+                metadata["genres"] = [g for g in genres.split("\n") if g.strip()]
         
         # Validate metadata automatically
         metadata = metadata_validator(metadata)
