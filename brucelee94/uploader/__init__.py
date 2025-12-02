@@ -500,7 +500,10 @@ def edit_metadata(
     """
     while True:
         # Skip review_metadata - no longer prompting for edits
-        # metadata = review_metadata(metadata, metadata_validator)
+        # But still need to check for required empty fields
+        from brucelee94.tagger.review import _check_for_empty_release_type, _check_for_empty_genre_list
+        _check_for_empty_release_type(metadata)
+        _check_for_empty_genre_list(metadata)
         
         # Validate metadata automatically
         metadata = metadata_validator(metadata)
