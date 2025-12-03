@@ -498,6 +498,11 @@ def edit_metadata(
     The metadata editing portion of the uploading process. Tags are automatically
     applied without prompting for review.
     """
+    # Ensure rls_type is present before continuing
+    if not metadata.get("rls_type"):
+        click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
+        metadata["rls_type"] = _prompt_for_release_type()
+    
     # Auto-tag files without prompting
     if not metadata["scene"]:
         tag_files(path, tags, metadata, False)  # auto_rename always False
@@ -612,6 +617,21 @@ def upload_and_report(
 def convert_genres(genres):
     """Convert the weirdly spaced genres to RED-compliant genres."""
     return ",".join(re.sub("[-_ ]", ".", g).strip() for g in genres)
+
+
+def _prompt_for_release_type():
+    """Prompt user to select a release type if not found in metadata."""
+    from brucelee94.constants import RELEASE_TYPES
+    types_list = list(RELEASE_TYPES.values())
+    click.echo("Available release types:")
+    for i, rls_type in enumerate(types_list, 1):
+        click.echo(f"  {i}. {rls_type}")
+    
+    while True:
+        choice = click.prompt("Enter the number for the release type", type=int)
+        if 1 <= choice <= len(types_list):
+            return types_list[choice - 1]
+        click.secho("Invalid choice. Please try again.", fg="red")
 
 
 def _prompt_source():
