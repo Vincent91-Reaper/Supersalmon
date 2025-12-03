@@ -94,8 +94,26 @@ class Scraper(iTunesBase, MetadataMixin):
         if "tracks" not in data:
             raise ScrapeError("Tracks data not found in JSON.")
 
-        # Parse album-level artists from header for all tracks
+        # Try multiple methods to extract album-level artists
         header_artists = parse_artists_header(soup)
+        
+        # If header parsing fails, try extracting from JSON-LD data
+        if not header_artists and "byArtist" in data:
+            artist_data = data["byArtist"]
+            if isinstance(artist_data, dict) and "name" in artist_data:
+                header_artists = [artist_data["name"]]
+            elif isinstance(artist_data, list):
+                header_artists = [a["name"] for a in artist_data if "name" in a]
+        
+        # If still no artists found, try the meta tag
+        if not header_artists:
+            try:
+                artist_meta = soup.find("meta", {"property": "music:musician"})
+                if artist_meta and artist_meta.get("content"):
+                    header_artists = [artist_meta["content"].strip()]
+            except (TypeError, AttributeError):
+                pass
+        
         # Convert to the format expected by generate_track: [(name, importance)]
         # Use importance 1 for main artists
         artists_tuples = [(artist, 1) for artist in header_artists]
