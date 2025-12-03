@@ -343,8 +343,14 @@ def upload(
         metadata["scene"] = rls_data["scene"]
         metadata["source"] = rls_data["source"]
         
+        # Detect if this is Apple Music URL (case-insensitive)
+        is_apple_music = source_url and "apple.com" in source_url.lower()
+        
+        # Pass Apple Music flag to edit_metadata
+        metadata["_is_apple_music"] = is_apple_music
+        
         path, metadata, tags, audio_info = edit_metadata(
-            path, tags, metadata, source, rls_data, recompress, source_url
+            path, tags, metadata, source, rls_data, recompress, source_url, is_apple_music
         )
 
         if not group_id:
@@ -500,7 +506,7 @@ def upload(
 
 
 def edit_metadata(
-    path, tags, metadata, source, rls_data, recompress, source_url=None
+    path, tags, metadata, source, rls_data, recompress, source_url=None, is_apple_music=False
 ):  # auto_rename, spectral_ids, and skip_integrity_check removed
     """
     The metadata editing portion of the uploading process. Tags are automatically
@@ -510,6 +516,16 @@ def edit_metadata(
     if not metadata.get("rls_type"):
         click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
         metadata["rls_type"] = _prompt_for_release_type()
+    
+    # For Apple Music, we need to ensure album-level artists exist even if we preserve file artists
+    # Get artists from the scraped metadata's track data
+    if is_apple_music and metadata.get("tracks"):
+        from brucelee94.tagger.sources.base import generate_artists
+        # Generate album-level artists from the scraped track metadata
+        # This ensures the upload has the necessary artist information
+        if not metadata.get("artists") or not metadata["artists"]:
+            metadata["artists"], _ = generate_artists(metadata["tracks"])
+            click.secho(f"Generated album artists from track data: {[a[0] for a in metadata['artists']]}", fg="cyan")
     
     # Auto-tag files without prompting
     if not metadata["scene"]:
