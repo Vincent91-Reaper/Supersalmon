@@ -518,14 +518,18 @@ def edit_metadata(
         metadata["rls_type"] = _prompt_for_release_type()
     
     # For Apple Music, we need to ensure album-level artists exist even if we preserve file artists
-    # Get artists from the scraped metadata's track data
-    if is_apple_music and metadata.get("tracks"):
-        from brucelee94.tagger.sources.base import generate_artists
-        # Generate album-level artists from the scraped track metadata
-        # This ensures the upload has the necessary artist information
-        if not metadata.get("artists") or not metadata["artists"]:
-            metadata["artists"], _ = generate_artists(metadata["tracks"])
-            click.secho(f"Generated album artists from track data: {[a[0] for a in metadata['artists']]}", fg="cyan")
+    # Always generate album-level artists from the scraped track data for Apple Music
+    if is_apple_music:
+        if metadata.get("tracks"):
+            from brucelee94.tagger.sources.base import generate_artists
+            # Generate album-level artists from the scraped track metadata
+            # This ensures the upload has the necessary artist information even if file tags are preserved
+            metadata["artists"], metadata["tracks"] = generate_artists(metadata["tracks"])
+            click.secho(f"Generated album artists from track data for Apple Music: {[a[0] for a in metadata['artists']]}", fg="cyan")
+        elif not metadata.get("artists") or not metadata["artists"]:
+            # Fallback: if no tracks data but no artists either, this is an error
+            click.secho("ERROR: No artist information available for Apple Music upload!", fg="red", bold=True)
+            raise click.Abort()
     
     # Auto-tag files without prompting
     if not metadata["scene"]:
