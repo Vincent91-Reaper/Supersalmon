@@ -77,20 +77,16 @@ def create_track_changes(tags, metadata):
     Compare the track data in the metadata to the track data in the tags
     and record artist differences per track. Album-level tags (genre, label, 
     catno, albumartist) are handled separately in collect_album_data().
+    
+    Note: Artist tags are preserved from existing files and not modified.
     """
     changes = {}
     tracks = metadata_to_track_list(metadata["tracks"])
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
-
-        try:
-            old_artist_str = ", ".join(tagset.artist)
-        except TypeError:
-            old_artist_str = "None"
-
-        new_artist_str = create_artist_str(trackmeta["artists"])
-        if old_artist_str != new_artist_str:
-            changes[filename].append(Change("artist", old_artist_str, new_artist_str))
+        
+        # Skip artist changes - preserve existing artist tags on files
+        # Only album-level tags (label, catno, albumartist) will be applied
 
     return changes
 
@@ -174,13 +170,22 @@ def print_changes(album_changes, track_changes, a_track):
 
 
 def retag_files(path, album_changes, track_changes):
-    """Apply the proposed metadata changes to the files."""
+    """Apply the proposed metadata changes to the files.
+    Only adds label tag if missing, preserves existing artist tags."""
     for filename, changes in track_changes.items():
         mut = TagFile(os.path.join(path, filename))
         for change in changes:
             setattr(mut, change.tag, str(change.new))
+        # Only apply album-level tags that are actually needed
         for tag, value in album_changes.items():
-            setattr(mut, tag, str(value))
+            # Only set label if it's empty/missing, preserve other tags
+            if tag == "label":
+                existing_label = getattr(mut, "label", None)
+                if not existing_label or existing_label == "None":
+                    setattr(mut, tag, str(value))
+            elif tag in ["catno", "albumartist"]:
+                # Set catno and albumartist regardless (may be needed)
+                setattr(mut, tag, str(value))
         mut.save()
     click.secho("Retagged files.", fg="green")
 
