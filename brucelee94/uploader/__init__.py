@@ -335,6 +335,14 @@ def upload(
         if new_source_url is not None:
             source_url = new_source_url
             click.secho(f"New Source URL: {source_url}", fg="yellow")
+        
+        # Copy format and encoding from rls_data to metadata (these come from audio files)
+        metadata["format"] = rls_data["format"]
+        metadata["encoding"] = rls_data["encoding"]
+        metadata["encoding_vbr"] = rls_data["encoding_vbr"]
+        metadata["scene"] = rls_data["scene"]
+        metadata["source"] = rls_data["source"]
+        
         path, metadata, tags, audio_info = edit_metadata(
             path, tags, metadata, source, rls_data, recompress
         )
