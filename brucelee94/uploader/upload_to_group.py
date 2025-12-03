@@ -10,15 +10,10 @@ loop = asyncio.get_event_loop()
 
 def check_existing_group(gazelle_site, offer_deletion=True):
     """
-    Prompt user to select an existing torrent group or create a new one.
+    Always upload to a new torrent group (no prompt).
     """
-    group_id = _prompt_for_group_id(gazelle_site, offer_deletion)
-    if group_id:
-        confirmation = _confirm_group_id(gazelle_site, group_id)
-        if confirmation is True:
-            return group_id
-        return None
-    return group_id
+    click.echo("Uploading to a new torrent group.")
+    return None
 
 
 def _prompt_for_group_id(gazelle_site, offer_deletion):
