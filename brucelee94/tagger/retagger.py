@@ -18,7 +18,7 @@ from brucelee94.tagger.tagfile import TagFile
 Change = namedtuple("Change", ["tag", "old", "new"])
 
 
-def tag_files(path, tags, metadata, auto_rename):
+def tag_files(path, tags, metadata, auto_rename, source_url=None):
     """
     Wrapper function that calls the functions that create and print the
     proposed changes, and automatically applies tags without prompting.
@@ -26,11 +26,15 @@ def tag_files(path, tags, metadata, auto_rename):
     click.secho("\nRetagging files...", fg="cyan", bold=True)
     if not check_whether_to_tag(tags, metadata):
         return
+    
+    # Check if source is Apple Music / iTunes
+    is_apple_music = source_url and ("music.apple.com" in source_url or "itunes.apple.com" in source_url)
+    
     album_changes = collect_album_data(metadata)
-    track_changes = create_track_changes(tags, metadata)
+    track_changes = create_track_changes(tags, metadata, preserve_artists=is_apple_music)
     print_changes(album_changes, track_changes, next(iter(tags.values())))
     # Auto-tag files without confirmation prompt
-    retag_files(path, album_changes, track_changes)
+    retag_files(path, album_changes, track_changes, preserve_artists=is_apple_music)
 
 
 def check_whether_to_tag(tags, metadata):
@@ -72,21 +76,30 @@ def _generate_album_artist(artists):
     return c.join(sorted(main_artists))
 
 
-def create_track_changes(tags, metadata):
+def create_track_changes(tags, metadata, preserve_artists=False):
     """
     Compare the track data in the metadata to the track data in the tags
     and record artist differences per track. Album-level tags (genre, label, 
     catno, albumartist) are handled separately in collect_album_data().
     
-    Note: Artist tags are preserved from existing files and not modified.
+    Args:
+        preserve_artists: If True (for Apple Music), don't modify artist tags
     """
     changes = {}
     tracks = metadata_to_track_list(metadata["tracks"])
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
         
-        # Skip artist changes - preserve existing artist tags on files
-        # Only album-level tags (label, catno, albumartist) will be applied
+        # Only change artists if NOT Apple Music
+        if not preserve_artists:
+            try:
+                old_artist_str = ", ".join(tagset.artist)
+            except TypeError:
+                old_artist_str = "None"
+
+            new_artist_str = create_artist_str(trackmeta["artists"])
+            if old_artist_str != new_artist_str:
+                changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
     return changes
 
@@ -169,22 +182,25 @@ def print_changes(album_changes, track_changes, a_track):
             )
 
 
-def retag_files(path, album_changes, track_changes):
+def retag_files(path, album_changes, track_changes, preserve_artists=False):
     """Apply the proposed metadata changes to the files.
-    Only adds label tag if missing, preserves existing artist tags."""
+    
+    Args:
+        preserve_artists: If True (for Apple Music), only add label if missing
+    """
     for filename, changes in track_changes.items():
         mut = TagFile(os.path.join(path, filename))
         for change in changes:
             setattr(mut, change.tag, str(change.new))
-        # Only apply album-level tags that are actually needed
+        # Apply album-level tags
         for tag, value in album_changes.items():
-            # Only set label if it's empty/missing, preserve other tags
-            if tag == "label":
+            if preserve_artists and tag == "label":
+                # For Apple Music: Only set label if it's empty/missing
                 existing_label = getattr(mut, "label", None)
                 if not existing_label or existing_label == "None":
                     setattr(mut, tag, str(value))
-            elif tag in ["catno", "albumartist"]:
-                # Set catno and albumartist regardless (may be needed)
+            else:
+                # For other sources: Apply all album tags normally
                 setattr(mut, tag, str(value))
         mut.save()
     click.secho("Retagged files.", fg="green")

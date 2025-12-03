@@ -344,7 +344,7 @@ def upload(
         metadata["source"] = rls_data["source"]
         
         path, metadata, tags, audio_info = edit_metadata(
-            path, tags, metadata, source, rls_data, recompress
+            path, tags, metadata, source, rls_data, recompress, source_url
         )
 
         if not group_id:
@@ -500,7 +500,7 @@ def upload(
 
 
 def edit_metadata(
-    path, tags, metadata, source, rls_data, recompress
+    path, tags, metadata, source, rls_data, recompress, source_url=None
 ):  # auto_rename, spectral_ids, and skip_integrity_check removed
     """
     The metadata editing portion of the uploading process. Tags are automatically
@@ -513,7 +513,7 @@ def edit_metadata(
     
     # Auto-tag files without prompting
     if not metadata["scene"]:
-        tag_files(path, tags, metadata, False)  # auto_rename always False
+        tag_files(path, tags, metadata, False, source_url)  # auto_rename always False
 
     tags = check_tags(path)
     if not metadata["scene"] and recompress:
