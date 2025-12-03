@@ -94,6 +94,12 @@ class Scraper(iTunesBase, MetadataMixin):
         if "tracks" not in data:
             raise ScrapeError("Tracks data not found in JSON.")
 
+        # Parse album-level artists from header for all tracks
+        header_artists = parse_artists_header(soup)
+        # Convert to the format expected by generate_track: [(name, importance)]
+        # Use importance 1 for main artists
+        artists_tuples = [(artist, 1) for artist in header_artists]
+
         for index, track in enumerate(data["tracks"], start=1):
             try:
                 num = index
@@ -110,7 +116,7 @@ class Scraper(iTunesBase, MetadataMixin):
                 tracks[str(cur_disc)][num] = self.generate_track(
                     trackno=num,
                     discno=cur_disc,
-                    artists=[],
+                    artists=artists_tuples,
                     # artists=parse_artists(soup, track, raw_title),
                     title=title,
                     # explicit=explicit,
