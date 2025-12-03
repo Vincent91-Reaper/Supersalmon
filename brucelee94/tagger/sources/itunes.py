@@ -115,8 +115,8 @@ class Scraper(iTunesBase, MetadataMixin):
                 pass
         
         # Convert to the format expected by generate_track: [(name, importance)]
-        # Use importance 1 for main artists
-        artists_tuples = [(artist, 1) for artist in header_artists]
+        # Use "main" importance for album-level artists
+        artists_tuples = [(artist, "main") for artist in header_artists]
 
         for index, track in enumerate(data["tracks"], start=1):
             try:
