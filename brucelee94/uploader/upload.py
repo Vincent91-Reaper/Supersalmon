@@ -240,7 +240,7 @@ def generate_torrent(gazelle_site, path):
 
 def generate_description(track_data, metadata):
     """Generate the group description with the tracklist."""
-    description = "[b][size=4]Tracklist[/b]\n"
+    description = "[b][size=2]Tracklist[/b]\n"
     multi_disc = any(
         (
             t["t"].discnumber
