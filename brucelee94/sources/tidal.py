@@ -28,19 +28,35 @@ class TidalBase(BaseScraper):
 
     async def create_soup(self, url, params=None):
         """Run a GET request to Tidal's JSON API for album data."""
+        import click
         params = params or {}
         album_id = self.parse_release_id(url)
+        click.secho(f"\nDEBUG TIDAL API: Fetching album {album_id}", fg="yellow")
+        
         for cc in get_tidal_regions_to_fetch():
             try:
                 self.country_code = cc
                 params["countrycode"] = cc
+                click.secho(f"DEBUG TIDAL API: Trying region {cc}", fg="yellow")
+                
                 data = await self.get_json(f"/albums/{album_id}", params=params)
+                click.secho(f"DEBUG TIDAL API: Album data keys: {list(data.keys())}", fg="yellow")
+                
                 tracklist = await self.get_json(f"/albums/{album_id}/tracks", params=params)
+                click.secho(f"DEBUG TIDAL API: Tracklist has {len(tracklist.get('items', []))} tracks", fg="yellow")
+                
+                if tracklist.get("items"):
+                    first_track = tracklist["items"][0]
+                    click.secho(f"DEBUG TIDAL API: First track keys: {list(first_track.keys())}", fg="yellow")
+                    click.secho(f"DEBUG TIDAL API: First track artists: {first_track.get('artists', 'NOT PRESENT')}", fg="yellow")
+                
                 data["tracklist"] = tracklist["items"]
                 return data
             except json.decoder.JSONDecodeError as e:
+                click.secho(f"DEBUG TIDAL API: JSON decode error for region {cc}", fg="red")
                 raise ScrapeError("Tidal page did not return valid JSON.") from e
-            except (KeyError, ScrapeError):
+            except (KeyError, ScrapeError) as e:
+                click.secho(f"DEBUG TIDAL API: Error for region {cc}: {e}", fg="red")
                 pass
         raise ScrapeError(f"Failed to grab metadata for {url}.")
 
