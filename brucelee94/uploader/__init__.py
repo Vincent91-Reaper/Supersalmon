@@ -526,6 +526,30 @@ def edit_metadata(
             click.secho("Please try a different URL or use manual metadata entry.", fg="yellow")
             raise click.Abort()
     
+    # For all other sources (including Tidal), generate album-level artists from track metadata if missing
+    if not metadata.get("artists") or not metadata["artists"]:
+        # Extract all artists from track metadata
+        all_artists = []
+        for disc in metadata.get("tracks", {}).values():
+            for track in disc.values():
+                if "artists" in track and track["artists"]:
+                    all_artists.extend(track["artists"])
+        
+        # Deduplicate and keep only main artists for album level
+        seen = set()
+        unique_artists = []
+        for artist, importance in all_artists:
+            if importance == "main" and artist.lower() not in seen:
+                seen.add(artist.lower())
+                unique_artists.append((artist, importance))
+        
+        metadata["artists"] = unique_artists
+        
+        if not unique_artists:
+            click.secho("ERROR: No artist information found in track metadata!", fg="red", bold=True)
+            click.secho("Please try a different URL or use manual metadata entry.", fg="yellow")
+            raise click.Abort()
+    
     # Auto-tag files without prompting
     if not metadata["scene"]:
         tag_files(path, tags, metadata, False, source_url)  # auto_rename always False

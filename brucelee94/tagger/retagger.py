@@ -24,7 +24,7 @@ def tag_files(path, tags, metadata, auto_rename, source_url=None):
     proposed changes, and automatically applies tags without prompting.
     """
     click.secho("\nRetagging files...", fg="cyan", bold=True)
-    if not check_whether_to_tag(tags, metadata):
+    if not check_whether_to_tag(tags, metadata, source_url):
         return
     
     # Check if source is Apple Music / iTunes
@@ -37,11 +37,16 @@ def tag_files(path, tags, metadata, auto_rename, source_url=None):
     retag_files(path, album_changes, track_changes, preserve_artists=is_apple_music)
 
 
-def check_whether_to_tag(tags, metadata):
+def check_whether_to_tag(tags, metadata, source_url=None):
     """
     Make sure the number of tracks in the metadata equals the number of tracks
-    in the folder.
+    in the folder. For Tidal, skip this check as track structure may differ.
     """
+    # Skip track count check for Tidal sources
+    is_tidal = source_url and ("tidal.com" in source_url or "wimpmusic.com" in source_url)
+    if is_tidal:
+        return True
+        
     if len(tags) != sum([len(disc) for disc in metadata["tracks"].values()]):
         click.secho(
             "Number of tracks differed from number of tracks in metadata, skipping retagging procedure...",
