@@ -87,25 +87,9 @@ def get_metadata(path, tags, rls_data=None):
                 if metadata:
                     click.secho(f"New Source URL: {source_url}", fg="yellow")
                     
-                    # Debug: Show what scraper returned
-                    click.secho(f"\nDEBUG SCRAPER: artists from scraper = {metadata.get('artists', 'NOT PRESENT')}", fg="magenta")
-                    if metadata.get("tracks"):
-                        first_disc = next(iter(metadata["tracks"].values()))
-                        if first_disc:
-                            first_track = next(iter(first_disc.values()))
-                            click.secho(f"DEBUG SCRAPER: First track artists = {first_track.get('artists', 'NOT PRESENT')}", fg="magenta")
-                    
                     # Clean and prepare metadata
                     metadata = clean_metadata(metadata)
                     remove_various_artists(metadata["tracks"])
-                    
-                    # Debug: Show what we have after cleaning
-                    click.secho(f"DEBUG AFTER CLEAN: artists = {metadata.get('artists', 'NOT PRESENT')}", fg="magenta")
-                    if metadata.get("tracks"):
-                        first_disc = next(iter(metadata["tracks"].values()))
-                        if first_disc:
-                            first_track = next(iter(first_disc.values()))
-                            click.secho(f"DEBUG AFTER CLEAN: First track artists = {first_track.get('artists', 'NOT PRESENT')}", fg="magenta")
                     
                     # Validate required fields
                     if not metadata.get("rls_type"):

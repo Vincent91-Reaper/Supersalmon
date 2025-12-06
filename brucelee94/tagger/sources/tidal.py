@@ -55,20 +55,9 @@ class Scraper(TidalBase, MetadataMixin):
         return soup["upc"]
 
     def parse_tracks(self, soup):
-        import click
         tracks = defaultdict(dict)
-        for i, track in enumerate(soup["tracklist"]):
-            # Debug: Show raw track data for first track
-            if i == 0:
-                click.secho(f"\nDEBUG TIDAL PARSE: First track raw data:", fg="yellow")
-                click.secho(f"  track['artists'] = {track.get('artists', 'NOT PRESENT')}", fg="yellow")
-                click.secho(f"  track['title'] = {track.get('title', 'NOT PRESENT')}", fg="yellow")
-            
+        for track in soup["tracklist"]:
             parsed_artists = self.parse_artists(track["artists"], track["title"], track["id"])
-            
-            # Debug: Show parsed artists for first track
-            if i == 0:
-                click.secho(f"  parsed_artists = {parsed_artists}", fg="yellow")
             
             tracks[str(track["volumeNumber"])][str(track["trackNumber"])] = self.generate_track(
                 trackno=track["trackNumber"],

@@ -526,21 +526,14 @@ def edit_metadata(
             click.secho("Please try a different URL or use manual metadata entry.", fg="yellow")
             raise click.Abort()
     
-    # Debug: Show what we received for artists
-    click.secho(f"\nDEBUG: metadata.get('artists') = {metadata.get('artists')}", fg="cyan")
-    click.secho(f"DEBUG: Number of tracks: {sum(len(disc) for disc in metadata.get('tracks', {}).values())}", fg="cyan")
-    
     # For all other sources (including Tidal), generate album-level artists from track metadata if missing
     if not metadata.get("artists") or not metadata["artists"]:
-        click.secho("DEBUG: Extracting artists from track metadata...", fg="cyan")
         # Extract all artists from track metadata
         all_artists = []
         for disc in metadata.get("tracks", {}).values():
             for track in disc.values():
                 if "artists" in track and track["artists"]:
                     all_artists.extend(track["artists"])
-        
-        click.secho(f"DEBUG: Extracted {len(all_artists)} artist entries from tracks", fg="cyan")
         
         # Deduplicate - keep both main and guest artists for now, prioritize main
         seen = set()
@@ -553,8 +546,6 @@ def edit_metadata(
                     main_artists.append((artist, importance))
                 else:
                     guest_artists.append((artist, importance))
-        
-        click.secho(f"DEBUG: Found {len(main_artists)} main artists, {len(guest_artists)} guest artists", fg="cyan")
         
         # Use main artists if available, otherwise fall back to guest artists
         unique_artists = main_artists if main_artists else guest_artists
@@ -573,8 +564,6 @@ def edit_metadata(
                         click.secho(f"Sample track artists: {first_track['artists']}", fg="yellow")
             click.secho("Please try a different URL or use manual metadata entry.", fg="yellow")
             raise click.Abort()
-    else:
-        click.secho(f"DEBUG: Using existing album artists: {metadata['artists']}", fg="cyan")
     
     # Auto-tag files without prompting
     if not metadata["scene"]:
