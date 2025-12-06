@@ -5,6 +5,7 @@ from brucelee94.sources.beatport import BeatportBase
 from brucelee94.sources.deezer import DeezerBase
 from brucelee94.sources.itunes import iTunesBase
 from brucelee94.sources.qobuz import QobuzBase
+from brucelee94.sources.tidal import TidalBase
 
 SOURCE_ICONS = {
     "Beatport": "https://ptpimg.me/5hwjpv.png",
