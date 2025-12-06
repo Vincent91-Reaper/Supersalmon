@@ -45,9 +45,13 @@ class TidalBase(BaseScraper):
                 click.secho(f"DEBUG TIDAL API: Album title: {data.get('title', 'N/A')}", fg="yellow")
                 click.secho(f"DEBUG TIDAL API: numberOfTracks: {data.get('numberOfTracks', 'N/A')}", fg="yellow")
                 
+                # Add limit parameter to ensure we get tracks
+                tracks_params = params.copy()
+                tracks_params["limit"] = 100  # Request up to 100 tracks
+                
                 tracklist_url = f"/albums/{album_id}/tracks"
-                click.secho(f"DEBUG TIDAL API: Fetching tracklist from: {tracklist_url}", fg="yellow")
-                tracklist = await self.get_json(tracklist_url, params=params)
+                click.secho(f"DEBUG TIDAL API: Fetching tracklist from: {tracklist_url} with limit=100", fg="yellow")
+                tracklist = await self.get_json(tracklist_url, params=tracks_params)
                 click.secho(f"DEBUG TIDAL API: Tracklist response keys: {list(tracklist.keys())}", fg="yellow")
                 click.secho(f"DEBUG TIDAL API: Tracklist has {len(tracklist.get('items', []))} tracks", fg="yellow")
                 
