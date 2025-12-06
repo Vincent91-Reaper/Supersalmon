@@ -535,18 +535,33 @@ def edit_metadata(
                 if "artists" in track and track["artists"]:
                     all_artists.extend(track["artists"])
         
-        # Deduplicate and keep only main artists for album level
+        # Deduplicate - keep both main and guest artists for now, prioritize main
         seen = set()
-        unique_artists = []
+        main_artists = []
+        guest_artists = []
         for artist, importance in all_artists:
-            if importance == "main" and artist.lower() not in seen:
+            if artist.lower() not in seen:
                 seen.add(artist.lower())
-                unique_artists.append((artist, importance))
+                if importance == "main":
+                    main_artists.append((artist, importance))
+                else:
+                    guest_artists.append((artist, importance))
         
+        # Use main artists if available, otherwise fall back to guest artists
+        unique_artists = main_artists if main_artists else guest_artists
         metadata["artists"] = unique_artists
         
         if not unique_artists:
             click.secho("ERROR: No artist information found in track metadata!", fg="red", bold=True)
+            click.secho("Track metadata structure:", fg="yellow")
+            # Debug output - show first track to help diagnose
+            if metadata.get("tracks"):
+                first_disc = next(iter(metadata["tracks"].values()))
+                if first_disc:
+                    first_track = next(iter(first_disc.values()))
+                    click.secho(f"Sample track keys: {list(first_track.keys())}", fg="yellow")
+                    if "artists" in first_track:
+                        click.secho(f"Sample track artists: {first_track['artists']}", fg="yellow")
             click.secho("Please try a different URL or use manual metadata entry.", fg="yellow")
             raise click.Abort()
     
