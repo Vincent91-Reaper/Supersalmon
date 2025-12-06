@@ -32,7 +32,6 @@ class TidalBase(BaseScraper):
         params = params or {}
         album_id = self.parse_release_id(url)
         click.secho(f"\nDEBUG TIDAL API: Fetching album {album_id}", fg="yellow")
-        click.secho(f"DEBUG TIDAL API: Original URL: {url}", fg="yellow")
         
         for cc in get_tidal_regions_to_fetch():
             try:
@@ -41,27 +40,34 @@ class TidalBase(BaseScraper):
                 click.secho(f"DEBUG TIDAL API: Trying region {cc}", fg="yellow")
                 
                 data = await self.get_json(f"/albums/{album_id}", params=params)
-                click.secho(f"DEBUG TIDAL API: Album data keys: {list(data.keys())}", fg="yellow")
                 click.secho(f"DEBUG TIDAL API: Album title: {data.get('title', 'N/A')}", fg="yellow")
                 click.secho(f"DEBUG TIDAL API: numberOfTracks: {data.get('numberOfTracks', 'N/A')}", fg="yellow")
+                
+                # Check if album has artist info at album level
+                if "artists" in data:
+                    click.secho(f"DEBUG TIDAL API: Album-level artists: {data.get('artists', [])}", fg="yellow")
+                if "artist" in data:
+                    click.secho(f"DEBUG TIDAL API: Album-level artist: {data.get('artist', {})}", fg="yellow")
                 
                 # Add limit parameter to ensure we get tracks
                 tracks_params = params.copy()
                 tracks_params["limit"] = 100  # Request up to 100 tracks
                 
                 tracklist_url = f"/albums/{album_id}/tracks"
-                click.secho(f"DEBUG TIDAL API: Fetching tracklist from: {tracklist_url} with limit=100", fg="yellow")
+                click.secho(f"DEBUG TIDAL API: Fetching tracklist from: {tracklist_url}", fg="yellow")
                 tracklist = await self.get_json(tracklist_url, params=tracks_params)
-                click.secho(f"DEBUG TIDAL API: Tracklist response keys: {list(tracklist.keys())}", fg="yellow")
                 click.secho(f"DEBUG TIDAL API: Tracklist has {len(tracklist.get('items', []))} tracks", fg="yellow")
                 
                 if tracklist.get("items"):
                     first_track = tracklist["items"][0]
-                    click.secho(f"DEBUG TIDAL API: First track keys: {list(first_track.keys())}", fg="yellow")
                     click.secho(f"DEBUG TIDAL API: First track artists: {first_track.get('artists', 'NOT PRESENT')}", fg="yellow")
                 else:
-                    click.secho(f"DEBUG TIDAL API: WARNING - No tracks in tracklist response!", fg="red")
-                    click.secho(f"DEBUG TIDAL API: Full tracklist response: {tracklist}", fg="red")
+                    click.secho(f"DEBUG TIDAL API: WARNING - No tracks in tracklist!", fg="red")
+                    click.secho(f"DEBUG TIDAL API: This may be due to regional restrictions for region {cc}", fg="red")
+                    # Continue to try next region instead of failing here
+                    if cc != get_tidal_regions_to_fetch()[-1]:
+                        click.secho(f"DEBUG TIDAL API: Trying next region...", fg="yellow")
+                        continue
                 
                 data["tracklist"] = tracklist["items"]
                 return data
