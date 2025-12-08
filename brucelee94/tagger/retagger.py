@@ -58,19 +58,10 @@ def check_whether_to_tag(tags, metadata, source_url=None):
 
 def collect_album_data(metadata):
     """Create a dictionary of the proposed album tags (consistent across every track).
-    Only includes: label, catno (or upc if no catno), and albumartist (3 fields as requested).
-    Genre is not modified - kept as original on files."""
-    # Use catno if available, otherwise fall back to upc
-    catno_value = metadata["catno"] if metadata["catno"] else metadata.get("upc")
-    return {
-        k: v
-        for k, v in {
-            "label": metadata["label"],
-            "catno": catno_value,
-            "albumartist": _generate_album_artist(metadata["artists"]),
-        }.items()
-        if v
-    }
+    Changed: No longer tags files with label, catno, or albumartist.
+    Files are only retagged with artist info if missing."""
+    # Return empty dict - we don't apply album-level tags to files anymore
+    return {}
 
 
 def _generate_album_artist(artists):
@@ -84,8 +75,7 @@ def _generate_album_artist(artists):
 def create_track_changes(tags, metadata, preserve_artists=False):
     """
     Compare the track data in the metadata to the track data in the tags
-    and record artist differences per track. Album-level tags (genre, label, 
-    catno, albumartist) are handled separately in collect_album_data().
+    and only add artist tags if they are missing.
     
     Args:
         preserve_artists: If True (for Apple Music), don't modify artist tags
@@ -95,15 +85,16 @@ def create_track_changes(tags, metadata, preserve_artists=False):
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
         
-        # Only change artists if NOT Apple Music
+        # Only add artists if they're missing (None or empty)
         if not preserve_artists:
             try:
-                old_artist_str = ", ".join(tagset.artist)
-            except TypeError:
+                old_artist_str = ", ".join(tagset.artist) if tagset.artist else "None"
+            except (TypeError, AttributeError):
                 old_artist_str = "None"
 
-            new_artist_str = create_artist_str(trackmeta["artists"])
-            if old_artist_str != new_artist_str:
+            # Only add artist tag if it's missing (None or empty)
+            if old_artist_str == "None" or not old_artist_str:
+                new_artist_str = create_artist_str(trackmeta["artists"])
                 changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
     return changes
@@ -163,52 +154,37 @@ def create_artist_str(artists):
 
 
 def print_changes(album_changes, track_changes, a_track):
-    """Print all the proposed track changes, then all the album data."""
+    """Print all the proposed track changes. Album-level tags are no longer modified on files."""
     if any(t for t in track_changes.values()):
-        click.secho("\nProposed tag changes:", fg="yellow", bold=True)
-    for filename, changes in track_changes.items():
-        if changes:
-            click.secho(f"> {filename}", fg="yellow")
-            for change in changes:
-                click.echo(f"  {change.tag.ljust(20)} ••• {change.old} {ARROWS} {change.new}")
-
-    click.secho("\nAlbum tags (applied to all):", fg="yellow", bold=True)
-    for field, value in album_changes.items():
-        previous = getattr(a_track, field, "None")
-        if isinstance(previous, list):
-            previous = "; ".join(previous)
-        kwargs = {"bold": True} if str(previous) != str(value) else {}  # Bold if different
-        if str(previous) == str(value):
-            click.secho(f"> {field.ljust(13)} ••• {previous}", **kwargs)
-        else:
-            click.echo(
-                f"> {click.style(str(field.ljust(13)), bold=True)} ••• {str(previous)} "
-                f"{ARROWS} {click.style(str(value), bold=True)}"
-            )
+        click.secho("\nProposed tag changes (only adding missing artists):", fg="yellow", bold=True)
+        for filename, changes in track_changes.items():
+            if changes:
+                click.secho(f"> {filename}", fg="yellow")
+                for change in changes:
+                    click.echo(f"  {change.tag.ljust(20)} ••• {change.old} {ARROWS} {change.new}")
+    else:
+        click.secho("\nNo retagging needed - all files already have artist tags.", fg="green")
 
 
 def retag_files(path, album_changes, track_changes, preserve_artists=False):
     """Apply the proposed metadata changes to the files.
     
-    Args:
-        preserve_artists: If True (for Apple Music), only add label if missing
+    Note: album_changes is now empty - we only tag artist info if missing.
     """
+    # Only save files if there are actual changes
+    files_changed = 0
     for filename, changes in track_changes.items():
-        mut = TagFile(os.path.join(path, filename))
-        for change in changes:
-            setattr(mut, change.tag, str(change.new))
-        # Apply album-level tags
-        for tag, value in album_changes.items():
-            if preserve_artists and tag == "label":
-                # For Apple Music: Only set label if it's empty/missing
-                existing_label = getattr(mut, "label", None)
-                if not existing_label or existing_label == "None":
-                    setattr(mut, tag, str(value))
-            else:
-                # For other sources: Apply all album tags normally
-                setattr(mut, tag, str(value))
-        mut.save()
-    click.secho("Retagged files.", fg="green")
+        if changes:  # Only process files with changes
+            mut = TagFile(os.path.join(path, filename))
+            for change in changes:
+                setattr(mut, change.tag, str(change.new))
+            mut.save()
+            files_changed += 1
+    
+    if files_changed > 0:
+        click.secho(f"Retagged {files_changed} file(s) with missing artist tags.", fg="green")
+    else:
+        click.secho("No retagging needed - all files have artist tags.", fg="green")
 
 
 def rename_files(path, tags, metadata, auto_rename, spectral_ids, source=None):
