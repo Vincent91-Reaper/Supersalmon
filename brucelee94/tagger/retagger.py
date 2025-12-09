@@ -59,7 +59,7 @@ def check_whether_to_tag(tags, metadata, source_url=None):
 def collect_album_data(metadata):
     """Create a dictionary of the proposed album tags (consistent across every track).
     Changed: No longer tags files with label, catno, or albumartist.
-    Files are only retagged with artist info if missing."""
+    Artist tags are validated and updated to match scraped metadata."""
     # Return empty dict - we don't apply album-level tags to files anymore
     return {}
 
@@ -75,7 +75,7 @@ def _generate_album_artist(artists):
 def create_track_changes(tags, metadata, preserve_artists=False):
     """
     Compare the track data in the metadata to the track data in the tags
-    and only add artist tags if they are missing.
+    and auto-tag with correct artists from scraped metadata.
     
     Args:
         preserve_artists: If True (for Apple Music), don't modify artist tags
@@ -85,16 +85,18 @@ def create_track_changes(tags, metadata, preserve_artists=False):
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
         
-        # Only add artists if they're missing (None or empty)
+        # Auto-tag artists from scraped metadata (unless preserve_artists is True for Apple Music)
         if not preserve_artists:
             try:
                 old_artist_str = ", ".join(tagset.artist) if tagset.artist else "None"
             except (TypeError, AttributeError):
                 old_artist_str = "None"
 
-            # Only add artist tag if it's missing (None or empty)
-            if old_artist_str == "None" or not old_artist_str:
-                new_artist_str = create_artist_str(trackmeta["artists"])
+            # Get the correct artist string from scraped metadata
+            new_artist_str = create_artist_str(trackmeta["artists"])
+            
+            # Update artist tag if it's missing OR doesn't match the scraped metadata
+            if old_artist_str == "None" or not old_artist_str or old_artist_str != new_artist_str:
                 changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
     return changes
@@ -156,20 +158,20 @@ def create_artist_str(artists):
 def print_changes(album_changes, track_changes, a_track):
     """Print all the proposed track changes. Album-level tags are no longer modified on files."""
     if any(t for t in track_changes.values()):
-        click.secho("\nProposed tag changes (only adding missing artists):", fg="yellow", bold=True)
+        click.secho("\nProposed tag changes (updating artists to match scraped metadata):", fg="yellow", bold=True)
         for filename, changes in track_changes.items():
             if changes:
                 click.secho(f"> {filename}", fg="yellow")
                 for change in changes:
                     click.echo(f"  {change.tag.ljust(20)} ••• {change.old} {ARROWS} {change.new}")
     else:
-        click.secho("\nNo retagging needed - all files already have artist tags.", fg="green")
+        click.secho("\nNo retagging needed - all artist tags already match scraped metadata.", fg="green")
 
 
 def retag_files(path, album_changes, track_changes, preserve_artists=False):
     """Apply the proposed metadata changes to the files.
     
-    Note: album_changes is now empty - we only tag artist info if missing.
+    Note: album_changes is now empty - we only tag artist info, updating to match scraped metadata.
     """
     # Only save files if there are actual changes
     files_changed = 0
@@ -182,9 +184,9 @@ def retag_files(path, album_changes, track_changes, preserve_artists=False):
             files_changed += 1
     
     if files_changed > 0:
-        click.secho(f"Retagged {files_changed} file(s) with missing artist tags.", fg="green")
+        click.secho(f"Retagged {files_changed} file(s) with correct artist tags from scraped metadata.", fg="green")
     else:
-        click.secho("No retagging needed - all files have artist tags.", fg="green")
+        click.secho("No retagging needed - all artist tags match scraped metadata.", fg="green")
 
 
 def rename_files(path, tags, metadata, auto_rename, spectral_ids, source=None):
