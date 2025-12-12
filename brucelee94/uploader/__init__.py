@@ -483,7 +483,7 @@ def upload(
                     scene=scene,
                     overwrite_meta=overwrite_meta,
                     recompress=recompress,
-                    source_url=url,  # Use the 24-bit torrent URL as source
+                    source_url=source_url,  # Use the same source URL (Tidal/Apple Music/etc.) as the 24-bit version
                     searchstrs=searchstrs,
                     skip_log_check=skip_log_check,
                 )
