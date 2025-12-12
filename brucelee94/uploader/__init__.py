@@ -22,15 +22,11 @@ from brucelee94.checks.logs import check_log_cambia
 # from brucelee94.checks.upconverts import upload_upconvert_test
 from brucelee94.common import commandgroup
 from brucelee94.constants import ENCODINGS, FORMATS, SOURCES, TAG_ENCODINGS
-# Downconversion removed
-# from salmon.converter.downconverting import (
-#     convert_folder,
-#     generate_conversion_description,
-# )
-# from salmon.converter.transcoding import (
-#     generate_transcode_description,
-#     transcode_folder,
-# )
+# Import downconversion functionality
+from brucelee94.converter.downconverting import (
+    convert_folder,
+    generate_conversion_description,
+)
 from brucelee94.errors import AbortAndDeleteFolder, InvalidMetadataError
 from brucelee94.images import upload_cover
 from brucelee94.tagger import (
@@ -464,42 +460,37 @@ def upload(
 
     print_torrents(gazelle_site, group_id, highlight_torrent_id=torrent_id)
 
-        # Downconversion removed
-        # if cfg.upload.yes_all or click.confirm(
-        #     click.style("\nWould you like to check downconversion options?", fg="magenta"),
-        #     default=True,
-        # ):
-        #     selected_tasks = prompt_downconversion_choice(rls_data, track_data)
-        #     if selected_tasks:
-        #         display_names = [task["name"] for task in selected_tasks]
-        #         click.secho(f"\nSelected formats for downconversion: {', '.join(display_names)}", fg="green", bold=True)
-        #
-        #         # Execute downconversion tasks
-        #         execute_downconversion_tasks(
-        #             selected_tasks,
-        #             path,
-        #             gazelle_site,
-        #             group_id,
-        #             metadata,
-        #             cover_url,
-        #             track_data,
-        #             hybrid,
-        #             lossy_master,
-        #             spectral_urls,
-        #             spectral_ids,
-        #             lossy_comment,
-        #             request_id,
-        #             source_url,
-        #             seedbox_uploader,
-        #             source,
-        #             url,
-        #         )
-
-        # Multi-tracker loop removed
-        # tracker = None
-        # if not remaining_gazelle_sites or not cfg.upload.multi_tracker_upload:
-        #     click.secho("\nDone uploading this release.", fg="green")
-        #     break
+    # Check if 24-bit and prompt for downconversion to 16-bit
+    if rls_data["encoding"] == "24bit Lossless":
+        if click.confirm(click.style("\nDown-convert to 16-bit?", fg="magenta"), default=True):
+            try:
+                click.secho("\nStarting 24-bit to 16-bit downconversion...", fg="cyan", bold=True)
+                
+                # Perform downconversion
+                final_sample_rate, new_path = convert_folder(path, bit_depth=16, sample_rate=None)
+                
+                click.secho(f"\n16-bit version created at: {new_path}", fg="green")
+                click.secho("Uploading 16-bit version...\n", fg="cyan", bold=True)
+                
+                # Recursively upload the 16-bit version through the same workflow
+                # This will handle all the metadata, tagging, and upload steps automatically
+                upload(
+                    gazelle_site,
+                    new_path,
+                    group_id,  # Upload to the same group
+                    source,
+                    encoding=None,  # Let it auto-detect as 16-bit
+                    scene=scene,
+                    overwrite_meta=overwrite_meta,
+                    recompress=recompress,
+                    source_url=url,  # Use the 24-bit torrent URL as source
+                    searchstrs=searchstrs,
+                    skip_log_check=skip_log_check,
+                )
+                
+            except Exception as e:
+                click.secho(f"\nError during downconversion: {e}", fg="red")
+                click.secho("Continuing without 16-bit upload.", fg="yellow")
 
     click.secho("\nDone uploading this release.", fg="green")
     seedbox_uploader.execute_upload()
