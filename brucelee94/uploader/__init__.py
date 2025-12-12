@@ -327,7 +327,7 @@ def upload(
 
         # Spectral and lossy checking removed
 
-        metadata, new_source_url = get_metadata(path, tags, rls_data)
+        metadata, new_source_url = get_metadata(path, tags, rls_data, provided_source_url=source_url)
         if new_source_url is not None:
             source_url = new_source_url
             click.secho(f"New Source URL: {source_url}", fg="yellow")

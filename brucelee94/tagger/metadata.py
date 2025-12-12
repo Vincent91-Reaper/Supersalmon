@@ -41,68 +41,85 @@ def _prompt_for_release_type():
         click.secho(f"Invalid choice. Please enter a number between 1 and {len(types_list)}", fg="red")
 
 
-def get_metadata(path, tags, rls_data=None):
+def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     """
     Get metadata from a URL provided by the user. Skips automatic search.
+    If provided_source_url is given, use it directly instead of prompting.
     """
     # Initialize rls_data if needed
     rls_data = rls_data or {}
     if "urls" not in rls_data:
         rls_data["urls"] = []
     
-    while True:
-        url_input = click.prompt(
-            click.style(
-                "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort)",
-                fg="magenta",
-            ),
-            type=click.STRING,
-        )
-        
-        url_input = url_input.strip()
-        
-        if url_input.lower().startswith("m"):
-            metadata = _get_manual_metadata(rls_data)
-            return metadata, None
-        elif url_input.lower().startswith("a"):
-            raise click.Abort()
-        
-        # Try to scrape from the URL
-        source_url = None
-        metadata = None
-        
-        for name, source in METASOURCES.items():
-            if source.Scraper.regex.match(url_input):
-                click.secho(f"Scraping metadata from {name}...", fg="cyan")
-                source_url = url_input
-                if url_input not in rls_data["urls"]:
-                    rls_data["urls"].append(url_input)
+    # If a source URL was provided (e.g., for 16-bit downconversion), use it directly
+    if provided_source_url:
+        url_input = provided_source_url
+        click.secho(f"\nUsing provided source URL: {url_input}", fg="cyan")
+    else:
+        # Normal flow: prompt for URL
+        while True:
+            url_input = click.prompt(
+                click.style(
+                    "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort)",
+                    fg="magenta",
+                ),
+                type=click.STRING,
+            )
+            
+            url_input = url_input.strip()
+            
+            if url_input.lower().startswith("m"):
+                metadata = _get_manual_metadata(rls_data)
+                return metadata, None
+            elif url_input.lower().startswith("a"):
+                raise click.Abort()
+            
+            # Break out of prompt loop to scrape
+            break
+    
+    # Try to scrape from the URL
+    source_url = None
+    metadata = None
+    
+    for name, source in METASOURCES.items():
+        if source.Scraper.regex.match(url_input):
+            click.secho(f"Scraping metadata from {name}...", fg="cyan")
+            source_url = url_input
+            if url_input not in rls_data["urls"]:
+                rls_data["urls"].append(url_input)
+            
+            scraper = source.Scraper()
+            # Create async task and run it
+            loop = _get_event_loop()
+            task = handle_scrape_errors(scraper.scrape_release(url_input))
+            metadata = loop.run_until_complete(task)
+            
+            if metadata:
+                click.secho(f"New Source URL: {source_url}", fg="yellow")
                 
-                scraper = source.Scraper()
-                # Create async task and run it
-                loop = _get_event_loop()
-                task = handle_scrape_errors(scraper.scrape_release(url_input))
-                metadata = loop.run_until_complete(task)
+                # Clean and prepare metadata
+                metadata = clean_metadata(metadata)
+                remove_various_artists(metadata["tracks"])
                 
-                if metadata:
-                    click.secho(f"New Source URL: {source_url}", fg="yellow")
-                    
-                    # Clean and prepare metadata
-                    metadata = clean_metadata(metadata)
-                    remove_various_artists(metadata["tracks"])
-                    
-                    # Validate required fields
-                    if not metadata.get("rls_type"):
-                        click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
-                        metadata["rls_type"] = _prompt_for_release_type()
-                    
-                    return metadata, source_url
-                else:
-                    click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
-                    break
-        
-        if not metadata:
-            click.secho(f"URL not recognized or failed to scrape. Please try again.", fg="red")
+                # Validate required fields
+                if not metadata.get("rls_type"):
+                    click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
+                    metadata["rls_type"] = _prompt_for_release_type()
+                
+                return metadata, source_url
+            else:
+                click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
+                if provided_source_url:
+                    # If we were given a URL and it failed, raise an error
+                    raise click.Abort("Failed to scrape from provided URL")
+                break
+    
+    if not metadata:
+        if provided_source_url:
+            raise click.Abort("URL not recognized or failed to scrape")
+        click.secho(f"URL not recognized or failed to scrape. Please try again.", fg="red")
+        # Recursively try again
+        return get_metadata(path, tags, rls_data, provided_source_url)
 
 
 def _print_search_results(results, rls_data=None):
