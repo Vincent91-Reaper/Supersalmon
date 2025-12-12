@@ -484,7 +484,7 @@ def upload(
                 upload(
                     gazelle_site,
                     new_path,
-                    group_id,  # Upload to the same group
+                    None,  # Upload as a new group (not to the existing group)
                     source,
                     encoding=None,  # Let it auto-detect as 16-bit
                     scene=scene,
