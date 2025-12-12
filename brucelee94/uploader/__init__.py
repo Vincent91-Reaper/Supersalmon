@@ -324,6 +324,9 @@ def upload(
         if group_id is None:
             # Dupe checking removed - just prompt for group selection
             group_id = check_existing_group(gazelle_site)
+        else:
+            # If group_id was provided (e.g., for 16-bit downconversion upload), use it
+            click.secho(f"Uploading to existing group ID: {group_id}", fg="cyan")
 
         # Spectral and lossy checking removed
 
@@ -338,6 +341,10 @@ def upload(
         metadata["encoding_vbr"] = rls_data["encoding_vbr"]
         metadata["scene"] = rls_data["scene"]
         metadata["source"] = rls_data["source"]
+        
+        # Debug: Show artists in metadata after scraping
+        if metadata.get("artists"):
+            click.secho(f"DEBUG: Metadata has {len(metadata['artists'])} artists after scraping", fg="yellow")
         
         # Detect if this is Apple Music URL (case-insensitive)
         is_apple_music = source_url and "apple.com" in source_url.lower()
