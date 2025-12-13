@@ -254,6 +254,7 @@ def upload(
     # skip_mqa=False,  # removed
     skip_log_check=False,
     # skip_integrity_check=False,  # removed
+    is_16bit_transcode=False,  # NEW: Flag to indicate this is a 16-bit downconversion
 ):
     """Upload an album folder to RED (Gazelle Site)
     Multi-tracker upload removed."""
@@ -327,27 +328,71 @@ def upload(
 
         # Spectral and lossy checking removed
 
-        metadata, new_source_url = get_metadata(path, tags, rls_data, provided_source_url=source_url)
-        if new_source_url is not None:
-            source_url = new_source_url
-            click.secho(f"New Source URL: {source_url}", fg="yellow")
-        
-        # Copy format and encoding from rls_data to metadata (these come from audio files)
-        metadata["format"] = rls_data["format"]
-        metadata["encoding"] = rls_data["encoding"]
-        metadata["encoding_vbr"] = rls_data["encoding_vbr"]
-        metadata["scene"] = rls_data["scene"]
-        metadata["source"] = rls_data["source"]
-        
-        # Detect if this is Apple Music URL (case-insensitive)
-        is_apple_music = source_url and "apple.com" in source_url.lower()
-        
-        # Pass Apple Music flag to edit_metadata
-        metadata["_is_apple_music"] = is_apple_music
-        
-        path, metadata, tags, audio_info = edit_metadata(
-            path, tags, metadata, source, rls_data, recompress, source_url, is_apple_music
-        )
+        # For 16-bit transcodes, skip metadata scraping and retagging
+        if is_16bit_transcode:
+            # Skip get_metadata and edit_metadata - files are already properly tagged
+            # Just read metadata from the files
+            click.secho("16-bit transcode detected - skipping metadata scraping and retagging", fg="cyan")
+            
+            # Build metadata from existing tags
+            album_artists = tags.get("albumartist", []) or tags.get("artist", [])
+            if album_artists and isinstance(album_artists[0], str):
+                album_artists = [(artist, "main") for artist in album_artists]
+            
+            metadata = {
+                "artists": album_artists,
+                "title": tags.get("album", "Unknown Album"),
+                "catno": tags.get("catalognumber", ""),
+                "label": tags.get("label", ""),
+                "year": tags.get("year", ""),
+                "genres": tags.get("genre", []),
+                "tracks": {},
+                "format": rls_data["format"],
+                "encoding": rls_data["encoding"],
+                "encoding_vbr": rls_data["encoding_vbr"],
+                "scene": rls_data["scene"],
+                "source": rls_data["source"],
+                "rls_type": tags.get("releasetype", "Album"),
+                "cover": None,  # Will use cover.jpg from folder
+            }
+            
+            # Build track data from existing tags
+            for disc_num in sorted([k for k in tags.keys() if isinstance(k, int)]):
+                disc_tags = tags[disc_num]
+                if disc_num not in metadata["tracks"]:
+                    metadata["tracks"][disc_num] = {}
+                for track_num in sorted([k for k in disc_tags.keys() if isinstance(k, int)]):
+                    track_tags = disc_tags[track_num]
+                    track_artists = track_tags.get("artist", [])
+                    if track_artists and isinstance(track_artists[0], str):
+                        track_artists = [(artist, "main") for artist in track_artists]
+                    metadata["tracks"][disc_num][track_num] = {
+                        "title": track_tags.get("title", f"Track {track_num}"),
+                        "artists": track_artists,
+                    }
+        else:
+            # Normal workflow: scrape metadata and retag
+            metadata, new_source_url = get_metadata(path, tags, rls_data, provided_source_url=source_url)
+            if new_source_url is not None:
+                source_url = new_source_url
+                click.secho(f"New Source URL: {source_url}", fg="yellow")
+            
+            # Copy format and encoding from rls_data to metadata (these come from audio files)
+            metadata["format"] = rls_data["format"]
+            metadata["encoding"] = rls_data["encoding"]
+            metadata["encoding_vbr"] = rls_data["encoding_vbr"]
+            metadata["scene"] = rls_data["scene"]
+            metadata["source"] = rls_data["source"]
+            
+            # Detect if this is Apple Music URL (case-insensitive)
+            is_apple_music = source_url and "apple.com" in source_url.lower()
+            
+            # Pass Apple Music flag to edit_metadata
+            metadata["_is_apple_music"] = is_apple_music
+            
+            path, metadata, tags, audio_info = edit_metadata(
+                path, tags, metadata, source, rls_data, recompress, source_url, is_apple_music
+            )
 
         if not group_id:
             # Dupe recheck removed - directly proceed
@@ -415,7 +460,17 @@ def upload(
     #     remaining_gazelle_sites.remove(tracker)
 
     # Handle cover image
-    if group_id:
+    if is_16bit_transcode:
+        # For 16-bit transcodes, skip uploading cover to ptpimg entirely
+        # The cover.jpg was already copied to the folder during downconversion
+        # RED will use the local cover.jpg file from the torrent
+        cover_url = None
+        cover_path = os.path.join(path, "cover.jpg")
+        if os.path.exists(cover_path):
+            click.secho("Skipping cover upload to ptpimg for 16-bit transcode (using local cover.jpg)", fg="cyan")
+        else:
+            click.secho("Warning: cover.jpg not found in 16-bit folder", fg="yellow")
+    elif group_id:
         if not remove_downloaded_cover_image:
             download_cover_if_nonexistent(path, metadata["cover"])
         # Don't need cover URL for existing groups
@@ -472,8 +527,8 @@ def upload(
                 click.secho(f"\n16-bit version created at: {new_path}", fg="green")
                 click.secho("Uploading 16-bit version...\n", fg="cyan", bold=True)
                 
-                # Recursively upload the 16-bit version through the same workflow
-                # This will handle all the metadata, tagging, and upload steps automatically
+                # Upload the 16-bit version with streamlined workflow
+                # Skip metadata scraping, retagging, and cover upload (files are already tagged from 24-bit)
                 upload(
                     gazelle_site,
                     new_path,
@@ -486,6 +541,7 @@ def upload(
                     source_url=source_url,  # Use the same source URL (Tidal/Apple Music/etc.) as the 24-bit version
                     searchstrs=searchstrs,
                     skip_log_check=skip_log_check,
+                    is_16bit_transcode=True,  # NEW: Flag to skip metadata scraping/retagging/cover upload
                 )
                 
             except Exception as e:
