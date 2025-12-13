@@ -351,6 +351,7 @@ def upload(
                 "genres": tags.get("genre", []),
                 "tags": "",  # Empty tags for transcodes
                 "urls": {},  # No URLs for transcodes
+                "comment": "",  # No comment for transcodes
                 "tracks": {},
                 "format": rls_data["format"],
                 "encoding": rls_data["encoding"],
