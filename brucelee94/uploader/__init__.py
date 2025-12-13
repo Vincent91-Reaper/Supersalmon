@@ -339,6 +339,37 @@ def upload(
             if album_artists and isinstance(album_artists[0], str):
                 album_artists = [(artist, "main") for artist in album_artists]
             
+            # Build track data from existing tags first to extract artists if needed
+            tracks_metadata = {}
+            for disc_num in sorted([k for k in tags.keys() if isinstance(k, int)]):
+                disc_tags = tags[disc_num]
+                if disc_num not in tracks_metadata:
+                    tracks_metadata[disc_num] = {}
+                for track_num in sorted([k for k in disc_tags.keys() if isinstance(k, int)]):
+                    track_tags = disc_tags[track_num]
+                    track_artists = track_tags.get("artist", [])
+                    if track_artists and isinstance(track_artists[0], str):
+                        track_artists = [(artist, "main") for artist in track_artists]
+                    tracks_metadata[disc_num][track_num] = {
+                        "title": track_tags.get("title", f"Track {track_num}"),
+                        "artists": track_artists,
+                    }
+            
+            # If no album artists found, extract from track metadata
+            if not album_artists:
+                seen = set()
+                for disc in tracks_metadata.values():
+                    for track in disc.values():
+                        if "artists" in track and track["artists"]:
+                            for artist, importance in track["artists"]:
+                                if artist.lower() not in seen:
+                                    seen.add(artist.lower())
+                                    album_artists.append((artist, "main"))
+                
+                if not album_artists:
+                    click.secho("ERROR: No artist information found in 16-bit transcode files!", fg="red", bold=True)
+                    raise click.Abort()
+            
             year = tags.get("year", "")
             metadata = {
                 "artists": album_artists,
@@ -352,7 +383,7 @@ def upload(
                 "tags": "",  # Empty tags for transcodes
                 "urls": {},  # No URLs for transcodes
                 "comment": "",  # No comment for transcodes
-                "tracks": {},
+                "tracks": tracks_metadata,
                 "format": rls_data["format"],
                 "encoding": rls_data["encoding"],
                 "encoding_vbr": rls_data["encoding_vbr"],
@@ -361,21 +392,6 @@ def upload(
                 "rls_type": tags.get("releasetype", "Album"),
                 "cover": None,  # Will use cover.jpg from folder
             }
-            
-            # Build track data from existing tags
-            for disc_num in sorted([k for k in tags.keys() if isinstance(k, int)]):
-                disc_tags = tags[disc_num]
-                if disc_num not in metadata["tracks"]:
-                    metadata["tracks"][disc_num] = {}
-                for track_num in sorted([k for k in disc_tags.keys() if isinstance(k, int)]):
-                    track_tags = disc_tags[track_num]
-                    track_artists = track_tags.get("artist", [])
-                    if track_artists and isinstance(track_artists[0], str):
-                        track_artists = [(artist, "main") for artist in track_artists]
-                    metadata["tracks"][disc_num][track_num] = {
-                        "title": track_tags.get("title", f"Track {track_num}"),
-                        "artists": track_artists,
-                    }
         else:
             # Normal workflow: scrape metadata and retag
             metadata, new_source_url = get_metadata(path, tags, rls_data, provided_source_url=source_url)
