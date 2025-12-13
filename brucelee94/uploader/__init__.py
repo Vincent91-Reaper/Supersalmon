@@ -339,13 +339,18 @@ def upload(
             if album_artists and isinstance(album_artists[0], str):
                 album_artists = [(artist, "main") for artist in album_artists]
             
+            year = tags.get("year", "")
             metadata = {
                 "artists": album_artists,
                 "title": tags.get("album", "Unknown Album"),
                 "catno": tags.get("catalognumber", ""),
                 "label": tags.get("label", ""),
-                "year": tags.get("year", ""),
+                "year": year,
+                "group_year": year,  # Use same year for group_year
+                "edition_title": "",  # No edition title for transcodes
                 "genres": tags.get("genre", []),
+                "tags": "",  # Empty tags for transcodes
+                "urls": {},  # No URLs for transcodes
                 "tracks": {},
                 "format": rls_data["format"],
                 "encoding": rls_data["encoding"],
