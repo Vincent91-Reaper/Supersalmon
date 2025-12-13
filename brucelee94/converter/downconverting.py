@@ -160,6 +160,7 @@ def _convert_single_file(file_, output, files_left, bit_depth=16, sample_rate=No
         "-R",
         "-G",
         *([] if bit_depth == 24 else ["-b", str(bit_depth)]),
+        "-C", "0",  # FLAC compression level 0 for fastest encoding
         output,
         "rate",
         "-v",
@@ -194,13 +195,13 @@ def generate_conversion_description(url, sample_rate):
             f"Encode Specifics: 16 bit {sample_rate / 1000:.01f} kHz\n"
             f"[b]Source:[/b] {url}\n"
             f"[b]Transcode process:[/b] "
-            f"[code]sox input.flac -R -G -b 16 output.flac rate -v -L {sample_rate} dither[/code]\n"
+            f"[code]sox input.flac -R -G -b 16 -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
         )
     else:
         description += (
             f"Encode Specifics: 24 bit {sample_rate / 1000:.01f} kHz\n"
             f"[b]Source:[/b] {url}\n"
-            f"[b]Transcode process:[/b] [code]sox input.flac -R -G output.flac rate -v -L {sample_rate} dither[/code]\n"
+            f"[b]Transcode process:[/b] [code]sox input.flac -R -G -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
         )
 
     return description
