@@ -255,6 +255,7 @@ def upload(
     skip_log_check=False,
     # skip_integrity_check=False,  # removed
     is_16bit_transcode=False,  # NEW: Flag to indicate this is a 16-bit downconversion
+    transcode_metadata=None,  # NEW: Metadata from the original 24-bit upload
 ):
     """Upload an album folder to RED (Gazelle Site)
     Multi-tracker upload removed."""
@@ -331,67 +332,21 @@ def upload(
         # For 16-bit transcodes, skip metadata scraping and retagging
         if is_16bit_transcode:
             # Skip get_metadata and edit_metadata - files are already properly tagged
-            # Just read metadata from the files
-            click.secho("16-bit transcode detected - skipping metadata scraping and retagging", fg="cyan")
+            # Use metadata from the original 24-bit upload
+            click.secho("16-bit transcode detected - using metadata from 24-bit upload", fg="cyan")
             
-            # Build metadata from existing tags
-            album_artists = tags.get("albumartist", []) or tags.get("artist", [])
-            if album_artists and isinstance(album_artists[0], str):
-                album_artists = [(artist, "main") for artist in album_artists]
+            if transcode_metadata is None:
+                click.secho("ERROR: No metadata provided for 16-bit transcode upload!", fg="red", bold=True)
+                raise click.Abort()
             
-            # Build track data from existing tags first to extract artists if needed
-            tracks_metadata = {}
-            for disc_num in sorted([k for k in tags.keys() if isinstance(k, int)]):
-                disc_tags = tags[disc_num]
-                if disc_num not in tracks_metadata:
-                    tracks_metadata[disc_num] = {}
-                for track_num in sorted([k for k in disc_tags.keys() if isinstance(k, int)]):
-                    track_tags = disc_tags[track_num]
-                    track_artists = track_tags.get("artist", [])
-                    if track_artists and isinstance(track_artists[0], str):
-                        track_artists = [(artist, "main") for artist in track_artists]
-                    tracks_metadata[disc_num][track_num] = {
-                        "title": track_tags.get("title", f"Track {track_num}"),
-                        "artists": track_artists,
-                    }
-            
-            # If no album artists found, extract from track metadata
-            if not album_artists:
-                seen = set()
-                for disc in tracks_metadata.values():
-                    for track in disc.values():
-                        if "artists" in track and track["artists"]:
-                            for artist, importance in track["artists"]:
-                                if artist.lower() not in seen:
-                                    seen.add(artist.lower())
-                                    album_artists.append((artist, "main"))
-                
-                if not album_artists:
-                    click.secho("ERROR: No artist information found in 16-bit transcode files!", fg="red", bold=True)
-                    raise click.Abort()
-            
-            year = tags.get("year", "")
-            metadata = {
-                "artists": album_artists,
-                "title": tags.get("album", "Unknown Album"),
-                "catno": tags.get("catalognumber", ""),
-                "label": tags.get("label", ""),
-                "year": year,
-                "group_year": year,  # Use same year for group_year
-                "edition_title": "",  # No edition title for transcodes
-                "genres": tags.get("genre", []),
-                "tags": "",  # Empty tags for transcodes
-                "urls": {},  # No URLs for transcodes
-                "comment": "",  # No comment for transcodes
-                "tracks": tracks_metadata,
-                "format": rls_data["format"],
-                "encoding": rls_data["encoding"],
-                "encoding_vbr": rls_data["encoding_vbr"],
-                "scene": rls_data["scene"],
-                "source": rls_data["source"],
-                "rls_type": tags.get("releasetype", "Album"),
-                "cover": None,  # Will use cover.jpg from folder
-            }
+            # Use the metadata from the 24-bit upload, but update format/encoding from the 16-bit files
+            metadata = transcode_metadata.copy()
+            metadata["format"] = rls_data["format"]
+            metadata["encoding"] = rls_data["encoding"]
+            metadata["encoding_vbr"] = rls_data["encoding_vbr"]
+            metadata["scene"] = rls_data["scene"]
+            metadata["source"] = rls_data["source"]
+            metadata["cover"] = None  # Will use cover.jpg from folder
         else:
             # Normal workflow: scrape metadata and retag
             metadata, new_source_url = get_metadata(path, tags, rls_data, provided_source_url=source_url)
@@ -551,6 +506,7 @@ def upload(
                 
                 # Upload the 16-bit version with streamlined workflow
                 # Skip metadata scraping, retagging, and cover upload (files are already tagged from 24-bit)
+                # Pass the metadata from the 24-bit upload to avoid re-scraping
                 upload(
                     gazelle_site,
                     new_path,
@@ -564,6 +520,7 @@ def upload(
                     searchstrs=searchstrs,
                     skip_log_check=skip_log_check,
                     is_16bit_transcode=True,  # NEW: Flag to skip metadata scraping/retagging/cover upload
+                    transcode_metadata=metadata,  # Pass the metadata from the 24-bit upload
                 )
                 
             except Exception as e:
