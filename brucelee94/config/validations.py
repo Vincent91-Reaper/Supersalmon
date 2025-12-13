@@ -169,7 +169,7 @@ class UploadCompression(BaseStruct):
 
 
 class Upload(BaseStruct):
-    simultaneous_threads: int = 3
+    simultaneous_threads: int = 15
     user_agent: str = "salmon uploading tools"
 
     # Default text editor for click.edit operations
