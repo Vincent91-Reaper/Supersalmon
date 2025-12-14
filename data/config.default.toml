@@ -119,7 +119,7 @@ session = 'get-from-site-cookie'
 # Most settings in this section should be allright already
 # ===============================
 # [upload]
-# simultaneous_threads = 15
+# simultaneous_threads = 24
 # user_agent = "salmon uploading tools"
 
 # # Default text editor for interactive editing operations
