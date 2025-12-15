@@ -156,6 +156,7 @@ def _convert_single_file(file_, output, files_left, bit_depth=16, sample_rate=No
 
     command = [
         "sox",
+        "--buffer", "8192",  # Increase I/O buffer for better disk performance
         file_,
         "-R",
         "-G",
@@ -195,13 +196,13 @@ def generate_conversion_description(url, sample_rate):
             f"Encode Specifics: 16 bit {sample_rate / 1000:.01f} kHz\n"
             f"[b]Source:[/b] {url}\n"
             f"[b]Transcode process:[/b] "
-            f"[code]sox input.flac -R -G -b 16 -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
+            f"[code]sox --buffer 8192 input.flac -R -G -b 16 -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
         )
     else:
         description += (
             f"Encode Specifics: 24 bit {sample_rate / 1000:.01f} kHz\n"
             f"[b]Source:[/b] {url}\n"
-            f"[b]Transcode process:[/b] [code]sox input.flac -R -G -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
+            f"[b]Transcode process:[/b] [code]sox --buffer 8192 input.flac -R -G -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
         )
 
     return description
