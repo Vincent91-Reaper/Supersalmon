@@ -28,6 +28,7 @@ from brucelee94.tagger.metadata import clean_metadata, remove_various_artists
 from brucelee94.tagger.retagger import create_artist_str
 from brucelee94.tagger.sources import run_metadata
 from brucelee94.uploader.seedbox import UploaderGenerator
+from brucelee94.uploader.upload import _format_artist_string_with_all_types
 # Spectral imports removed
 # from salmon.uploader.spectrals import (
 #     check_spectrals,
@@ -73,7 +74,8 @@ loop = asyncio.get_event_loop()
 @commandgroup.command()
 @click.argument("urls", type=click.STRING, nargs=-1)
 def descgen(urls):
-    """Generate a description from metadata sources"""
+    """Generate a description from metadata sources.
+    Shows all artist types (main, guest, remixer) in the description."""
     if not urls:
         return click.secho("You must specify at least one URL", fg="red")
     tasks = [run_metadata(url, return_source_name=True) for url in urls]
@@ -92,7 +94,8 @@ def descgen(urls):
             else:
                 description += f"[b]{str_to_int_if_int(str(tnum), zpad=True)}.[/b] "
 
-            description += f"{create_artist_str(track['artists'])} - {track['title']}\n"
+            # Use the new function to show all artist types in description
+            description += f"{_format_artist_string_with_all_types(track['artists'])} - {track['title']}\n"
     if metadata["comment"]:
         description += f"\n{metadata['comment']}\n"
     # "More info" links removed

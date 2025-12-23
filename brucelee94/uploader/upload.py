@@ -238,8 +238,49 @@ def generate_torrent(gazelle_site, path):
     return tpath, t
 
 
+def _format_artist_string_with_all_types(artists):
+    """
+    Create artist string including main artists, guest artists, and remixers.
+    This is used for torrent descriptions to show all scraped artist information.
+    
+    Args:
+        artists: List of (artist_name, importance) tuples from metadata
+        
+    Returns:
+        Formatted string like "Main Artist feat. Guest & Remixer (Remix)"
+    """
+    main_artists = [a for a, i in artists if i == "main"]
+    guest_artists = [a for a, i in artists if i == "guest"]
+    remixers = [a for a, i in artists if i == "remixer"]
+    
+    # Start with main artists
+    if len(main_artists) > 2 and "&" not in "".join(main_artists):
+        result = ", ".join(sorted(main_artists))
+    else:
+        result = " & ".join(sorted(main_artists))
+    
+    # Add guest artists if any
+    if guest_artists:
+        if len(guest_artists) > 2 and "&" not in "".join(guest_artists):
+            guests_str = ", ".join(sorted(guest_artists))
+        else:
+            guests_str = " & ".join(sorted(guest_artists))
+        result += f" feat. {guests_str}"
+    
+    # Add remixers if any
+    if remixers:
+        if len(remixers) > 2 and "&" not in "".join(remixers):
+            remixers_str = ", ".join(sorted(remixers))
+        else:
+            remixers_str = " & ".join(sorted(remixers))
+        result += f" ({remixers_str} Remix)"
+    
+    return result
+
+
 def generate_description(track_data, metadata):
-    """Generate the group description with the tracklist."""
+    """Generate the group description with the tracklist.
+    Uses scraped metadata to show all artist types (main, guest, remixer) in description."""
     description = "[b][size=2]Tracklist[/b]\n"
     multi_disc = any(
         (
@@ -249,8 +290,15 @@ def generate_description(track_data, metadata):
         )
         for t in track_data.values()
     )
+    
+    # Create a flat list of tracks from metadata to match with track_data
+    metadata_tracks = []
+    for disc in sorted(metadata["tracks"].keys()):
+        for track_num in sorted(metadata["tracks"][disc].keys()):
+            metadata_tracks.append(metadata["tracks"][disc][track_num])
+    
     total_duration = 0
-    for track in track_data.values():
+    for idx, (filename, track) in enumerate(track_data.items()):
         length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
         total_duration += track["duration"]
         if multi_disc:
@@ -261,7 +309,14 @@ def generate_description(track_data, metadata):
         else:
             description += f"[b]{str_to_int_if_int(track['t'].tracknumber, zpad=True)}.[/b] "
 
-        description += f"{', '.join(track['t'].artist)} - {track['t'].title} [i]({length})[/i]\n"
+        # Use metadata artists (includes main, guest, remixer) instead of file tag artists
+        if idx < len(metadata_tracks) and "artists" in metadata_tracks[idx]:
+            artist_str = _format_artist_string_with_all_types(metadata_tracks[idx]["artists"])
+        else:
+            # Fallback to file tags if metadata not available
+            artist_str = ', '.join(track['t'].artist)
+        
+        description += f"{artist_str} - {track['t'].title} [i]({length})[/i]\n"
 
     if len(track_data.values()) > 1:
         description += f"\n[b]Total length: [/b]{total_duration // 60}:{total_duration % 60:02d}\n"

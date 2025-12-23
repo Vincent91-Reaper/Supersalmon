@@ -139,19 +139,17 @@ def _compare_tag(tagfield, metafield, tagset, trackmeta):
 
 
 def create_artist_str(artists):
-    """Create the artist string from the metadata. It can contain main and guests."""
+    """Create the artist string from the metadata. Only returns main artists.
+    Guest artists and remixers are excluded from file tags and will be
+    passed to the upload manager for torrent description instead."""
     main_artists = [a for a, i in artists if i == "main"]
     c = ", " if len(main_artists) > 2 and "&" not in "".join(main_artists) else " & "
     artist_str = c.join(sorted(main_artists))
-
-    if not cfg.upload.formatting.guests_in_track_title:
-        guest_artists = [a for a, i in artists if i == "guest"]
-        if len(guest_artists) >= cfg.upload.formatting.various_artist_threshold:
-            artist_str += f" (feat. {cfg.upload.formatting.various_artist_word})"
-        elif guest_artists:
-            c = ", " if len(guest_artists) > 2 and "&" not in "".join(guest_artists) else " & "
-            artist_str += f" (feat. {c.join(sorted(guest_artists))})"
-
+    
+    # NOTE: Guest artists and remixers are NOT included in file tags.
+    # They will be available in the metadata for the upload manager
+    # to include in the torrent description on RED.
+    
     return artist_str
 
 
