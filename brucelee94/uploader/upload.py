@@ -248,7 +248,19 @@ def generate_description(track_data, metadata):
         c = ", " if len(main_artists) > 2 or "&" in "".join(main_artists) else " & "
         artist_display = c.join(sorted(main_artists))
     
-    description = f"[b][artist]{artist_display}[/artist] - {metadata['title']}[/b]\n\n"
+    description = f"[b][artist]{artist_display}[/artist] - {metadata['title']}[/b]\n"
+    
+    # Add release date if available (format: Month Day, Year)
+    if metadata.get("date"):
+        from datetime import datetime
+        try:
+            date_obj = datetime.strptime(metadata["date"], "%Y-%m-%d")
+            formatted_date = date_obj.strftime("%B %d, %Y")
+            description += f"{formatted_date}\n"
+        except (ValueError, TypeError):
+            pass  # Skip if date parsing fails
+    
+    description += "\n"
     
     multi_disc = any(
         (
