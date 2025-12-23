@@ -71,7 +71,7 @@ loop = asyncio.get_event_loop()
 @click.argument("urls", type=click.STRING, nargs=-1)
 def descgen(urls):
     """Generate a description from metadata sources.
-    Shows only track numbers and titles without artist information."""
+    Shows album header with main artist and title, then track numbers and titles."""
     if not urls:
         return click.secho("You must specify at least one URL", fg="red")
     tasks = [run_metadata(url, return_source_name=True) for url in urls]
@@ -79,7 +79,21 @@ def descgen(urls):
     metadata = clean_metadata(combine_metadatas(*((s, m) for m, s in metadatas)))
     remove_various_artists(metadata["tracks"])
 
-    description = "[b][size=2]Tracklist[/b]\n\n"
+    # Get main artists for the header
+    main_artists = [a for a, i in metadata.get("artists", []) if i == "main"]
+    if main_artists:
+        # Format main artists
+        if len(main_artists) > 2 and "&" not in "".join(main_artists):
+            artist_str = ", ".join(main_artists)
+        else:
+            artist_str = " & ".join(main_artists)
+    else:
+        # Fallback to all artists if no main artists
+        artist_str = " & ".join([a for a, _ in metadata.get("artists", [])])
+    
+    # Create header with artist and album title
+    description = f"[b][Artist]{artist_str}[/artist] - {metadata.get('title', 'Unknown Album')}[/b]\n\n"
+    
     multi_disc = len(metadata["tracks"]) > 1
     for dnum, disc in metadata["tracks"].items():
         for tnum, track in disc.items():

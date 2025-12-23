@@ -241,8 +241,22 @@ def generate_torrent(gazelle_site, path):
 
 def generate_description(track_data, metadata):
     """Generate the group description with the tracklist.
-    Shows only track numbers and titles, without artist information."""
-    description = "[b][size=2]Tracklist[/b]\n"
+    Shows album header with main artist and title, then track numbers and titles."""
+    # Get main artists for the header
+    main_artists = [a[0] for a, i in metadata.get("artists", []) if i == "main"]
+    if main_artists:
+        # Format main artists
+        if len(main_artists) > 2 and "&" not in "".join(main_artists):
+            artist_str = ", ".join(main_artists)
+        else:
+            artist_str = " & ".join(main_artists)
+    else:
+        # Fallback to all artists if no main artists
+        artist_str = " & ".join([a[0] for a in metadata.get("artists", [])])
+    
+    # Create header with artist and album title
+    description = f"[b][Artist]{artist_str}[/artist] - {metadata.get('title', 'Unknown Album')}[/b]\n\n"
+    
     multi_disc = any(
         (
             t["t"].discnumber
