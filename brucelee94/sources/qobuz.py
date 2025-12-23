@@ -1,0 +1,29 @@
+import json
+import re
+
+from brucelee94 import cfg
+from brucelee94.errors import ScrapeError
+from brucelee94.sources.base import BaseScraper
+
+
+class QobuzBase(BaseScraper):
+    url = "https://www.qobuz.com/api.json/0.2"
+    site_url = "https://www.qobuz.com"
+    regex = re.compile(
+        r"^https?://(?:www\.|play\.)?qobuz\.com/(?:(?:.+?/)?album/(?:.+?/)?|album/(?:-/)?)([a-zA-Z0-9]+)/?$"
+    )
+    release_format = "/album/get?album_id={rls_id}"
+    headers = {
+        "X-App-Id": cfg.metadata.qobuz.app_id,
+        "X-User-Auth-Token": cfg.metadata.qobuz.user_auth_token,
+    }
+    get_params = {}
+
+    async def create_soup(self, url, params=None):
+        try:
+            rls_id = self.regex.match(url)[1]
+            return await self.get_json(self.release_format.format(rls_id=rls_id), params=params, headers=self.headers)
+        except json.decoder.JSONDecodeError as e:
+            raise ScrapeError("Qobuz page did not return valid JSON.") from e
+        except (AttributeError, IndexError) as e:
+            raise ScrapeError("Invalid Qobuz URL.") from e
