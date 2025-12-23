@@ -687,9 +687,6 @@ def upload_and_report(
         bold=True,
     )
 
-    # Post-upload cover disabled temporarily - causes description issues
-    # _upload_cover_to_group(gazelle_site, group_id, path)
-
     # Copy URL to clipboard
     if cfg.upload.description.copy_uploaded_url_to_clipboard:
         pyperclip.copy(url)
@@ -703,42 +700,6 @@ def upload_and_report(
         seedbox_uploader.add_upload_task(torrent_path, task_type="seed", is_flac=is_flac)
 
     return torrent_id, group_id, torrent_path, torrent_content, url
-
-
-def _upload_cover_to_group(gazelle_site, group_id, path):
-    """
-    Upload cover image to RED's group image field after torrent upload.
-    Only uploads if a cover.jpg file exists in the release folder.
-    """
-    # Find cover image in the release folder
-    cover_path = None
-    for filename in ["cover.jpg", "Cover.jpg", "cover.jpeg", "Cover.jpeg", "folder.jpg", "Folder.jpg"]:
-        potential_path = os.path.join(path, filename)
-        if os.path.exists(potential_path):
-            cover_path = potential_path
-            break
-    
-    if not cover_path:
-        click.secho("No cover image found in release folder, skipping post-upload cover upload.", fg="yellow")
-        return
-    
-    try:
-        # Upload cover to PTPimg
-        click.secho("Uploading cover image to PTPimg...", fg="yellow", nl=False)
-        cover_url = upload_cover(cover_path)
-        
-        if not cover_url:
-            click.secho(" Cover upload failed.", fg="red")
-            return
-        
-        # Update the group with the cover image
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            gazelle_site.update_group_image(group_id, cover_url)
-        )
-        click.secho(" Cover image added to group!", fg="green")
-    except Exception as e:
-        click.secho(f" Failed to add cover to group: {e}", fg="red")
 
 
 def convert_genres(genres):

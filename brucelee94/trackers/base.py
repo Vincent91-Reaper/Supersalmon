@@ -448,40 +448,6 @@ class BaseGazelleApi:
                 fg="green",
             )
 
-    async def update_group_image(self, group_id, image_url):
-        """Updates the cover image for a torrent group."""
-        # Add a small delay to ensure the upload is fully processed
-        import asyncio
-        await asyncio.sleep(2)
-        
-        # Get current group details
-        current_details = await self.request("torrentgroup", id=group_id)
-        
-        # Prepare edit data - preserve the existing description (wikiBody)
-        edit_data = {
-            "action": "takegroupedit",
-            "groupid": group_id,
-            "image": image_url,
-            "summary": current_details["group"].get("wikiBody", ""),
-            "year": current_details["group"]["year"],
-            "recordlabel": current_details["group"].get("recordLabel", "") or "",
-            "cataloguenumber": current_details["group"].get("catalogueNumber", "") or "",
-            "releasetype": current_details["group"]["releaseType"],
-            "tags": ",".join(current_details["group"]["tags"]),
-        }
-        
-        url = self.base_url + "/torrents.php"
-        edit_data["auth"] = self.authkey
-        resp = await loop.run_in_executor(
-            None,
-            lambda: self.session.post(url, data=edit_data, headers=self.headers),
-        )
-        soup = BeautifulSoup(resp.text, "html.parser")
-        edit_error = soup.find("h2", text="Error")
-        if edit_error:
-            error_message = edit_error.parent.parent.find("p").text
-            raise RequestError(f"Failed to update group image: {error_message}")
-
     """The following three parsing functions are part of the gazelle class
     in order that they be easily overwritten in the derivative site classes.
     It is not because they depend on anything from the class"""
