@@ -687,6 +687,9 @@ def upload_and_report(
         bold=True,
     )
 
+    # Upload cover image to PTPimg and add to torrent description
+    _upload_cover_to_torrent(gazelle_site, torrent_id, path)
+
     # Copy URL to clipboard
     if cfg.upload.description.copy_uploaded_url_to_clipboard:
         pyperclip.copy(url)
@@ -700,6 +703,45 @@ def upload_and_report(
         seedbox_uploader.add_upload_task(torrent_path, task_type="seed", is_flac=is_flac)
 
     return torrent_id, group_id, torrent_path, torrent_content, url
+
+
+def _upload_cover_to_torrent(gazelle_site, torrent_id, path):
+    """
+    Upload cover image to PTPimg and add it to the torrent description.
+    Only uploads if a cover.jpg file exists in the release folder.
+    """
+    # Find cover image in the release folder
+    cover_path = None
+    for filename in ["cover.jpg", "Cover.jpg", "cover.jpeg", "Cover.jpeg", "folder.jpg", "Folder.jpg"]:
+        potential_path = os.path.join(path, filename)
+        if os.path.exists(potential_path):
+            cover_path = potential_path
+            break
+    
+    if not cover_path:
+        click.secho("No cover image found in release folder, skipping cover upload to torrent description.", fg="yellow")
+        return
+    
+    try:
+        # Upload cover to PTPimg
+        click.secho("Uploading cover image to PTPimg for torrent description...", fg="yellow", nl=False)
+        cover_url = upload_cover(cover_path)
+        
+        if not cover_url:
+            click.secho("Cover upload failed, skipping addition to torrent description.", fg="red")
+            return
+        
+        # Create BBCode with the cover image
+        cover_bbcode = f"[img]{cover_url}[/img]\n\n"
+        
+        # Add cover to torrent description
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            gazelle_site.append_to_torrent_description(torrent_id, cover_bbcode)
+        )
+        click.secho(" Cover image added to torrent description!", fg="green")
+    except Exception as e:
+        click.secho(f"Failed to add cover to torrent description: {e}", fg="red")
 
 
 def convert_genres(genres):
