@@ -1,9 +1,7 @@
 import asyncio
-import html
 import os
 import shutil
 import subprocess
-from urllib import parse
 
 import click
 import pyperclip
@@ -22,13 +20,12 @@ from brucelee94.common import commandgroup, str_to_int_if_int
 from brucelee94.common import compress as recompress
 from brucelee94.config import find_config_path, get_default_config_path, get_user_cfg_path
 from brucelee94.database import DB_PATH
-from brucelee94.tagger.audio_info import gather_audio_info
 from brucelee94.tagger.combine import combine_metadatas
 from brucelee94.tagger.metadata import clean_metadata, remove_various_artists
-from brucelee94.tagger.retagger import create_artist_str
 from brucelee94.tagger.sources import run_metadata
 from brucelee94.uploader.seedbox import UploaderGenerator
 from brucelee94.uploader.upload import _format_artist_string_with_all_types
+
 # Spectral imports removed
 # from salmon.uploader.spectrals import (
 #     check_spectrals,

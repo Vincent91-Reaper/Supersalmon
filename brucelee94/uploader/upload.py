@@ -8,6 +8,7 @@ from brucelee94 import cfg
 from brucelee94.common import str_to_int_if_int
 from brucelee94.constants import ARTIST_IMPORTANCES
 from brucelee94.errors import RequestError
+
 # Source icons and metasources removed (no longer used in descriptions)
 # from brucelee94.sources import SOURCE_ICONS
 # from brucelee94.tagger.sources import METASOURCES
@@ -298,7 +299,7 @@ def generate_description(track_data, metadata):
             metadata_tracks.append(metadata["tracks"][disc][track_num])
     
     total_duration = 0
-    for idx, (filename, track) in enumerate(track_data.items()):
+    for idx, (_filename, track) in enumerate(track_data.items()):
         length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
         total_duration += track["duration"]
         if multi_disc:
