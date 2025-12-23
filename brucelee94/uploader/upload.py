@@ -239,8 +239,17 @@ def generate_torrent(gazelle_site, path):
 
 
 def generate_description(track_data, metadata):
-    """Generate the group description with the tracklist."""
-    description = "[b][size=2]Tracklist[/b]\n"
+    """Generate the group description with the tracklist (no artist names per track)."""
+    # Generate header with artist and album title
+    main_artists = [a for a, i in metadata["artists"] if i == "main"]
+    if len(main_artists) >= cfg.upload.formatting.various_artist_threshold:
+        artist_display = cfg.upload.formatting.various_artist_word
+    else:
+        c = ", " if len(main_artists) > 2 or "&" in "".join(main_artists) else " & "
+        artist_display = c.join(sorted(main_artists))
+    
+    description = f"[b][artist]{artist_display}[/artist] - {metadata['title']}[/b]\n\n"
+    
     multi_disc = any(
         (
             t["t"].discnumber
@@ -261,7 +270,8 @@ def generate_description(track_data, metadata):
         else:
             description += f"[b]{str_to_int_if_int(track['t'].tracknumber, zpad=True)}.[/b] "
 
-        description += f"{', '.join(track['t'].artist)} - {track['t'].title} [i]({length})[/i]\n"
+        # Only track title and duration - no artist names
+        description += f"{track['t'].title} [i]({length})[/i]\n"
 
     if len(track_data.values()) > 1:
         description += f"\n[b]Total length: [/b]{total_duration // 60}:{total_duration % 60:02d}\n"

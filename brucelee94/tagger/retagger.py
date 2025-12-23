@@ -76,12 +76,17 @@ def create_track_changes(tags, metadata, preserve_artists=False):
     """
     Compare the track data in the metadata to the track data in the tags
     and auto-tag with correct artists from scraped metadata.
+    Only retags main artists (and composers for classical albums).
     
     Args:
         preserve_artists: If True (for Apple Music), don't modify artist tags
     """
     changes = {}
     tracks = metadata_to_track_list(metadata["tracks"])
+    
+    # Check if this is a classical album
+    is_classical = "Classical" in metadata.get("genres", [])
+    
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
         
@@ -92,8 +97,8 @@ def create_track_changes(tags, metadata, preserve_artists=False):
             except (TypeError, AttributeError):
                 old_artist_str = "None"
 
-            # Get the correct artist string from scraped metadata
-            new_artist_str = create_artist_str(trackmeta["artists"])
+            # Get the correct artist string from scraped metadata (main artists only)
+            new_artist_str = create_main_artist_str(trackmeta["artists"], is_classical)
             
             # Update artist tag if it's missing OR doesn't match the scraped metadata
             if old_artist_str == "None" or not old_artist_str or old_artist_str != new_artist_str:
@@ -152,6 +157,29 @@ def create_artist_str(artists):
             c = ", " if len(guest_artists) > 2 and "&" not in "".join(guest_artists) else " & "
             artist_str += f" (feat. {c.join(sorted(guest_artists))})"
 
+    return artist_str
+
+
+def create_main_artist_str(artists, is_classical=False):
+    """
+    Create the artist string with ONLY main artists (and composers for classical).
+    No guest/featured artists, remixers, compilers, DJs, etc.
+    """
+    main_artists = [a for a, i in artists if i == "main"]
+    c = ", " if len(main_artists) > 2 and "&" not in "".join(main_artists) else " & "
+    artist_str = c.join(sorted(main_artists))
+    
+    # For classical albums, also include composers
+    if is_classical:
+        composers = [a for a, i in artists if i == "composer"]
+        if composers:
+            c_comp = ", " if len(composers) > 2 and "&" not in "".join(composers) else " & "
+            composer_str = c_comp.join(sorted(composers))
+            if artist_str and composer_str:
+                artist_str = f"{composer_str}; {artist_str}"
+            elif composer_str:
+                artist_str = composer_str
+    
     return artist_str
 
 
