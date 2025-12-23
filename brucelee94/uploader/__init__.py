@@ -687,8 +687,8 @@ def upload_and_report(
         bold=True,
     )
 
-    # Upload cover image to RED's group page (post-upload)
-    _upload_cover_to_group(gazelle_site, group_id, path)
+    # Post-upload cover disabled temporarily - causes description issues
+    # _upload_cover_to_group(gazelle_site, group_id, path)
 
     # Copy URL to clipboard
     if cfg.upload.description.copy_uploaded_url_to_clipboard:
