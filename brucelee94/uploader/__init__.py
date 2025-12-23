@@ -561,20 +561,15 @@ def edit_metadata(
                 if "artists" in track and track["artists"]:
                     all_artists.extend(track["artists"])
         
-        # Deduplicate - keep both main and guest artists for now, prioritize main
+        # Deduplicate while preserving all artist types (main, guest, remixer, etc.)
+        # Keep all artist types for upload to RED
         seen = set()
-        main_artists = []
-        guest_artists = []
+        unique_artists = []
         for artist, importance in all_artists:
             if artist.lower() not in seen:
                 seen.add(artist.lower())
-                if importance == "main":
-                    main_artists.append((artist, importance))
-                else:
-                    guest_artists.append((artist, importance))
+                unique_artists.append((artist, importance))
         
-        # Use main artists if available, otherwise fall back to guest artists
-        unique_artists = main_artists if main_artists else guest_artists
         metadata["artists"] = unique_artists
         
         if not unique_artists:
