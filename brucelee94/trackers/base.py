@@ -450,18 +450,22 @@ class BaseGazelleApi:
 
     async def update_group_image(self, group_id, image_url):
         """Updates the cover image for a torrent group."""
+        # Add a small delay to ensure the upload is fully processed
+        import asyncio
+        await asyncio.sleep(2)
+        
         # Get current group details
         current_details = await self.request("torrentgroup", id=group_id)
         
-        # Prepare edit data
+        # Prepare edit data - preserve the existing description (wikiBody)
         edit_data = {
             "action": "takegroupedit",
             "groupid": group_id,
             "image": image_url,
-            "summary": current_details["group"]["wikiBody"],
+            "summary": current_details["group"].get("wikiBody", ""),
             "year": current_details["group"]["year"],
-            "recordlabel": current_details["group"]["recordLabel"] or "",
-            "cataloguenumber": current_details["group"]["catalogueNumber"] or "",
+            "recordlabel": current_details["group"].get("recordLabel", "") or "",
+            "cataloguenumber": current_details["group"].get("catalogueNumber", "") or "",
             "releasetype": current_details["group"]["releaseType"],
             "tags": ",".join(current_details["group"]["tags"]),
         }
