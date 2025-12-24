@@ -269,6 +269,7 @@ def generate_description(track_data, metadata):
     
     description += "\n"
     
+    # Check if multi-disc album
     multi_disc = any(
         (
             t["t"].discnumber
@@ -277,23 +278,67 @@ def generate_description(track_data, metadata):
         )
         for t in track_data.values()
     )
+    
     total_duration = 0
-    for track in track_data.values():
-        length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
-        total_duration += track["duration"]
-        if multi_disc:
-            description += (
-                f"[b]{str_to_int_if_int(track['t'].discnumber, zpad=True)}-"
-                f"{str_to_int_if_int(track['t'].tracknumber, zpad=True)}.[/b] "
-            )
-        else:
+    
+    if multi_disc:
+        # Group tracks by disc for multi-disc albums
+        from collections import defaultdict
+        tracks_by_disc = defaultdict(list)
+        
+        for track in track_data.values():
+            disc_num = track["t"].discnumber
+            if disc_num:
+                # Extract just the disc number (e.g., "2" from "2/3")
+                disc_num = disc_num.split("/")[0]
+            else:
+                disc_num = "1"
+            tracks_by_disc[disc_num].append(track)
+        
+        # Sort discs and tracks
+        sorted_discs = sorted(tracks_by_disc.keys(), key=lambda x: int(x))
+        
+        # Global track counter for continuous numbering
+        global_track_num = 1
+        
+        for disc_num in sorted_discs:
+            # Add disc header
+            description += f"[size=2][b]Disc {disc_num}[/b][/size]\n"
+            
+            # Sort tracks within disc by track number
+            disc_tracks = sorted(tracks_by_disc[disc_num], 
+                               key=lambda t: int(t["t"].tracknumber.split("/")[0]) if t["t"].tracknumber else 0)
+            
+            for track in disc_tracks:
+                length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
+                total_duration += track["duration"]
+                
+                # Use global track number with continuous numbering
+                description += f"[b]{global_track_num}.[/b] "
+                description += f"{track['t'].title} [i]({length})[/i]\n"
+                global_track_num += 1
+            
+            # Add blank line after each disc (except the last one)
+            if disc_num != sorted_discs[-1]:
+                description += "\n"
+    else:
+        # Single disc album - use simple numbering
+        for track in track_data.values():
+            length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
+            total_duration += track["duration"]
+            
             description += f"[b]{str_to_int_if_int(track['t'].tracknumber, zpad=True)}.[/b] "
+            description += f"{track['t'].title} [i]({length})[/i]\n"
 
-        # Only track title and duration - no artist names
-        description += f"{track['t'].title} [i]({length})[/i]\n"
-
+    # Format total length
     if len(track_data.values()) > 1:
-        description += f"\n[b]Total length: [/b]{total_duration // 60}:{total_duration % 60:02d}\n"
+        if total_duration >= 3600:  # 1 hour or more
+            hours = total_duration // 3600
+            minutes = (total_duration % 3600) // 60
+            seconds = total_duration % 60
+            description += f"\n[b]Total length:[/b] {hours}:{minutes:02d}:{seconds:02d}\n"
+        else:
+            description += f"\n[b]Total length:[/b] {total_duration // 60}:{total_duration % 60:02d}\n"
 
     if metadata["comment"]:
         description += f"\n{metadata['comment']}\n"
