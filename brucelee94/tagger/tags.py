@@ -96,4 +96,3 @@ def standardize_tags(path):
                     found_aliased.add(alias)
         if found_aliased:
             mut.save()
-            click.secho(f"Unaliased the following tags for {filename}: " + ", ".join(found_aliased))

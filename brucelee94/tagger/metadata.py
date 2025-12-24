@@ -95,8 +95,6 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
             metadata = loop.run_until_complete(task)
             
             if metadata:
-                click.secho(f"New Source URL: {source_url}", fg="yellow")
-                
                 # Clean and prepare metadata
                 metadata = clean_metadata(metadata)
                 remove_various_artists(metadata["tracks"])
