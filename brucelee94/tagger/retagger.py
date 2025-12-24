@@ -192,8 +192,6 @@ def print_changes(album_changes, track_changes, a_track):
                 click.secho(f"> {filename}", fg="yellow")
                 for change in changes:
                     click.echo(f"  {change.tag.ljust(20)} ••• {change.old} {ARROWS} {change.new}")
-    else:
-        click.secho("\nNo retagging needed - all artist tags already match scraped metadata.", fg="green")
 
 
 def retag_files(path, album_changes, track_changes, preserve_artists=False):
@@ -213,8 +211,6 @@ def retag_files(path, album_changes, track_changes, preserve_artists=False):
     
     if files_changed > 0:
         click.secho(f"Retagged {files_changed} file(s) with correct artist tags from scraped metadata.", fg="green")
-    else:
-        click.secho("No retagging needed - all artist tags match scraped metadata.", fg="green")
 
 
 def rename_files(path, tags, metadata, auto_rename, spectral_ids, source=None):
