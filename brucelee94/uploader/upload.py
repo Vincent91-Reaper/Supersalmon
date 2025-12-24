@@ -298,9 +298,6 @@ def generate_description(track_data, metadata):
         # Sort discs and tracks
         sorted_discs = sorted(tracks_by_disc.keys(), key=lambda x: int(x))
         
-        # Global track counter for continuous numbering
-        global_track_num = 1
-        
         for disc_num in sorted_discs:
             # Add disc header
             description += f"[size=2][b]Disc {disc_num}[/b][/size]\n"
@@ -313,10 +310,10 @@ def generate_description(track_data, metadata):
                 length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
                 total_duration += track["duration"]
                 
-                # Use global track number with continuous numbering
-                description += f"[b]{global_track_num}.[/b] "
+                # Use original track number from metadata
+                track_num = str_to_int_if_int(track['t'].tracknumber, zpad=True)
+                description += f"[b]{track_num}.[/b] "
                 description += f"{track['t'].title} [i]({length})[/i]\n"
-                global_track_num += 1
             
             # Add blank line after each disc (except the last one)
             if disc_num != sorted_discs[-1]:
