@@ -173,6 +173,7 @@ class Scraper(QobuzBase, MetadataMixin):
         """
         Parse label name, marking as Self-Released if artist name appears in label.
         Also attempts to extract label from copyright information.
+        Handles Qobuz's "Records DK" labels which indicate self-released albums.
         """
         # Try to get label directly from API
         label = safe_get(soup, ["label", "name"])
@@ -189,7 +190,12 @@ class Scraper(QobuzBase, MetadataMixin):
         if not label:
             return None
 
-        # Check if this is likely self-released
+        # Check if this is Qobuz's "Records DK" label (indicates self-released)
+        # Matches patterns like "Records DK", "3324569 Records DK", etc.
+        if re.match(r'^\d*\s*Records DK$', label.strip()):
+            return "Self-Released"
+
+        # Check if this is likely self-released (artist name in label)
         artist = safe_get(soup, ["artist", "name"])
         if artist and artist.lower() in label.lower():
             return "Self-Released"
