@@ -100,8 +100,11 @@ def create_track_changes(tags, metadata, preserve_artists=False):
             # Get the correct artist string from scraped metadata (main artists only)
             new_artist_str = create_main_artist_str(trackmeta["artists"], is_classical)
             
-            # Update artist tag if it's missing OR doesn't match the scraped metadata
-            if old_artist_str == "None" or not old_artist_str or old_artist_str != new_artist_str:
+            # Update artist tag if it's missing OR the actual artist names are different
+            # Normalize comparison to ignore order and separator differences
+            if old_artist_str == "None" or not old_artist_str:
+                changes[filename].append(Change("artist", old_artist_str, new_artist_str))
+            elif not _artists_match(old_artist_str, new_artist_str):
                 changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
     return changes
@@ -181,6 +184,28 @@ def create_main_artist_str(artists, is_classical=False):
                 artist_str = composer_str
     
     return artist_str
+
+
+def _artists_match(old_artist_str, new_artist_str):
+    """
+    Check if two artist strings contain the same artists, regardless of order or separator.
+    This prevents unnecessary retagging when artists are the same but formatted differently.
+    
+    Example: "Hannah Boleyn & Punctual" matches "Punctual, Hannah Boleyn"
+    """
+    # Normalize both strings: split by common separators and create sets of artist names
+    def normalize_artists(artist_str):
+        # Replace common separators with a single delimiter
+        normalized = artist_str.replace(" & ", "|").replace(", ", "|").replace(",", "|").replace(";", "|")
+        # Split and strip whitespace, convert to lowercase for case-insensitive comparison
+        artists = {name.strip().lower() for name in normalized.split("|") if name.strip()}
+        return artists
+    
+    old_artists = normalize_artists(old_artist_str)
+    new_artists = normalize_artists(new_artist_str)
+    
+    # Artists match if both sets contain the same names
+    return old_artists == new_artists
 
 
 def print_changes(album_changes, track_changes, a_track):
