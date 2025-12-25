@@ -58,16 +58,17 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     else:
         # Normal flow: prompt for URL
         while True:
-            url_input = click.prompt(
+            # Use a simpler prompt without echo
+            import sys
+            click.echo(
                 click.style(
-                    "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort)",
+                    "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort): ",
                     fg="magenta",
                 ),
-                type=click.STRING,
-                show_default=False,
+                nl=False,
             )
-            
-            url_input = url_input.strip()
+            sys.stdout.flush()
+            url_input = sys.stdin.readline().strip()
             
             if url_input.lower().startswith("m"):
                 metadata = _get_manual_metadata(rls_data)
