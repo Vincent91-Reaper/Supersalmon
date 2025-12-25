@@ -69,8 +69,10 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
                     nl=False,
                 )
                 sys.stdout.flush()
-            
-            url_input = sys.stdin.readline().strip()
+                url_input = sys.stdin.readline().strip()
+            else:
+                # Non-TTY mode (piped input from bl94_helper): read silently
+                url_input = sys.stdin.readline().strip()
             
             if url_input.lower().startswith("m"):
                 metadata = _get_manual_metadata(rls_data)
