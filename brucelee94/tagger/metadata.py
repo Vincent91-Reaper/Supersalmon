@@ -57,17 +57,19 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
         click.secho(f"\nUsing provided source URL: {url_input}", fg="cyan")
     else:
         # Normal flow: prompt for URL
+        import sys
         while True:
-            # Use a simpler prompt without echo
-            import sys
-            click.echo(
-                click.style(
-                    "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort): ",
-                    fg="magenta",
-                ),
-                nl=False,
-            )
-            sys.stdout.flush()
+            # Only show prompt if stdin is a TTY (interactive mode)
+            if sys.stdin.isatty():
+                click.echo(
+                    click.style(
+                        "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort): ",
+                        fg="magenta",
+                    ),
+                    nl=False,
+                )
+                sys.stdout.flush()
+            
             url_input = sys.stdin.readline().strip()
             
             if url_input.lower().startswith("m"):
