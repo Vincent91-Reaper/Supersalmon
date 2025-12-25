@@ -23,7 +23,6 @@ def tag_files(path, tags, metadata, auto_rename, source_url=None):
     Wrapper function that calls the functions that create and print the
     proposed changes, and automatically applies tags without prompting.
     """
-    click.secho("\nRetagging files...", fg="cyan", bold=True)
     if not check_whether_to_tag(tags, metadata, source_url):
         return
     
@@ -32,9 +31,13 @@ def tag_files(path, tags, metadata, auto_rename, source_url=None):
     
     album_changes = collect_album_data(metadata)
     track_changes = create_track_changes(tags, metadata, preserve_artists=is_apple_music)
-    print_changes(album_changes, track_changes, next(iter(tags.values())))
-    # Auto-tag files without confirmation prompt
-    retag_files(path, album_changes, track_changes, preserve_artists=is_apple_music)
+    
+    # Only print "Retagging files..." if there are actual changes to make
+    if any(t for t in track_changes.values()):
+        click.secho("\nRetagging files...", fg="cyan", bold=True)
+        print_changes(album_changes, track_changes, next(iter(tags.values())))
+        # Auto-tag files without confirmation prompt
+        retag_files(path, album_changes, track_changes, preserve_artists=is_apple_music)
 
 
 def check_whether_to_tag(tags, metadata, source_url=None):
