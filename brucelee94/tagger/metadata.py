@@ -64,6 +64,7 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
                     fg="magenta",
                 ),
                 type=click.STRING,
+                show_default=False,
             )
             
             url_input = url_input.strip()
