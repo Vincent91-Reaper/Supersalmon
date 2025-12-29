@@ -35,7 +35,6 @@ def download_cover_if_nonexistent(path, cover_url):
     # use local file if matches filter
     cover_path = get_cover_from_path(path)
     if cover_path:
-        click.secho(f"\nUsing existing cover image found: {cover_path}...", fg="yellow")
         return cover_path, False
     # use url provided
     if cover_url:
