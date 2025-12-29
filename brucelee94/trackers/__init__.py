@@ -3,25 +3,16 @@ from urllib import parse
 import click
 
 from brucelee94 import cfg
-from brucelee94.trackers import red  # Only RED tracker supported now
-# from brucelee94.trackers import dic, ops  # Removed
+from brucelee94.trackers import red
 
-# hard coded as it needs to reflect the imports anyway.
-tracker_classes = {"RED": red.RedApi}  # Only RED
-# tracker_classes = {"RED": red.RedApi, "OPS": ops.OpsApi, "DIC": dic.DICApi}  # Removed OPS and DIC
-tracker_url_code_map = {"redacted.sh": "RED"}  # Only RED
-# tracker_url_code_map = {"redacted.sh": "RED", "orpheus.network": "OPS", "dicmusic.com": "DIC"}  # Removed
+# Only RED tracker is supported
+tracker_classes = {"RED": red.RedApi}
+tracker_url_code_map = {"redacted.sh": "RED"}
 
-# tracker_list is used to offer the user choices. Generated if not specified in the config.
 tracker_cfg = cfg.tracker
 tracker_list = []
 if tracker_cfg.red:
     tracker_list.append("RED")
-# Multi-tracker support removed
-# if tracker_cfg.ops:
-#     tracker_list.append("OPS")
-# if tracker_cfg.dic:
-#     tracker_list.append("DIC")
 
 
 def get_class(site_code):
@@ -50,37 +41,19 @@ def choose_tracker(choices):
 
 
 def choose_tracker_first_time(question="Which tracker would you like to upload to?"):
-    """Specific logic for the first time a tracker choice is offered.
-    Uses default if there is one and uses the only tracker if there is only one."""
-    choices = tracker_list
-    if len(choices) == 1:
-        click.secho(f"Using tracker: {choices[0]}")
-        return choices[0]
-    if tracker_cfg.default_tracker:
-        click.secho(f"Using tracker: {tracker_cfg.default_tracker}", fg="green")
-        return tracker_cfg.default_tracker
-    click.secho(question, fg="magenta")
-    tracker = choose_tracker(choices)
-    return tracker
+    """Returns RED tracker. Simplified since only RED is supported."""
+    # Always return RED since it's the only tracker
+    return "RED"
 
 
 def validate_tracker(ctx, param, value):
-    """Only allow trackers in the config tracker dict.
-    If it isn't there. Prompt to choose.
-    """
-    try:
-        if value is None:
-            return choose_tracker_first_time()
-        if value.upper() in tracker_list:
-            click.secho(f"Using tracker: {value.upper()}", fg="green")
-            return value.upper()
-        else:
-            click.secho(f"{value} is not a tracker in your config.", fg="red")
-            return choose_tracker(tracker_list)
-    except AttributeError:
-        raise click.BadParameter(
-            "This flag requires a tracker. Possible sources are: " + ", ".join(tracker_list)
-        ) from None
+    """Validates and returns RED tracker. Simplified since only RED is supported."""
+    # Always return RED since it's the only supported tracker
+    if value is None or value.upper() == "RED":
+        return "RED"
+    else:
+        click.secho(f"{value} is not supported. Only RED tracker is available.", fg="red")
+        return "RED"
 
 
 def validate_request(gazelle_site, request):
