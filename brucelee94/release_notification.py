@@ -36,14 +36,10 @@ def _get_local_version(version_file):
             content = f.read()
         match = re.search(r'__version__\s*=\s*"([^"]+)"', content)
         if match:
-            # Removed version message output
-            # click.secho(f"Local Version: {match.group(1)}", fg="yellow")
             return match.group(1)
         else:
-            # click.secho("Version not found in local file.", fg="red")
             return None
     except FileNotFoundError:
-        # click.secho("Version file not found.", fg="red")
         return None
 
 
@@ -81,8 +77,6 @@ def show_release_notification():
 
     remote_version, remote_content = _get_remote_version(REMOTE_VERSION_URL)
     if not remote_version:
-        # No remote version available - silently return
-        # Removed message: click.secho("No new version available.", fg="green")
         return
 
     if _parse_version(remote_version) > _parse_version(local_version):
@@ -94,5 +88,3 @@ def show_release_notification():
                 click.secho(changelog, fg="yellow")
             else:
                 click.secho(f"Changelog not found between versions ({local_version} -> {remote_version}).", fg="yellow")
-    # else:
-        # Removed message: click.secho("No new version available.", fg="green")

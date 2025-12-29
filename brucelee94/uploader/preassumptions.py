@@ -10,24 +10,8 @@ loop = asyncio.get_event_loop()
 
 
 def print_preassumptions(gazelle_site, path, group_id, source, encoding):
-    """Print what all the passed CLI options will do.
-    Note: lossy, spectrals and spectrals_after parameters have been removed."""
+    """Print what all the passed CLI options will do."""
     click.secho(f"\nProcessing {path}", fg="cyan", bold=True)
-    # Removed "Uploading from {source}" and encoding messages
-    # second = []
-    # if source:
-    #     second.append(f"from {source}")
-    # if list(encoding) != [None, None]:
-    #     text = f"as {encoding[0]}"
-    #     if encoding[1]:
-    #         text += " (VBR)"
-    #     second.append(text)
-    # Lossy output removed
-    # if lossy is not None:
-    #     second.append(f"with lossy master status as {lossy}")
-    # if second:
-    #     click.secho(f"Uploading {' '.join(second)}.", fg="yellow")
-    # Spectral output removed
     # if spectrals:
     #     if spectrals == (0,):
     #         click.secho("Uploading no spectrals.", fg="yellow")

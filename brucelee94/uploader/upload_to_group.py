@@ -12,7 +12,6 @@ def check_existing_group(gazelle_site, offer_deletion=True):
     """
     Always upload to a new torrent group (no prompt).
     """
-    # Removed message: click.echo("Uploading to a new torrent group.")
     return None
 
 

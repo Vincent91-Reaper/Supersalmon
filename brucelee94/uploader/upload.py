@@ -242,9 +242,9 @@ def generate_description(track_data, metadata):
     """Generate the group description with the tracklist (no artist names per track)."""
     # Generate header with artist and album title
     main_artists = [a for a, i in metadata["artists"] if i == "main"]
-    # Use "Various Artists" for albums with 3+ main artists
+    # Use "Various Artists" in bold red for albums with 3+ main artists
     if len(main_artists) >= 3:
-        artist_display = cfg.upload.formatting.various_artist_word
+        artist_display = "[color=red][b]Various Artists[/b][/color]"
     else:
         # Format each artist with individual [artist] tags
         sorted_artists = sorted(main_artists)
