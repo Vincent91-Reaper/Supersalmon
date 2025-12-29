@@ -35,7 +35,8 @@ def tag_files(path, tags, metadata, auto_rename, source_url=None):
     # Only print "Retagging files..." if there are actual changes to make
     if any(t for t in track_changes.values()):
         click.secho("\nRetagging files...", fg="cyan", bold=True)
-        print_changes(album_changes, track_changes, next(iter(tags.values())))
+        # Removed showing proposed changes - just retag directly
+        # print_changes(album_changes, track_changes, next(iter(tags.values())))
         # Auto-tag files without confirmation prompt
         retag_files(path, album_changes, track_changes, preserve_artists=is_apple_music)
 

@@ -39,13 +39,13 @@ def choose_tracker(choices):
         )
         tracker_input = tracker_input.strip().upper()
         if tracker_input in choices:
-            click.secho(f"Using tracker: {tracker_input}", fg="green")
+            # Removed message: click.secho(f"Using tracker: {tracker_input}", fg="green")
             return tracker_input
         # this part allows input of the first letter of the tracker.
         elif tracker_input in [choice[0] for choice in choices]:
             for choice in choices:
                 if tracker_input == choice[0]:
-                    click.secho(f"Using tracker: {choice}", fg="green")
+                    # Removed message: click.secho(f"Using tracker: {choice}", fg="green")
                     return choice
         elif tracker_input.lower().startswith("n"):
             return None
