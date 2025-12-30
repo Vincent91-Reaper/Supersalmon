@@ -11,7 +11,6 @@ import click
 import brucelee94.commands
 from brucelee94.common import commandgroup
 from brucelee94.errors import FilterError, LoginError, UploadError
-from brucelee94.release_notification import show_release_notification
 from brucelee94 import cfg
 
 
@@ -36,7 +35,6 @@ def cleanup_tmp_dir():
 def main():
     try:
         cleanup_tmp_dir()
-        show_release_notification()
         click.echo()
 
         commandgroup(obj={})
