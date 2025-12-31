@@ -551,14 +551,38 @@ def edit_metadata(
             click.secho("Please try a different URL or use manual metadata entry.", fg="yellow")
             raise click.Abort()
     
+    # Check if scraped metadata has "Various Artists" as the main artist
+    has_various_artists = False
+    if metadata.get("artists"):
+        main_artists_check = [a for a, i in metadata["artists"] if i == "main"]
+        if len(main_artists_check) == 1 and main_artists_check[0].lower() == "various artists":
+            has_various_artists = True
+    
     # For all other sources (including Tidal), generate album-level artists from track metadata if missing
-    if not metadata.get("artists") or not metadata["artists"]:
-        # Extract all artists from track metadata
-        all_artists = []
-        for disc in metadata.get("tracks", {}).values():
-            for track in disc.values():
-                if "artists" in track and track["artists"]:
-                    all_artists.extend(track["artists"])
+    # OR if scraped metadata has "Various Artists" - extract from file tags instead
+    if not metadata.get("artists") or not metadata["artists"] or has_various_artists:
+        # If Various Artists, extract from file tags to preserve per-track artist info
+        if has_various_artists:
+            # Extract artists from actual file tags
+            all_artists = []
+            for filename, tagset in tags.items():
+                try:
+                    # Get artist info from file tags
+                    if hasattr(tagset, 'artist') and tagset.artist:
+                        artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+                        for artist in artist_list:
+                            if artist and artist.strip():
+                                # Add as main artist with importance "main"
+                                all_artists.append((artist.strip(), "main"))
+                except (TypeError, AttributeError):
+                    pass
+        else:
+            # Extract all artists from track metadata (original behavior)
+            all_artists = []
+            for disc in metadata.get("tracks", {}).values():
+                for track in disc.values():
+                    if "artists" in track and track["artists"]:
+                        all_artists.extend(track["artists"])
         
         # Deduplicate - keep both main and guest artists for now, prioritize main
         seen = set()
