@@ -104,6 +104,11 @@ def create_track_changes(tags, metadata, preserve_artists=False):
             # Get the correct artist string from scraped metadata (main artists only)
             new_artist_str = create_main_artist_str(trackmeta["artists"], is_classical)
             
+            # Skip retagging if scraped metadata returns "Various Artists"
+            # This preserves the original per-track artist info on files
+            if new_artist_str.lower() == "various artists":
+                continue
+            
             # Update artist tag if it's missing OR the actual artist names are different
             # Normalize comparison to ignore order and separator differences
             if old_artist_str == "None" or not old_artist_str:
