@@ -660,7 +660,7 @@ def _build_metadata_from_files(path, tags, rls_data):
     Build metadata structure from file tags for Tidal URLs.
     Extracts all necessary information from the existing file metadata.
     """
-    # Initialize metadata structure
+    # Initialize metadata structure (matching EMPTY_METADATA from pre_data.py)
     metadata = {
         "format": rls_data["format"],
         "encoding": rls_data["encoding"],
@@ -672,11 +672,16 @@ def _build_metadata_from_files(path, tags, rls_data):
         "rls_type": None,
         "year": None,
         "group_year": None,
+        "date": None,
+        "edition_title": None,
         "label": None,
         "catno": None,
         "tracks": {},
         "genres": [],
         "cover": None,
+        "upc": None,
+        "comment": None,
+        "urls": [],
     }
     
     # Extract data from file tags
