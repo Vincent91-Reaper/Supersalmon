@@ -802,7 +802,14 @@ def _build_metadata_from_files(path, tags, rls_data):
                     label_from_copyright = match.group(1).strip()
                     click.echo(f"[DEBUG] Extracted label from copyright: {label_from_copyright}")
                     if label_from_copyright:
-                        labels.append(label_from_copyright)
+                        # Check if copyright matches any main artist name
+                        # If it does, use "Self-released" instead
+                        main_artist_names = [artist[0] for artist in all_artists if artist[1] == "main"]
+                        if label_from_copyright in main_artist_names:
+                            click.echo(f"[DEBUG] Copyright matches artist name '{label_from_copyright}', using 'Self-released'")
+                            labels.append("Self-released")
+                        else:
+                            labels.append(label_from_copyright)
                         label_extracted = True
                 else:
                     click.echo(f"[DEBUG] Copyright text did not match pattern (year + label)")
