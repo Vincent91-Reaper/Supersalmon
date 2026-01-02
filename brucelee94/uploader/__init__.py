@@ -759,8 +759,10 @@ def _build_metadata_from_files(path, tags, rls_data):
             if hasattr(tagset, 'catalognumber') and tagset.catalognumber:
                 catnos.append(tagset.catalognumber)
             
-            # Extract UPC/Barcode
-            if hasattr(tagset, 'barcode') and tagset.barcode:
+            # Extract UPC/Barcode (try both 'upc' and 'barcode' fields)
+            if hasattr(tagset, 'upc') and tagset.upc:
+                upcs.append(str(tagset.upc))
+            elif hasattr(tagset, 'barcode') and tagset.barcode:
                 upcs.append(str(tagset.barcode))
             
             # Extract genre

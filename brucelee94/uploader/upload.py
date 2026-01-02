@@ -257,15 +257,9 @@ def generate_description(track_data, metadata):
     
     description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
     
-    # Add release date if available (format: Month Day, Year)
+    # Add release date if available (already formatted as "Month Day, Year")
     if metadata.get("date"):
-        from datetime import datetime
-        try:
-            date_obj = datetime.strptime(metadata["date"], "%Y-%m-%d")
-            formatted_date = date_obj.strftime("%B %d, %Y")
-            description += f"{formatted_date}\n"
-        except (ValueError, TypeError):
-            pass  # Skip if date parsing fails
+        description += f"{metadata['date']}\n"
     
     description += "\n"
     
