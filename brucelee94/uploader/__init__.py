@@ -682,6 +682,7 @@ def _build_metadata_from_files(path, tags, rls_data):
         "upc": None,
         "comment": None,
         "urls": [],
+        "tags": None,
     }
     
     # Extract data from file tags
