@@ -809,15 +809,22 @@ def _build_metadata_from_files(path, tags, rls_data):
                     click.echo(f"[DEBUG] No year found, using entire copyright as label: {label_from_copyright}")
                 
                 if label_from_copyright:
-                    # Check if copyright/label matches any main artist name
-                    # If it does, use "Self-Released" instead
-                    main_artist_names = [artist[0] for artist in all_artists if artist[1] == "main"]
-                    if label_from_copyright in main_artist_names:
-                        click.echo(f"[DEBUG] Copyright matches artist name '{label_from_copyright}', using 'Self-Released'")
+                    # Check for "Records DK" pattern (with or without numbers)
+                    # Examples: "Records DK", "232131 Records DK", "3324569 Records DK"
+                    if re.search(r'(?:\d+\s+)?Records\s+DK$', label_from_copyright, re.IGNORECASE):
+                        click.echo(f"[DEBUG] Detected Records DK label '{label_from_copyright}', using 'Self-Released'")
                         labels.append("Self-Released")
+                        label_extracted = True
                     else:
-                        labels.append(label_from_copyright)
-                    label_extracted = True
+                        # Check if copyright/label matches any main artist name
+                        # If it does, use "Self-Released" instead
+                        main_artist_names = [artist[0] for artist in all_artists if artist[1] == "main"]
+                        if label_from_copyright in main_artist_names:
+                            click.echo(f"[DEBUG] Copyright matches artist name '{label_from_copyright}', using 'Self-Released'")
+                            labels.append("Self-Released")
+                        else:
+                            labels.append(label_from_copyright)
+                        label_extracted = True
             
             # Try label field if copyright didn't work
             if not label_extracted:
