@@ -771,33 +771,52 @@ def _build_metadata_from_files(path, tags, rls_data):
             copyright_text = None
             try:
                 if hasattr(tagset, 'mut'):
+                    click.echo(f"[DEBUG] tagset.mut type: {type(tagset.mut)}")
                     # For FLAC files, the tags are in a dictionary-like object
                     if isinstance(tagset.mut, mutagen.flac.FLAC):
+                        click.echo("[DEBUG] Detected FLAC file")
+                        click.echo(f"[DEBUG] Available keys in FLAC: {list(tagset.mut.keys())}")
                         # Try different case variations
                         for key in ['copyright', 'COPYRIGHT', 'Copyright']:
                             if key in tagset.mut:
                                 copyright_val = tagset.mut.get(key)
+                                click.echo(f"[DEBUG] Found copyright key '{key}': {copyright_val}")
                                 if copyright_val:
                                     copyright_text = copyright_val[0] if isinstance(copyright_val, list) else copyright_val
+                                    click.echo(f"[DEBUG] Extracted copyright_text: {copyright_text}")
                                     break
-            except (AttributeError, KeyError, IndexError, TypeError):
+                        if not copyright_text:
+                            click.echo("[DEBUG] No copyright field found in any case variation")
+            except (AttributeError, KeyError, IndexError, TypeError) as e:
+                click.echo(f"[DEBUG] Exception while extracting copyright: {e}")
                 pass
             
             if copyright_text:
                 copyright_text = str(copyright_text)
+                click.echo(f"[DEBUG] Processing copyright_text: {copyright_text}")
                 # Parse copyright: extract label after year
                 # Example: "1997 HOMmega Productions" -> "HOMmega Productions"
                 # Pattern: look for year followed by label name
                 match = re.search(r'\d{4}\s+(.+)', copyright_text)
                 if match:
                     label_from_copyright = match.group(1).strip()
+                    click.echo(f"[DEBUG] Extracted label from copyright: {label_from_copyright}")
                     if label_from_copyright:
                         labels.append(label_from_copyright)
                         label_extracted = True
+                else:
+                    click.echo(f"[DEBUG] Copyright text did not match pattern (year + label)")
             
             # Try label field if copyright didn't work
-            if not label_extracted and hasattr(tagset, 'label') and tagset.label:
-                labels.append(str(tagset.label).strip())
+            if not label_extracted:
+                click.echo("[DEBUG] Trying label field as fallback")
+                if hasattr(tagset, 'label'):
+                    click.echo(f"[DEBUG] tagset.label value: {tagset.label}")
+                    if tagset.label:
+                        labels.append(str(tagset.label).strip())
+                        click.echo(f"[DEBUG] Added label from label field: {tagset.label}")
+                else:
+                    click.echo("[DEBUG] tagset has no 'label' attribute")
             
             # Extract catalog number
             if hasattr(tagset, 'catalognumber') and tagset.catalognumber:
