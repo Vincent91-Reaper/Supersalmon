@@ -732,12 +732,19 @@ def _build_metadata_from_files(path, tags, rls_data):
                 album_titles.append(tagset.album)
             
             # Extract year and full date
-            if hasattr(tagset, 'date') and tagset.date:
+            # Try recordingdate first (this is the actual release date), then fall back to date field
+            date_to_use = None
+            if hasattr(tagset, 'recordingdate') and tagset.recordingdate:
+                date_to_use = str(tagset.recordingdate)
+            elif hasattr(tagset, 'date') and tagset.date:
+                date_to_use = str(tagset.date)
+            
+            if date_to_use:
                 try:
-                    year = int(str(tagset.date)[:4])
+                    year = int(date_to_use[:4])
                     years.append(year)
                     # Keep full date string for date field
-                    dates.append(str(tagset.date))
+                    dates.append(date_to_use)
                 except (ValueError, AttributeError):
                     pass
             
