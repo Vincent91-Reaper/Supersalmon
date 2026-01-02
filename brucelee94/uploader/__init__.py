@@ -5,6 +5,7 @@ import re
 import shutil
 
 import click
+import mutagen.flac
 import pyperclip
 
 import brucelee94.trackers
@@ -737,12 +738,17 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             # Try recordingdate from underlying mutagen object first
             try:
-                if hasattr(tagset, 'mut') and hasattr(tagset.mut, 'tags'):
-                    if 'recordingdate' in tagset.mut.tags:
-                        date_to_use = str(tagset.mut.tags.get('recordingdate', [None])[0])
-                    elif 'RECORDINGDATE' in tagset.mut.tags:
-                        date_to_use = str(tagset.mut.tags.get('RECORDINGDATE', [None])[0])
-            except (AttributeError, KeyError, IndexError):
+                if hasattr(tagset, 'mut'):
+                    # For FLAC files, the tags are in a dictionary-like object
+                    if isinstance(tagset.mut, mutagen.flac.FLAC):
+                        # Try different case variations
+                        for key in ['recordingdate', 'RECORDINGDATE', 'Recordingdate']:
+                            if key in tagset.mut:
+                                date_val = tagset.mut.get(key)
+                                if date_val:
+                                    date_to_use = date_val[0] if isinstance(date_val, list) else date_val
+                                    break
+            except (AttributeError, KeyError, IndexError, TypeError):
                 pass
             
             # Fall back to date field if recordingdate not found
@@ -751,10 +757,10 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             if date_to_use and date_to_use != 'None':
                 try:
-                    year = int(date_to_use[:4])
+                    year = int(str(date_to_use)[:4])
                     years.append(year)
                     # Keep full date string for date field
-                    dates.append(date_to_use)
+                    dates.append(str(date_to_use))
                 except (ValueError, AttributeError):
                     pass
             
@@ -764,13 +770,17 @@ def _build_metadata_from_files(path, tags, rls_data):
             # Try to get copyright field from the underlying mutagen object
             copyright_text = None
             try:
-                if hasattr(tagset, 'mut') and hasattr(tagset.mut, 'tags'):
-                    # For FLAC files, access tags directly as dictionary
-                    if 'copyright' in tagset.mut.tags:
-                        copyright_text = tagset.mut.tags.get('copyright', [None])[0]
-                    elif 'COPYRIGHT' in tagset.mut.tags:
-                        copyright_text = tagset.mut.tags.get('COPYRIGHT', [None])[0]
-            except (AttributeError, KeyError, IndexError):
+                if hasattr(tagset, 'mut'):
+                    # For FLAC files, the tags are in a dictionary-like object
+                    if isinstance(tagset.mut, mutagen.flac.FLAC):
+                        # Try different case variations
+                        for key in ['copyright', 'COPYRIGHT', 'Copyright']:
+                            if key in tagset.mut:
+                                copyright_val = tagset.mut.get(key)
+                                if copyright_val:
+                                    copyright_text = copyright_val[0] if isinstance(copyright_val, list) else copyright_val
+                                    break
+            except (AttributeError, KeyError, IndexError, TypeError):
                 pass
             
             if copyright_text:
