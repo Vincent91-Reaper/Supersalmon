@@ -734,12 +734,22 @@ def _build_metadata_from_files(path, tags, rls_data):
             # Extract year and full date
             # Try recordingdate first (this is the actual release date), then fall back to date field
             date_to_use = None
-            if hasattr(tagset, 'recordingdate') and tagset.recordingdate:
-                date_to_use = str(tagset.recordingdate)
-            elif hasattr(tagset, 'date') and tagset.date:
+            
+            # Try recordingdate from underlying mutagen object first
+            try:
+                if hasattr(tagset, 'mut') and hasattr(tagset.mut, 'tags'):
+                    if 'recordingdate' in tagset.mut.tags:
+                        date_to_use = str(tagset.mut.tags.get('recordingdate', [None])[0])
+                    elif 'RECORDINGDATE' in tagset.mut.tags:
+                        date_to_use = str(tagset.mut.tags.get('RECORDINGDATE', [None])[0])
+            except (AttributeError, KeyError, IndexError):
+                pass
+            
+            # Fall back to date field if recordingdate not found
+            if not date_to_use and hasattr(tagset, 'date') and tagset.date:
                 date_to_use = str(tagset.date)
             
-            if date_to_use:
+            if date_to_use and date_to_use != 'None':
                 try:
                     year = int(date_to_use[:4])
                     years.append(year)
@@ -750,10 +760,23 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             # Extract label from copyright field first, then try label field
             label_extracted = False
-            if hasattr(tagset, 'copyright') and tagset.copyright:
-                copyright_text = str(tagset.copyright)
+            
+            # Try to get copyright field from the underlying mutagen object
+            copyright_text = None
+            try:
+                if hasattr(tagset, 'mut') and hasattr(tagset.mut, 'tags'):
+                    # For FLAC files, access tags directly as dictionary
+                    if 'copyright' in tagset.mut.tags:
+                        copyright_text = tagset.mut.tags.get('copyright', [None])[0]
+                    elif 'COPYRIGHT' in tagset.mut.tags:
+                        copyright_text = tagset.mut.tags.get('COPYRIGHT', [None])[0]
+            except (AttributeError, KeyError, IndexError):
+                pass
+            
+            if copyright_text:
+                copyright_text = str(copyright_text)
                 # Parse copyright: extract label after year
-                # Example: "Copyright: 1997 HOMmega Productions" -> "HOMmega Productions"
+                # Example: "1997 HOMmega Productions" -> "HOMmega Productions"
                 # Pattern: look for year followed by label name
                 match = re.search(r'\d{4}\s+(.+)', copyright_text)
                 if match:
