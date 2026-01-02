@@ -693,6 +693,7 @@ def _build_metadata_from_files(path, tags, rls_data):
     years = []
     labels = []
     catnos = []
+    genres = []
     
     for filename, tagset in tags.items():
         try:
@@ -744,6 +745,13 @@ def _build_metadata_from_files(path, tags, rls_data):
             if hasattr(tagset, 'catalognumber') and tagset.catalognumber:
                 catnos.append(tagset.catalognumber)
             
+            # Extract genre
+            if hasattr(tagset, 'genre') and tagset.genre:
+                genre_list = tagset.genre if isinstance(tagset.genre, list) else [tagset.genre]
+                for genre in genre_list:
+                    if genre and genre.strip():
+                        genres.append(genre.strip())
+            
             # Build track metadata
             if disc_num not in tracks_by_disc:
                 tracks_by_disc[disc_num] = {}
@@ -780,6 +788,12 @@ def _build_metadata_from_files(path, tags, rls_data):
     
     if catnos:
         metadata["catno"] = max(set(catnos), key=catnos.count)
+    
+    # Deduplicate genres
+    if genres:
+        metadata["genres"] = list(set(genres))
+        # Convert genres to tags for RED compliance
+        metadata["tags"] = convert_genres(metadata["genres"])
     
     # Assign tracks
     metadata["tracks"] = tracks_by_disc
