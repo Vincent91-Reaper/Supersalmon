@@ -771,29 +771,20 @@ def _build_metadata_from_files(path, tags, rls_data):
             copyright_text = None
             try:
                 if hasattr(tagset, 'mut'):
-                    click.echo(f"[DEBUG] tagset.mut type: {type(tagset.mut)}")
                     # For FLAC files, the tags are in a dictionary-like object
                     if isinstance(tagset.mut, mutagen.flac.FLAC):
-                        click.echo("[DEBUG] Detected FLAC file")
-                        click.echo(f"[DEBUG] Available keys in FLAC: {list(tagset.mut.keys())}")
                         # Try different case variations
                         for key in ['copyright', 'COPYRIGHT', 'Copyright']:
                             if key in tagset.mut:
                                 copyright_val = tagset.mut.get(key)
-                                click.echo(f"[DEBUG] Found copyright key '{key}': {copyright_val}")
                                 if copyright_val:
                                     copyright_text = copyright_val[0] if isinstance(copyright_val, list) else copyright_val
-                                    click.echo(f"[DEBUG] Extracted copyright_text: {copyright_text}")
                                     break
-                        if not copyright_text:
-                            click.echo("[DEBUG] No copyright field found in any case variation")
             except (AttributeError, KeyError, IndexError, TypeError) as e:
-                click.echo(f"[DEBUG] Exception while extracting copyright: {e}")
                 pass
             
             if copyright_text:
                 copyright_text = str(copyright_text).strip()
-                click.echo(f"[DEBUG] Processing copyright_text: {copyright_text}")
                 label_from_copyright = None
                 
                 # Parse copyright: first try to extract label after year
@@ -801,18 +792,15 @@ def _build_metadata_from_files(path, tags, rls_data):
                 match = re.search(r'\d{4}\s+(.+)', copyright_text)
                 if match:
                     label_from_copyright = match.group(1).strip()
-                    click.echo(f"[DEBUG] Extracted label from copyright (with year): {label_from_copyright}")
                 else:
                     # If no year pattern, use the entire copyright text as label
                     # Example: "Lemon Demon" -> "Lemon Demon"
                     label_from_copyright = copyright_text
-                    click.echo(f"[DEBUG] No year found, using entire copyright as label: {label_from_copyright}")
                 
                 if label_from_copyright:
                     # Check for "Records DK" pattern (with or without numbers)
                     # Examples: "Records DK", "232131 Records DK", "3324569 Records DK"
                     if re.search(r'(?:\d+\s+)?Records\s+DK$', label_from_copyright, re.IGNORECASE):
-                        click.echo(f"[DEBUG] Detected Records DK label '{label_from_copyright}', using 'Self-Released'")
                         labels.append("Self-Released")
                         label_extracted = True
                     else:
@@ -820,7 +808,6 @@ def _build_metadata_from_files(path, tags, rls_data):
                         # If it does, use "Self-Released" instead
                         main_artist_names = [artist[0] for artist in all_artists if artist[1] == "main"]
                         if label_from_copyright in main_artist_names:
-                            click.echo(f"[DEBUG] Copyright matches artist name '{label_from_copyright}', using 'Self-Released'")
                             labels.append("Self-Released")
                         else:
                             labels.append(label_from_copyright)
@@ -828,14 +815,9 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             # Try label field if copyright didn't work
             if not label_extracted:
-                click.echo("[DEBUG] Trying label field as fallback")
                 if hasattr(tagset, 'label'):
-                    click.echo(f"[DEBUG] tagset.label value: {tagset.label}")
                     if tagset.label:
                         labels.append(str(tagset.label).strip())
-                        click.echo(f"[DEBUG] Added label from label field: {tagset.label}")
-                else:
-                    click.echo("[DEBUG] tagset has no 'label' attribute")
             
             # Extract catalog number
             if hasattr(tagset, 'catalognumber') and tagset.catalognumber:
@@ -958,19 +940,6 @@ def _build_metadata_from_files(path, tags, rls_data):
     if not metadata["title"]:
         click.secho("ERROR: No album title found in file tags!", fg="red", bold=True)
         raise click.Abort()
-    
-    click.secho(f"Extracted metadata from files:", fg="green")
-    click.secho(f"  Artists: {', '.join(a[0] for a in metadata['artists'][:3])}", fg="green")
-    click.secho(f"  Album: {metadata['title']}", fg="green")
-    click.secho(f"  Type: {metadata['rls_type']}", fg="green")
-    if metadata["year"]:
-        click.secho(f"  Year: {metadata['year']}", fg="green")
-    if metadata["date"]:
-        click.secho(f"  Release Date: {metadata['date']}", fg="green")
-    if metadata["label"]:
-        click.secho(f"  Label: {metadata['label']}", fg="green")
-    if metadata["upc"]:
-        click.secho(f"  UPC: {metadata['upc']}", fg="green")
     
     return metadata
 
