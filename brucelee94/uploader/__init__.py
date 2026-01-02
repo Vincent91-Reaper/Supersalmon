@@ -671,6 +671,7 @@ def _build_metadata_from_files(path, tags, rls_data):
         "title": None,
         "rls_type": None,
         "year": None,
+        "group_year": None,
         "label": None,
         "catno": None,
         "tracks": {},
@@ -766,6 +767,7 @@ def _build_metadata_from_files(path, tags, rls_data):
     
     if years:
         metadata["year"] = max(set(years), key=years.count)
+        metadata["group_year"] = metadata["year"]  # Set group_year same as year
     
     if labels:
         metadata["label"] = max(set(labels), key=labels.count)
