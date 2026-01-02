@@ -45,6 +45,8 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     """
     Get metadata from a URL provided by the user. Skips automatic search.
     If provided_source_url is given, use it directly instead of prompting.
+    
+    Special case: For Tidal URLs, returns a flag to skip scraping and extract from file tags.
     """
     # Initialize rls_data if needed
     rls_data = rls_data or {}
@@ -82,6 +84,16 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
             
             # Break out of prompt loop to scrape
             break
+    
+    # Special case: Check if this is a Tidal URL
+    # For Tidal, we want to skip scraping and extract metadata from file tags instead
+    import re
+    tidal_pattern = re.compile(r"^https?://.*(?:tidal|wimpmusic)\.com.*\/(album)\/([0-9]+)")
+    if tidal_pattern.match(url_input):
+        click.secho("Tidal URL detected - skipping metadata scraping", fg="cyan")
+        click.secho("Metadata will be extracted from file tags", fg="cyan")
+        # Return a special marker to indicate we should extract from file tags
+        return {"_extract_from_files": True, "_source_url": url_input}, url_input
     
     # Try to scrape from the URL
     source_url = None

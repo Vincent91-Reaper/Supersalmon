@@ -353,22 +353,45 @@ def upload(
             if new_source_url is not None:
                 source_url = new_source_url
             
-            # Copy format and encoding from rls_data to metadata (these come from audio files)
-            metadata["format"] = rls_data["format"]
-            metadata["encoding"] = rls_data["encoding"]
-            metadata["encoding_vbr"] = rls_data["encoding_vbr"]
-            metadata["scene"] = rls_data["scene"]
-            metadata["source"] = rls_data["source"]
-            
-            # Detect if this is Apple Music URL (case-insensitive)
-            is_apple_music = source_url and "apple.com" in source_url.lower()
-            
-            # Pass Apple Music flag to edit_metadata
-            metadata["_is_apple_music"] = is_apple_music
-            
-            path, metadata, tags, audio_info = edit_metadata(
-                path, tags, metadata, source, rls_data, recompress, source_url, is_apple_music
-            )
+            # Special case: Tidal URLs - extract metadata from file tags instead of scraping
+            if metadata.get("_extract_from_files"):
+                click.secho("Extracting metadata from file tags...", fg="cyan")
+                source_url = metadata.get("_source_url")
+                
+                # Build metadata from file tags
+                metadata = _build_metadata_from_files(path, tags, rls_data)
+                
+                # Skip retagging for Tidal - files are already correct
+                click.secho("Skipping file retagging for Tidal URL", fg="cyan")
+                
+                # Skip the edit_metadata workflow entirely for Tidal
+                # Just check tags and folder structure
+                tags = check_tags(path)
+                if recompress:
+                    recompress_path(path)
+                check_folder_structure(path, metadata["scene"])
+                
+                # Refresh tags and audio info
+                tags = gather_tags(path)
+                audio_info = gather_audio_info(path)
+            else:
+                # Normal workflow for other sources
+                # Copy format and encoding from rls_data to metadata (these come from audio files)
+                metadata["format"] = rls_data["format"]
+                metadata["encoding"] = rls_data["encoding"]
+                metadata["encoding_vbr"] = rls_data["encoding_vbr"]
+                metadata["scene"] = rls_data["scene"]
+                metadata["source"] = rls_data["source"]
+                
+                # Detect if this is Apple Music URL (case-insensitive)
+                is_apple_music = source_url and "apple.com" in source_url.lower()
+                
+                # Pass Apple Music flag to edit_metadata
+                metadata["_is_apple_music"] = is_apple_music
+                
+                path, metadata, tags, audio_info = edit_metadata(
+                    path, tags, metadata, source, rls_data, recompress, source_url, is_apple_music
+                )
 
         if not group_id:
             # Dupe recheck removed - directly proceed
@@ -631,6 +654,154 @@ def edit_metadata(
     audio_info = gather_audio_info(path)
     return path, metadata, tags, audio_info
 
+
+def _build_metadata_from_files(path, tags, rls_data):
+    """
+    Build metadata structure from file tags for Tidal URLs.
+    Extracts all necessary information from the existing file metadata.
+    """
+    # Initialize metadata structure
+    metadata = {
+        "format": rls_data["format"],
+        "encoding": rls_data["encoding"],
+        "encoding_vbr": rls_data["encoding_vbr"],
+        "scene": rls_data["scene"],
+        "source": rls_data["source"],
+        "artists": [],
+        "title": None,
+        "rls_type": None,
+        "year": None,
+        "label": None,
+        "catno": None,
+        "tracks": {},
+        "genres": [],
+        "cover": None,
+    }
+    
+    # Extract data from file tags
+    # Group tracks by disc number
+    tracks_by_disc = {}
+    all_artists = []
+    album_titles = []
+    years = []
+    labels = []
+    catnos = []
+    
+    for filename, tagset in tags.items():
+        try:
+            # Extract disc number (default to 1)
+            disc_num = 1
+            if hasattr(tagset, 'discnumber') and tagset.discnumber:
+                try:
+                    disc_num = int(str(tagset.discnumber).split('/')[0])
+                except (ValueError, AttributeError):
+                    disc_num = 1
+            
+            # Extract track number
+            track_num = 1
+            if hasattr(tagset, 'tracknumber') and tagset.tracknumber:
+                try:
+                    track_num = int(str(tagset.tracknumber).split('/')[0])
+                except (ValueError, AttributeError):
+                    track_num = 1
+            
+            # Extract track title
+            track_title = tagset.title if hasattr(tagset, 'title') and tagset.title else "Unknown"
+            
+            # Extract artist(s)
+            track_artists = []
+            if hasattr(tagset, 'artist') and tagset.artist:
+                artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+                for artist in artist_list:
+                    if artist and artist.strip():
+                        track_artists.append((artist.strip(), "main"))
+                        all_artists.append((artist.strip(), "main"))
+            
+            # Extract album title
+            if hasattr(tagset, 'album') and tagset.album:
+                album_titles.append(tagset.album)
+            
+            # Extract year
+            if hasattr(tagset, 'date') and tagset.date:
+                try:
+                    year = int(str(tagset.date)[:4])
+                    years.append(year)
+                except (ValueError, AttributeError):
+                    pass
+            
+            # Extract label
+            if hasattr(tagset, 'label') and tagset.label:
+                labels.append(tagset.label)
+            
+            # Extract catalog number
+            if hasattr(tagset, 'catalognumber') and tagset.catalognumber:
+                catnos.append(tagset.catalognumber)
+            
+            # Build track metadata
+            if disc_num not in tracks_by_disc:
+                tracks_by_disc[disc_num] = {}
+            
+            tracks_by_disc[disc_num][track_num] = {
+                "title": track_title,
+                "artists": track_artists,
+            }
+            
+        except (TypeError, AttributeError) as e:
+            click.secho(f"Warning: Could not extract metadata from {filename}: {e}", fg="yellow")
+            continue
+    
+    # Deduplicate and assign artists
+    seen_artists = set()
+    unique_artists = []
+    for artist, importance in all_artists:
+        if artist.lower() not in seen_artists:
+            seen_artists.add(artist.lower())
+            unique_artists.append((artist, importance))
+    
+    metadata["artists"] = unique_artists
+    
+    # Assign most common values
+    if album_titles:
+        metadata["title"] = max(set(album_titles), key=album_titles.count)
+    
+    if years:
+        metadata["year"] = max(set(years), key=years.count)
+    
+    if labels:
+        metadata["label"] = max(set(labels), key=labels.count)
+    
+    if catnos:
+        metadata["catno"] = max(set(catnos), key=catnos.count)
+    
+    # Assign tracks
+    metadata["tracks"] = tracks_by_disc
+    
+    # Try to determine release type from track count
+    total_tracks = sum(len(disc) for disc in tracks_by_disc.values())
+    if total_tracks == 1:
+        metadata["rls_type"] = "Single"
+    elif total_tracks <= 4:
+        metadata["rls_type"] = "EP"
+    else:
+        metadata["rls_type"] = "Album"
+    
+    # Validate we have required data
+    if not metadata["artists"]:
+        click.secho("ERROR: No artist information found in file tags!", fg="red", bold=True)
+        raise click.Abort()
+    
+    if not metadata["title"]:
+        click.secho("ERROR: No album title found in file tags!", fg="red", bold=True)
+        raise click.Abort()
+    
+    click.secho(f"Extracted metadata from files:", fg="green")
+    click.secho(f"  Artists: {', '.join(a[0] for a in metadata['artists'][:3])}", fg="green")
+    click.secho(f"  Album: {metadata['title']}", fg="green")
+    click.secho(f"  Type: {metadata['rls_type']}", fg="green")
+    if metadata["year"]:
+        click.secho(f"  Year: {metadata['year']}", fg="green")
+    
+    return metadata
 
 
 def metadata_validator(metadata):
