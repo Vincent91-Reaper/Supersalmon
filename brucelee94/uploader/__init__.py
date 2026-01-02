@@ -691,9 +691,11 @@ def _build_metadata_from_files(path, tags, rls_data):
     all_artists = []
     album_titles = []
     years = []
+    dates = []
     labels = []
     catnos = []
     genres = []
+    upcs = []
     
     for filename, tagset in tags.items():
         try:
@@ -729,21 +731,37 @@ def _build_metadata_from_files(path, tags, rls_data):
             if hasattr(tagset, 'album') and tagset.album:
                 album_titles.append(tagset.album)
             
-            # Extract year
+            # Extract year and full date
             if hasattr(tagset, 'date') and tagset.date:
                 try:
                     year = int(str(tagset.date)[:4])
                     years.append(year)
+                    # Keep full date string for date field
+                    dates.append(str(tagset.date))
                 except (ValueError, AttributeError):
                     pass
             
-            # Extract label
-            if hasattr(tagset, 'label') and tagset.label:
+            # Extract label from copyright field
+            if hasattr(tagset, 'copyright') and tagset.copyright:
+                copyright_text = str(tagset.copyright)
+                # Parse copyright: extract label after year
+                # Example: "Copyright: 1997 HOMmega Productions" -> "HOMmega Productions"
+                # Pattern: look for year followed by label name
+                match = re.search(r'\d{4}\s+(.+)', copyright_text)
+                if match:
+                    label_from_copyright = match.group(1).strip()
+                    labels.append(label_from_copyright)
+            # Fallback to label field if copyright parsing fails
+            elif hasattr(tagset, 'label') and tagset.label:
                 labels.append(tagset.label)
             
             # Extract catalog number
             if hasattr(tagset, 'catalognumber') and tagset.catalognumber:
                 catnos.append(tagset.catalognumber)
+            
+            # Extract UPC/Barcode
+            if hasattr(tagset, 'barcode') and tagset.barcode:
+                upcs.append(str(tagset.barcode))
             
             # Extract genre
             if hasattr(tagset, 'genre') and tagset.genre:
@@ -783,11 +801,38 @@ def _build_metadata_from_files(path, tags, rls_data):
         metadata["year"] = max(set(years), key=years.count)
         metadata["group_year"] = metadata["year"]  # Set group_year same as year
     
+    # Parse and format date for torrent description (Month Day, Year)
+    if dates:
+        most_common_date = max(set(dates), key=dates.count)
+        try:
+            # Parse various date formats and convert to "Month Day, Year"
+            from datetime import datetime
+            
+            # Try common date formats
+            date_formats = ['%Y-%m-%d', '%Y/%m/%d', '%Y%m%d', '%Y']
+            parsed_date = None
+            
+            for fmt in date_formats:
+                try:
+                    parsed_date = datetime.strptime(str(most_common_date)[:len(fmt.replace('%', ''))], fmt)
+                    break
+                except ValueError:
+                    continue
+            
+            if parsed_date:
+                # Format as "Month Day, Year" (e.g., "December 5, 2025")
+                metadata["date"] = parsed_date.strftime("%B %-d, %Y") if platform.system() != "Windows" else parsed_date.strftime("%B %#d, %Y")
+        except Exception as e:
+            click.secho(f"Warning: Could not parse date: {e}", fg="yellow")
+    
     if labels:
         metadata["label"] = max(set(labels), key=labels.count)
     
     if catnos:
         metadata["catno"] = max(set(catnos), key=catnos.count)
+    
+    if upcs:
+        metadata["upc"] = max(set(upcs), key=upcs.count)
     
     # Deduplicate genres
     if genres:
@@ -822,6 +867,12 @@ def _build_metadata_from_files(path, tags, rls_data):
     click.secho(f"  Type: {metadata['rls_type']}", fg="green")
     if metadata["year"]:
         click.secho(f"  Year: {metadata['year']}", fg="green")
+    if metadata["date"]:
+        click.secho(f"  Release Date: {metadata['date']}", fg="green")
+    if metadata["label"]:
+        click.secho(f"  Label: {metadata['label']}", fg="green")
+    if metadata["upc"]:
+        click.secho(f"  UPC: {metadata['upc']}", fg="green")
     
     return metadata
 
