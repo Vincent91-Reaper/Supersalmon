@@ -785,6 +785,14 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             if copyright_text:
                 copyright_text = str(copyright_text).strip()
+                
+                # Clean up copyright text by removing common distribution phrases
+                # Example: "(P) 2025 Slaughter Gang, LLC under exclusive license to Epic Records, a division of Sony Music Entertainment"
+                # -> "Slaughter Gang, LLC Epic Records"
+                copyright_text = re.sub(r'\s*under exclusive license to\s*', ' ', copyright_text, flags=re.IGNORECASE)
+                copyright_text = re.sub(r',?\s*a division of [^,]+', '', copyright_text, flags=re.IGNORECASE)
+                copyright_text = re.sub(r'\s+', ' ', copyright_text).strip()  # Normalize whitespace
+                
                 label_from_copyright = None
                 
                 # Parse copyright: first try to extract label after year
