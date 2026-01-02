@@ -792,27 +792,32 @@ def _build_metadata_from_files(path, tags, rls_data):
                 pass
             
             if copyright_text:
-                copyright_text = str(copyright_text)
+                copyright_text = str(copyright_text).strip()
                 click.echo(f"[DEBUG] Processing copyright_text: {copyright_text}")
-                # Parse copyright: extract label after year
+                label_from_copyright = None
+                
+                # Parse copyright: first try to extract label after year
                 # Example: "1997 HOMmega Productions" -> "HOMmega Productions"
-                # Pattern: look for year followed by label name
                 match = re.search(r'\d{4}\s+(.+)', copyright_text)
                 if match:
                     label_from_copyright = match.group(1).strip()
-                    click.echo(f"[DEBUG] Extracted label from copyright: {label_from_copyright}")
-                    if label_from_copyright:
-                        # Check if copyright matches any main artist name
-                        # If it does, use "Self-released" instead
-                        main_artist_names = [artist[0] for artist in all_artists if artist[1] == "main"]
-                        if label_from_copyright in main_artist_names:
-                            click.echo(f"[DEBUG] Copyright matches artist name '{label_from_copyright}', using 'Self-released'")
-                            labels.append("Self-released")
-                        else:
-                            labels.append(label_from_copyright)
-                        label_extracted = True
+                    click.echo(f"[DEBUG] Extracted label from copyright (with year): {label_from_copyright}")
                 else:
-                    click.echo(f"[DEBUG] Copyright text did not match pattern (year + label)")
+                    # If no year pattern, use the entire copyright text as label
+                    # Example: "Lemon Demon" -> "Lemon Demon"
+                    label_from_copyright = copyright_text
+                    click.echo(f"[DEBUG] No year found, using entire copyright as label: {label_from_copyright}")
+                
+                if label_from_copyright:
+                    # Check if copyright/label matches any main artist name
+                    # If it does, use "Self-released" instead
+                    main_artist_names = [artist[0] for artist in all_artists if artist[1] == "main"]
+                    if label_from_copyright in main_artist_names:
+                        click.echo(f"[DEBUG] Copyright matches artist name '{label_from_copyright}', using 'Self-released'")
+                        labels.append("Self-released")
+                    else:
+                        labels.append(label_from_copyright)
+                    label_extracted = True
             
             # Try label field if copyright didn't work
             if not label_extracted:
