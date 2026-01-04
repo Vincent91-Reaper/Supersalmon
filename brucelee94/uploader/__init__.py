@@ -884,32 +884,36 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             date_str = str(most_common_date).strip()
             
-            # Try common date formats
-            date_formats = ['%Y-%m-%d', '%Y/%m/%d', '%Y%m%d', '%Y']
-            parsed_date = None
-            
-            for fmt in date_formats:
-                try:
-                    # Calculate how many characters we need from the date string for this format
-                    fmt_len = fmt.count('%') * 2 + fmt.count('-') + fmt.count('/')
-                    if fmt == '%Y%m%d':
-                        fmt_len = 8
-                    elif fmt == '%Y':
-                        fmt_len = 4
-                    
-                    date_to_parse = date_str[:fmt_len] if len(date_str) >= fmt_len else date_str
-                    parsed_date = datetime.strptime(date_to_parse, fmt)
-                    break
-                except (ValueError, TypeError):
-                    continue
-            
-            if parsed_date:
-                # Format as "Month Day, Year" (e.g., "December 5, 2025")
-                try:
-                    metadata["date"] = parsed_date.strftime("%B %-d, %Y") if platform.system() != "Windows" else parsed_date.strftime("%B %#d, %Y")
-                except (ValueError, TypeError):
-                    # Fallback for platforms that don't support %- or %#
-                    metadata["date"] = parsed_date.strftime("%B %d, %Y").replace(' 0', ' ')
+            # Check if date string is just a year (4 digits)
+            # If so, skip formatting to avoid defaulting to January 1
+            if len(date_str) == 4 and date_str.isdigit():
+                # Don't set the date field - we only have a year
+                pass
+            else:
+                # Try common date formats (only for dates with month/day info)
+                date_formats = ['%Y-%m-%d', '%Y/%m/%d', '%Y%m%d']
+                parsed_date = None
+                
+                for fmt in date_formats:
+                    try:
+                        # Calculate how many characters we need from the date string for this format
+                        fmt_len = fmt.count('%') * 2 + fmt.count('-') + fmt.count('/')
+                        if fmt == '%Y%m%d':
+                            fmt_len = 8
+                        
+                        date_to_parse = date_str[:fmt_len] if len(date_str) >= fmt_len else date_str
+                        parsed_date = datetime.strptime(date_to_parse, fmt)
+                        break
+                    except (ValueError, TypeError):
+                        continue
+                
+                if parsed_date:
+                    # Format as "Month Day, Year" (e.g., "December 5, 2025")
+                    try:
+                        metadata["date"] = parsed_date.strftime("%B %-d, %Y") if platform.system() != "Windows" else parsed_date.strftime("%B %#d, %Y")
+                    except (ValueError, TypeError):
+                        # Fallback for platforms that don't support %- or %#
+                        metadata["date"] = parsed_date.strftime("%B %d, %Y").replace(' 0', ' ')
         except Exception as e:
             click.secho(f"Warning: Could not parse date: {e}", fg="yellow")
     

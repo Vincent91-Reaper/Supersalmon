@@ -290,8 +290,33 @@ class Scraper(QobuzBase, MetadataMixin):
         return None
 
     def parse_release_date(self, soup):
-        """Parse the release date from the API response."""
-        return soup.get("release_date_original")
+        """
+        Parse the release date from the API response.
+        Formats the date to "Month Day, Year" format (e.g., "December 31, 2025").
+        """
+        try:
+            raw_date = soup.get("release_date_original")
+            # Format date to "Month Day, Year" format (e.g., "December 31, 2025")
+            # Qobuz typically returns dates in YYYY-MM-DD format
+            if raw_date:
+                from datetime import datetime
+                import platform
+                try:
+                    # Parse the date string
+                    parsed_date = datetime.strptime(raw_date, "%Y-%m-%d")
+                    # Format as "Month Day, Year"
+                    try:
+                        formatted_date = parsed_date.strftime("%B %-d, %Y") if platform.system() != "Windows" else parsed_date.strftime("%B %#d, %Y")
+                    except (ValueError, TypeError):
+                        # Fallback for platforms that don't support %- or %#
+                        formatted_date = parsed_date.strftime("%B %d, %Y").replace(' 0', ' ')
+                    return formatted_date
+                except (ValueError, TypeError):
+                    # If parsing fails, return the raw date
+                    return raw_date
+            return raw_date
+        except (KeyError, IndexError):
+            return None
 
     def parse_release_type(self, soup):
         """
