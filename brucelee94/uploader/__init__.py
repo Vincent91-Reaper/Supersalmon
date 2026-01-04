@@ -884,25 +884,20 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             date_str = str(most_common_date).strip()
             
-            # Check if date string is just a year (4 digits)
+            # Check if date string is just a year (4 digits) with no other characters
             # If so, skip formatting to avoid defaulting to January 1
-            if len(date_str) == 4 and date_str.isdigit():
+            if re.match(r'^\d{4}$', date_str):
                 # Don't set the date field - we only have a year
                 pass
             else:
                 # Try common date formats (only for dates with month/day info)
+                # Handle dates like "2025-10-02", "2025/10/02", "20251002"
                 date_formats = ['%Y-%m-%d', '%Y/%m/%d', '%Y%m%d']
                 parsed_date = None
                 
                 for fmt in date_formats:
                     try:
-                        # Calculate how many characters we need from the date string for this format
-                        fmt_len = fmt.count('%') * 2 + fmt.count('-') + fmt.count('/')
-                        if fmt == '%Y%m%d':
-                            fmt_len = 8
-                        
-                        date_to_parse = date_str[:fmt_len] if len(date_str) >= fmt_len else date_str
-                        parsed_date = datetime.strptime(date_to_parse, fmt)
+                        parsed_date = datetime.strptime(date_str, fmt)
                         break
                     except (ValueError, TypeError):
                         continue
