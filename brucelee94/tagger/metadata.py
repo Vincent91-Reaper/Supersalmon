@@ -91,7 +91,6 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     tidal_pattern = re.compile(r"^https?://.*(?:tidal|wimpmusic)\.com.*\/(album)\/([0-9]+)")
     if tidal_pattern.match(url_input):
         click.secho("Tidal URL detected - skipping metadata scraping", fg="cyan")
-        click.secho("Metadata will be extracted from file tags", fg="cyan")
         # Return a special marker to indicate we should extract from file tags
         return {"_extract_from_files": True, "_source_url": url_input}, url_input
     

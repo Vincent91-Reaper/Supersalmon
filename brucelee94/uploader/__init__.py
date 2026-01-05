@@ -363,8 +363,6 @@ def upload(
                 metadata = _build_metadata_from_files(path, tags, rls_data)
                 
                 # Skip retagging for Tidal - files are already correct
-                click.secho("Skipping file retagging for Tidal URL", fg="cyan")
-                
                 # Skip the edit_metadata workflow entirely for Tidal
                 # Just check tags and folder structure
                 tags = check_tags(path)
