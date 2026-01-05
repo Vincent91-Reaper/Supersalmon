@@ -56,10 +56,19 @@ class Scraper(iTunesBase, MetadataMixin):
             raise ScrapeError("Could not parse release type.") from e
 
     def parse_release_date(self, soup):
-        # This can't be enough. Can it?
+        """
+        Parse the release date from the meta tag.
+        Formats the date to "Month Day, Year" format (e.g., "December 31, 2025").
+        """
         try:
             date_string = soup.find(attrs={"property": "music:release_date"})["content"].split("T")[0]
-            return date_string
+            # Format date to "Month Day, Year" format
+            # Apple Music returns dates in YYYY-MM-DD format
+            if date_string:
+                from datetime import datetime
+                parsed_date = datetime.strptime(date_string, "%Y-%m-%d")
+                return parsed_date.strftime("%B %d, %Y")
+            return None
         except BaseException:
             return None
 

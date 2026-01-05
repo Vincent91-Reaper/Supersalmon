@@ -304,8 +304,11 @@ def generate_description(track_data, metadata):
                 length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
                 total_duration += track["duration"]
                 
-                # Use original track number from metadata
-                track_num = str_to_int_if_int(track['t'].tracknumber, zpad=True)
+                # Use original track number from metadata - extract just the number part if it contains "/"
+                track_num_raw = track['t'].tracknumber
+                if '/' in track_num_raw:
+                    track_num_raw = track_num_raw.split('/')[0]
+                track_num = str_to_int_if_int(track_num_raw, zpad=True)
                 description += f"[b]{track_num}.[/b] "
                 description += f"{track['t'].title} [i]({length})[/i]\n"
             
@@ -318,7 +321,11 @@ def generate_description(track_data, metadata):
             length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
             total_duration += track["duration"]
             
-            description += f"[b]{str_to_int_if_int(track['t'].tracknumber, zpad=True)}.[/b] "
+            # Extract just the number part if it contains "/"
+            track_num_raw = track['t'].tracknumber
+            if '/' in track_num_raw:
+                track_num_raw = track_num_raw.split('/')[0]
+            description += f"[b]{str_to_int_if_int(track_num_raw, zpad=True)}.[/b] "
             description += f"{track['t'].title} [i]({length})[/i]\n"
 
     # Format total length
