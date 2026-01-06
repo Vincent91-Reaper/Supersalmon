@@ -1068,7 +1068,6 @@ def upload_and_report(
 
     # Add to seedbox upload queue
     if cfg.upload.upload_to_seedbox:
-        click.secho("Add uploading task.", fg="green")
         # Check if it's a FLAC file
         is_flac = metadata.get("format", "").upper() == "FLAC"
         seedbox_uploader.add_upload_task(path, task_type="folder", is_flac=is_flac)
