@@ -723,8 +723,11 @@ def _build_metadata_from_files(path, tags, rls_data):
                 artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
                 for artist in artist_list:
                     if artist and artist.strip():
-                        track_artists.append((artist.strip(), "main"))
-                        all_artists.append((artist.strip(), "main"))
+                        # Split by comma to handle cases like "Gayga, Din" -> ["Gayga", "Din"]
+                        individual_artists = [a.strip() for a in str(artist).split(',') if a.strip()]
+                        for individual_artist in individual_artists:
+                            track_artists.append((individual_artist, "main"))
+                            all_artists.append((individual_artist, "main"))
             
             # Extract album title
             if hasattr(tagset, 'album') and tagset.album:
