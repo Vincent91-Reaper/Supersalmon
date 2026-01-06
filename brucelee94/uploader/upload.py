@@ -114,7 +114,7 @@ def compile_data_new_group(
     Compile the data dictionary that needs to be submitted with a brand new
     torrent group upload POST.
     """
-    return {
+    data = {
         "submit": True,
         "type": 0,
         "title": metadata["title"],
@@ -136,13 +136,16 @@ def compile_data_new_group(
         "vbr": metadata["encoding_vbr"],
         "media": metadata["source"],
         "tags": metadata["tags"],
-        "image": cover_url,
         "album_desc": generate_description(track_data, metadata),
         "release_desc": generate_t_description(
             metadata, track_data, hybrid, metadata["urls"], source_url  # spectral params removed
         ),
         # "requestid": request_id,  # removed
     }
+    # Only include image if cover_url is provided (not None)
+    if cover_url:
+        data["image"] = cover_url
+    return data
 
 
 def compile_data_existing_group(
