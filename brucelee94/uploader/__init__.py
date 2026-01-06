@@ -474,12 +474,13 @@ def upload(
     #
     #     remaining_gazelle_sites.remove(tracker)
 
-    # Handle cover image
+    # Handle cover image - prepare cover but don't upload to ptpimg yet
+    cover_to_upload_later = None
+    is_cover_downloaded = False
     if is_16bit_transcode:
         # For 16-bit transcodes, skip uploading cover to ptpimg entirely
         # The cover.jpg was already copied to the folder during downconversion
         # RED will use the local cover.jpg file from the torrent
-        cover_url = None
         cover_path = os.path.join(path, "cover.jpg")
         if os.path.exists(cover_path):
             click.secho("Skipping cover upload to ptpimg for 16-bit transcode (using local cover.jpg)", fg="cyan")
@@ -489,14 +490,11 @@ def upload(
         if not remove_downloaded_cover_image:
             download_cover_if_nonexistent(path, metadata["cover"])
         # Don't need cover URL for existing groups
-        cover_url = None
+        pass
     else:
-        # For new groups, we need a cover URL
-        cover_path, is_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
-        cover_url = upload_cover(cover_path)
-        if is_downloaded and remove_downloaded_cover_image:
-            click.secho("Removing downloaded Cover Image File", fg="yellow")
-            os.remove(cover_path)
+        # For new groups, prepare cover but upload to ptpimg AFTER torrent upload
+        cover_path, is_cover_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
+        cover_to_upload_later = cover_path
 
 
 
@@ -504,12 +502,13 @@ def upload(
     # if not request_id and cfg.upload.requests.check_requests:
     #     request_id = check_requests(gazelle_site, searchstrs)
 
+    # Upload torrent WITHOUT cover URL first (faster, helps be first to upload)
     torrent_id, group_id, torrent_path, torrent_content, url = upload_and_report(
         gazelle_site,
         path,
         group_id,
         metadata,
-        cover_url,
+        None,  # Upload without cover_url first
         track_data,
         hybrid,
         # lossy_master,  # removed
@@ -528,6 +527,19 @@ def upload(
     torrent_content.write(torrent_path, overwrite=True)
 
     print_torrents(gazelle_site, group_id, highlight_torrent_id=torrent_id)
+
+    # NOW upload cover to ptpimg and update the group (after torrent is already uploaded)
+    if cover_to_upload_later and not is_16bit_transcode:
+        click.secho("Uploading cover image to ptpimg...", fg="cyan")
+        cover_url = upload_cover(cover_to_upload_later)
+        click.secho("Updating torrent group with cover image...", fg="cyan")
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(gazelle_site.update_group_cover_image(group_id, cover_url))
+        click.secho("Cover image added successfully!", fg="green")
+        
+        if is_cover_downloaded and remove_downloaded_cover_image:
+            click.secho("Removing downloaded Cover Image File", fg="yellow")
+            os.remove(cover_to_upload_later)
 
     # Check if 24-bit and prompt for downconversion to 16-bit
     if rls_data["encoding"] == "24bit Lossless":

@@ -448,6 +448,38 @@ class BaseGazelleApi:
                 fg="green",
             )
 
+    async def update_group_cover_image(self, group_id, cover_url):
+        """Update the cover image for a torrent group
+        This edits the group (not individual torrent) to add/update the cover image"""
+        current_details = await self.request("torrentgroup", id=group_id)
+        
+        # Get the first torrent's details to populate required fields
+        first_torrent = current_details["torrents"][0]
+        
+        new_data = {
+            "action": "takegroupedit",
+            "groupid": group_id,
+            "year": current_details["group"]["year"],
+            "record_label": current_details["group"]["recordLabel"] or "",
+            "catalogue_number": current_details["group"]["catalogueNumber"] or "",
+            "releasetype": current_details["group"]["releaseType"],
+            "image": cover_url,
+            "tags": ",".join(current_details["group"]["tags"]),
+            "album_desc": current_details["group"]["wikiBody"],
+        }
+
+        url = self.base_url + "/torrents.php"
+        new_data["auth"] = self.authkey
+        resp = await loop.run_in_executor(
+            None,
+            lambda: self.session.post(url, data=new_data, headers=self.headers),
+        )
+        soup = BeautifulSoup(resp.text, "html.parser")
+        edit_error = soup.find("h2", text="Error")
+        if edit_error:
+            error_message = edit_error.parent.parent.find("p").text
+            raise RequestError(f"Failed to update cover image: {error_message}")
+
     """The following three parsing functions are part of the gazelle class
     in order that they be easily overwritten in the derivative site classes.
     It is not because they depend on anything from the class"""
