@@ -466,12 +466,6 @@ class BaseGazelleApi:
         # Use provided album_desc if available, otherwise preserve existing
         description = album_desc if album_desc is not None else current_details["group"]["wikiBody"]
         
-        # DEBUG: Print what we're about to send
-        click.secho(f"DEBUG update_group_cover_image: album_desc provided: {album_desc is not None}", fg="yellow")
-        click.secho(f"DEBUG update_group_cover_image: description length: {len(description)}", fg="yellow")
-        if len(description) < 200:
-            click.secho(f"DEBUG update_group_cover_image: description content: {description}", fg="yellow")
-        
         new_data = {
             "action": "takegroupedit",
             "groupid": group_id,
@@ -481,7 +475,7 @@ class BaseGazelleApi:
             "releasetype": current_details["group"]["releaseType"],
             "image": cover_url,
             "tags": ",".join(current_details["group"]["tags"]),
-            "album_desc": description,
+            "body": description,  # RED's API uses "body" for the group wiki description
         }
 
         url = self.base_url + "/torrents.php"

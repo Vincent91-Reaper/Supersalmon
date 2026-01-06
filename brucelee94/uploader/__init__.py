@@ -537,9 +537,6 @@ def upload(
         
         # Generate album description to include with cover update
         album_desc = generate_description(track_data, metadata)
-        click.secho(f"DEBUG: Generated album_desc length: {len(album_desc)} characters", fg="yellow")
-        if len(album_desc) < 200:
-            click.secho(f"DEBUG: album_desc content: {album_desc}", fg="yellow")
         
         loop = asyncio.get_event_loop()
         loop.run_until_complete(gazelle_site.update_group_cover_image(group_id, cover_url, album_desc))
