@@ -40,7 +40,7 @@ from brucelee94.tagger.audio_info import (
     gather_audio_info,
     recompress_path,
 )
-from brucelee94.tagger.cover import compress_pictures, download_cover_if_nonexistent
+from brucelee94.tagger.cover import download_cover_if_nonexistent
 # Folder renaming removed
 # from salmon.tagger.foldername import rename_folder
 from brucelee94.tagger.folderstructure import check_folder_structure
@@ -498,8 +498,7 @@ def upload(
             click.secho("Removing downloaded Cover Image File", fg="yellow")
             os.remove(cover_path)
 
-    if not scene and cfg.image.auto_compress_cover:
-        compress_pictures(path)
+
 
     # Request filling removed
     # if not request_id and cfg.upload.requests.check_requests:
