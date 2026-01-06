@@ -68,6 +68,7 @@ from brucelee94.uploader.seedbox import UploadManager
 # )
 from brucelee94.uploader.upload import (
     concat_track_data,
+    generate_description,
     prepare_and_upload,
 )
 
@@ -532,10 +533,14 @@ def upload(
     if cover_to_upload_later and not is_16bit_transcode:
         click.secho("Uploading cover image to ptpimg...", fg="cyan")
         cover_url = upload_cover(cover_to_upload_later)
-        click.secho("Updating torrent group with cover image...", fg="cyan")
+        click.secho("Updating torrent group with cover image and description...", fg="cyan")
+        
+        # Generate album description to include with cover update
+        album_desc = generate_description(track_data, metadata)
+        
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(gazelle_site.update_group_cover_image(group_id, cover_url))
-        click.secho("Cover image added successfully!", fg="green")
+        loop.run_until_complete(gazelle_site.update_group_cover_image(group_id, cover_url, album_desc))
+        click.secho("Cover image and description added successfully!", fg="green")
         
         if is_cover_downloaded and remove_downloaded_cover_image:
             click.secho("Removing downloaded Cover Image File", fg="yellow")

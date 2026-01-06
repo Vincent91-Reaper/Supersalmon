@@ -448,13 +448,23 @@ class BaseGazelleApi:
                 fg="green",
             )
 
-    async def update_group_cover_image(self, group_id, cover_url):
+    async def update_group_cover_image(self, group_id, cover_url, album_desc=None):
         """Update the cover image for a torrent group
-        This edits the group (not individual torrent) to add/update the cover image"""
+        This edits the group (not individual torrent) to add/update the cover image
+        
+        Args:
+            group_id: The ID of the torrent group to update
+            cover_url: The ptpimg URL for the cover image
+            album_desc: Optional album description. If provided, will update the description
+                       along with the cover. If not provided, preserves existing description.
+        """
         current_details = await self.request("torrentgroup", id=group_id)
         
         # Get the first torrent's details to populate required fields
         first_torrent = current_details["torrents"][0]
+        
+        # Use provided album_desc if available, otherwise preserve existing
+        description = album_desc if album_desc is not None else current_details["group"]["wikiBody"]
         
         new_data = {
             "action": "takegroupedit",
@@ -465,7 +475,7 @@ class BaseGazelleApi:
             "releasetype": current_details["group"]["releaseType"],
             "image": cover_url,
             "tags": ",".join(current_details["group"]["tags"]),
-            "album_desc": current_details["group"]["wikiBody"],
+            "album_desc": description,
         }
 
         url = self.base_url + "/torrents.php"
