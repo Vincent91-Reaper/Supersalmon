@@ -391,6 +391,23 @@ def upload(
                 path, metadata, tags, audio_info = edit_metadata(
                     path, tags, metadata, source, rls_data, recompress, source_url, is_apple_music
                 )
+                
+                # For Apple Music: If UPC wasn't scraped, try to extract it from file tags
+                if is_apple_music and not metadata.get("upc"):
+                    upcs = []
+                    for filename, tagset in tags.items():
+                        try:
+                            # Try 'upc' field first, then 'barcode' field
+                            if hasattr(tagset, 'upc') and tagset.upc:
+                                upcs.append(str(tagset.upc))
+                            elif hasattr(tagset, 'barcode') and tagset.barcode:
+                                upcs.append(str(tagset.barcode))
+                        except (TypeError, AttributeError):
+                            continue
+                    
+                    # Use most common UPC if found
+                    if upcs:
+                        metadata["upc"] = max(set(upcs), key=upcs.count)
 
         if not group_id:
             # Dupe recheck removed - directly proceed
