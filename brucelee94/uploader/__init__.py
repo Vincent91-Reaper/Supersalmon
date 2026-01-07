@@ -1078,9 +1078,9 @@ def upload_and_report(
 
 def convert_genres(genres):
     """Convert the weirdly spaced genres to RED-compliant genres.
-    Returns 'delete.this.tag' as fallback if no genres are present."""
+    Returns 'electronic' as fallback if no genres are present."""
     if not genres:
-        return "delete.this.tag"
+        return "electronic"
     return ",".join(re.sub("[-_ ]", ".", g).strip() for g in genres)
 
 
