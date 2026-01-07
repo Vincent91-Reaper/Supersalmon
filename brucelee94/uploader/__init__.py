@@ -369,7 +369,7 @@ def upload(
                 tags = check_tags(path)
                 if recompress:
                     recompress_path(path)
-                check_folder_structure(path, metadata["scene"])
+                check_folder_structure(path, metadata["scene"], metadata.get("genres", []))
                 
                 # Refresh tags and audio info
                 tags = gather_tags(path)
@@ -676,7 +676,7 @@ def edit_metadata(
     tags = check_tags(path)
     if not metadata["scene"] and recompress:
         recompress_path(path)
-    check_folder_structure(path, metadata["scene"])
+    check_folder_structure(path, metadata["scene"], metadata.get("genres", []))
 
     # Convert genres to tags
     metadata["tags"] = convert_genres(metadata["genres"])

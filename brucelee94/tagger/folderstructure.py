@@ -8,11 +8,18 @@ from brucelee94.constants import ALLOWED_EXTENSIONS
 from brucelee94.errors import NoncompliantFolderStructure
 
 
-def check_folder_structure(path, scene):
+def check_folder_structure(path, scene, genres=None):
     """
     Run through every filesystem check that causes uploads to violate the rules
     or be rejected on the upload form. Only verify that path lengths <180.
+    Only runs for Classical genre or when genres is None/empty.
     """
+    # Skip folder structure check unless it's classical music
+    if genres:
+        is_classical = any('classical' in str(g).lower() for g in genres)
+        if not is_classical:
+            return
+    
     while True:
         click.secho("\nChecking folder structure...", fg="cyan", bold=True)
         try:
