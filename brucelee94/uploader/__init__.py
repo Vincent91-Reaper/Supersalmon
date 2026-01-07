@@ -958,8 +958,11 @@ def _build_metadata_from_files(path, tags, rls_data):
     # Deduplicate genres
     if genres:
         metadata["genres"] = list(set(genres))
-        # Convert genres to tags for RED compliance
-        metadata["tags"] = convert_genres(metadata["genres"])
+    else:
+        metadata["genres"] = []
+    
+    # Convert genres to tags for RED compliance (always set, even if empty)
+    metadata["tags"] = convert_genres(metadata["genres"])
     
     # Assign tracks
     metadata["tracks"] = tracks_by_disc
