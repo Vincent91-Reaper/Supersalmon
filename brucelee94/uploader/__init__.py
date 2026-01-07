@@ -504,7 +504,7 @@ def upload(
     #     request_id = check_requests(gazelle_site, searchstrs)
 
     # Upload torrent WITHOUT cover URL first (faster, helps be first to upload)
-    torrent_id, group_id, torrent_path, torrent_content, url = upload_and_report(
+    torrent_id, group_id, torrent_path, torrent_content, url, newgroup = upload_and_report(
         gazelle_site,
         path,
         group_id,
@@ -530,7 +530,8 @@ def upload(
     print_torrents(gazelle_site, group_id, highlight_torrent_id=torrent_id)
 
     # NOW upload cover to ptpimg and update the group (after torrent is already uploaded)
-    if cover_to_upload_later and not is_16bit_transcode:
+    # ONLY if this is a new group (newgroup == True)
+    if cover_to_upload_later and not is_16bit_transcode and newgroup:
         click.secho("Uploading cover image to ptpimg...", fg="cyan")
         cover_url = upload_cover(cover_to_upload_later)
         click.secho("Updating torrent group with cover image and description...", fg="cyan")
@@ -1038,7 +1039,7 @@ def upload_and_report(
     }
 
     # Execute upload
-    torrent_id, group_id, torrent_path, torrent_content = prepare_and_upload(**upload_kwargs)
+    torrent_id, group_id, torrent_path, torrent_content, newgroup = prepare_and_upload(**upload_kwargs)
 
     # Lossy master reporting removed
     # if lossy_master:
@@ -1076,7 +1077,7 @@ def upload_and_report(
         seedbox_uploader.add_upload_task(path, task_type="folder", is_flac=is_flac)
         seedbox_uploader.add_upload_task(torrent_path, task_type="seed", is_flac=is_flac)
 
-    return torrent_id, group_id, torrent_path, torrent_content, url
+    return torrent_id, group_id, torrent_path, torrent_content, url, newgroup
 
 
 def convert_genres(genres):

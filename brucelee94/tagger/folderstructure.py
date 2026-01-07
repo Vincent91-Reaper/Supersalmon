@@ -12,13 +12,16 @@ def check_folder_structure(path, scene, genres=None):
     """
     Run through every filesystem check that causes uploads to violate the rules
     or be rejected on the upload form. Only verify that path lengths <180.
-    Only runs for Classical genre or when genres is None/empty.
+    Only runs for Classical genre.
     """
     # Skip folder structure check unless it's classical music
-    if genres:
-        is_classical = any('classical' in str(g).lower() for g in genres)
-        if not is_classical:
-            return
+    if not genres:
+        # If no genres provided, skip the check entirely
+        return
+    
+    is_classical = any('classical' in str(g).lower() for g in genres)
+    if not is_classical:
+        return
     
     while True:
         click.secho("\nChecking folder structure...", fg="cyan", bold=True)

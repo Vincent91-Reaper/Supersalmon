@@ -82,8 +82,8 @@ def prepare_and_upload(
     click.secho("Uploading torrent...", fg="yellow")
     try:
         loop = _get_event_loop()
-        torrent_id, group_id = loop.run_until_complete(gazelle_site.upload(data, files))
-        return torrent_id, group_id, torrent_path, torrent_content
+        torrent_id, group_id, newgroup = loop.run_until_complete(gazelle_site.upload(data, files))
+        return torrent_id, group_id, torrent_path, torrent_content, newgroup
     except RequestError as e:
         click.secho(str(e), fg="red", bold=True)
         exit()

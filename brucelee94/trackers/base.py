@@ -336,10 +336,12 @@ class BaseGazelleApi:
                 if "torrentid" in resp["response"]:
                     torrent_id = resp["response"]["torrentid"]
                     group_id = resp["response"]["groupid"]
+                    newgroup = resp["response"].get("newgroup", False)
                 elif "torrentId" in resp["response"]:
                     torrent_id = resp["response"]["torrentId"]
                     group_id = resp["response"]["groupId"]
-                return torrent_id, group_id
+                    newgroup = resp["response"].get("newgroup", False)
+                return torrent_id, group_id, newgroup
         except TypeError as err:
             raise RequestError(f"API upload failed, response text: {resp.text}") from err
 
@@ -368,7 +370,8 @@ class BaseGazelleApi:
                 torrent_id = self.parse_torrent_id_from_filled_request_page(resp.text)
                 group_id = await self.get_redirect_torrentgroupid(torrent_id)
                 click.secho(f"Filled request: {resp.url}", fg="green")
-                return torrent_id, group_id
+                # Filling a request doesn't create a new group
+                return torrent_id, group_id, False
             except (TypeError, ValueError) as err:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 error = soup.find("h2", text="Error")
@@ -376,7 +379,11 @@ class BaseGazelleApi:
                 error_message = p_tag.text if p_tag else resp.text
                 raise RequestError(f"Request fill failed: {error_message}") from err
         try:
-            return self.parse_most_recent_torrent_and_group_id_from_group_page(resp.text)
+            torrent_id, group_id = self.parse_most_recent_torrent_and_group_id_from_group_page(resp.text)
+            # For site page upload, we can't easily determine if it's a new group from the response
+            # but if we didn't have a group_id in the request data, it's definitely new
+            newgroup = "groupid" not in data
+            return torrent_id, group_id, newgroup
         except TypeError as err:
             raise RequestError(f"Site upload failed, response text: {resp.text}") from err
 
