@@ -55,8 +55,21 @@ class MetadataMixin(ABC):
         as None.
         """
         soup = await self.create_soup(url)
+        
+        # Parse title first
+        raw_title = self.parse_release_title(soup)
+        
+        # Extract edition from title if present
+        title_parsed, edition_from_title = self.parse_title(raw_title, None)
+        
+        # Get edition from explicit parse_edition_title method
+        edition_from_method = self.parse_edition_title(soup)
+        
+        # Prefer edition from the title extraction, fallback to method
+        final_edition = edition_from_title or edition_from_method
+        
         data = {
-            "title": self.parse_release_title(soup),
+            "title": title_parsed,
             "cover": self.parse_cover_url(soup),
             "genres": standardize_genres(
                 [
@@ -68,7 +81,7 @@ class MetadataMixin(ABC):
             "year": self.parse_release_year(soup),
             "group_year": self.parse_release_group_year(soup),
             "date": self.parse_release_date(soup),
-            "edition_title": self.parse_edition_title(soup),
+            "edition_title": final_edition,
             "label": self.parse_release_label(soup),
             "catno": self.parse_release_catno(soup),
             "rls_type": self.parse_release_type(soup),
@@ -246,8 +259,22 @@ class MetadataMixin(ABC):
         Return a filtered title; all those parenthetical phrases belong
         in album info. We also filter out featured artists, since those are
         parsed with the artists.
+        Also extracts edition information from title (e.g., "Deluxe Edition", "Special Edition").
         """
+        edition_extracted = None
+        
         if cfg.upload.formatting.strip_useless_versions:
+            # First, check for edition information in parentheses at the end
+            # Example: "Album Name (Deluxe Edition)" -> title: "Album Name", edition: "Deluxe Edition"
+            edition_pattern = re.compile(
+                r"\s*\(([^)]*(?:Deluxe|Special|Limited|Collector'?s|Anniversary|Ultimate|Expanded|Reissue|Bonus)\s+Edition[^)]*)\)\s*$",
+                flags=re.IGNORECASE
+            )
+            edition_match = edition_pattern.search(title)
+            if edition_match:
+                edition_extracted = edition_match.group(1).strip()
+                title = title[:edition_match.start()].strip()
+            
             base = re.sub(
                 r" \(*(Original( Mix)?|Remastered|Clean|"
                 r"Album.+edition|Album.+mix|feat[^\)]+)\)*$",
@@ -272,7 +299,7 @@ class MetadataMixin(ABC):
             version = re.sub(r"[\(\)\[\]]", "", version)
             if version.lower() not in strip_set and version.lower() not in base.lower():
                 base += f" ({version})"
-        return base
+        return base, edition_extracted
 
 
 def determine_label_type(label, artists):

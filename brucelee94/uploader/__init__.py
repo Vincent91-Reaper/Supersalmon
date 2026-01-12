@@ -904,7 +904,10 @@ def _build_metadata_from_files(path, tags, rls_data):
     
     # Assign most common values
     if album_titles:
-        metadata["title"] = max(set(album_titles), key=album_titles.count)
+        raw_album_title = max(set(album_titles), key=album_titles.count)
+        # Use parse_title from pre_data.py to extract edition from album title
+        from brucelee94.tagger.pre_data import parse_title
+        metadata["title"], metadata["edition_title"] = parse_title(raw_album_title)
     
     if years:
         metadata["year"] = max(set(years), key=years.count)
