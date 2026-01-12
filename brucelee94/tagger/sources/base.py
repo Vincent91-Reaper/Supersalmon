@@ -9,6 +9,40 @@ from brucelee94.common import fetch_genre, less_uppers, normalize_accents
 from brucelee94.errors import GenreNotInWhitelist
 
 
+def extract_edition_from_title(title):
+    """
+    Extract edition information from album title.
+    Returns tuple: (cleaned_title, edition_string or None)
+    
+    Detects patterns like "Album Name (Deluxe Edition)", "Album - Special Edition", etc.
+    and extracts the edition part.
+    """
+    if not title:
+        return title, None
+    
+    # Pattern to match edition keywords in parentheses or after dash at end of title
+    edition_pattern = re.compile(
+        r"[\(\[]?\s*("
+        r"(?:Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|"
+        r"Bonus|Special|Super Deluxe|Digital|Japanese|International|Explicit|Clean"
+        r")(?:\s+\w+)?\s+Edition"
+        r"|Edition\s+\d+"
+        r")\s*[\)\]]?$",
+        flags=re.IGNORECASE
+    )
+    
+    match = edition_pattern.search(title)
+    if match:
+        edition = match.group(1).strip()
+        # Remove the matched portion from the title
+        cleaned_title = title[:match.start()].strip()
+        # Remove trailing dash or parentheses markers
+        cleaned_title = re.sub(r'[\s\-\(\[]+$', '', cleaned_title).strip()
+        return cleaned_title, edition
+    
+    return title, None
+
+
 class MetadataMixin(ABC):
     async def scrape_release_from_id(self, rls_id):
         """Run a scrape from the release ID."""
@@ -48,6 +82,13 @@ class MetadataMixin(ABC):
             "source": None,
             "url": url,
         }
+
+        # Extract edition from title if not already set by specific scraper
+        if not data["edition_title"] and data["title"]:
+            cleaned_title, extracted_edition = extract_edition_from_title(data["title"])
+            if extracted_edition:
+                data["title"] = cleaned_title
+                data["edition_title"] = extracted_edition
 
         if rls_id:
             data["url"] = self.format_url(rls_id=rls_id, rls_name=data["title"])

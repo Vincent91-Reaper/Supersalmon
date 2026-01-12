@@ -73,27 +73,33 @@ def construct_rls_data(
 def parse_title(title):
     """
     Returns a tuple: (cleaned title, edition/version string)
-    - Removes known 'junk' parentheticals like 'Remastered', 'Expanded Edition'
-    - Detects version/edition from the title only
+    - Extracts edition information from title
+    - Removes edition keywords from the title
     """
+    if not title:
+        return None, None
+    
     edition = None
     base = title.strip()
 
-    if cfg.upload.formatting.strip_useless_versions:
-        # Define patterns to strip and capture
-        junk_pattern = re.compile(
-            r"\s*\(*\b("
-            r"Original( Mix)?|Remastered|Clean|"
-            r"(Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|Bonus|Special)\s+Edition|"
-            r"Album.+(edition|mix)|feat[^\)]+"
-            r")\b\)*\s*$",
-            flags=re.IGNORECASE,
-        )
+    # Pattern to match edition keywords
+    edition_pattern = re.compile(
+        r"[\(\[]?\s*("
+        r"(?:Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|"
+        r"Bonus|Special|Super Deluxe|Digital|Japanese|International|Explicit|Clean"
+        r")(?:\s+\w+)?\s+Edition"
+        r"|Edition\s+\d+"
+        r")\s*[\)\]]?$",
+        flags=re.IGNORECASE,
+    )
 
-        match = junk_pattern.search(base)
-        if match:
-            edition = match.group(1).strip()
-            base = base[: match.start()].strip()
+    match = edition_pattern.search(base)
+    if match:
+        edition = match.group(1).strip()
+        # Remove the matched portion from the title
+        base = base[: match.start()].strip()
+        # Remove trailing dash or parentheses markers
+        base = re.sub(r'[\s\-\(\[]+$', '', base).strip()
 
     return base, edition
 
