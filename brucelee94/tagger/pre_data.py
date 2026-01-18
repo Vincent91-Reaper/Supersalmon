@@ -75,6 +75,7 @@ def parse_title(title):
     Returns a tuple: (cleaned title, edition/version string)
     - Extracts edition information from title
     - Removes edition keywords from the title
+    - Detects remaster patterns like "2024 Remaster", "Remastered", etc.
     """
     if not title:
         return None, None
@@ -82,10 +83,11 @@ def parse_title(title):
     edition = None
     base = title.strip()
 
-    # Pattern to match edition keywords
+    # Pattern to match edition keywords and remaster patterns
     edition_pattern = re.compile(
         r"[\(\[]?\s*("
-        r"(?:Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|"
+        r"(?:\d{4}\s+)?Remaster(?:ed)?"  # Matches "2024 Remaster", "Remastered", etc.
+        r"|(?:Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|"
         r"Bonus|Special|Super Deluxe|Digital|Japanese|International|Explicit|Clean"
         r")(?:\s+\w+)?\s+Edition"
         r"|Edition\s+\d+"

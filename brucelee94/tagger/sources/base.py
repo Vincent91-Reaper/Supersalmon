@@ -14,16 +14,17 @@ def extract_edition_from_title(title):
     Extract edition information from album title.
     Returns tuple: (cleaned_title, edition_string or None)
     
-    Detects patterns like "Album Name (Deluxe Edition)", "Album - Special Edition", etc.
-    and extracts the edition part.
+    Detects patterns like "Album Name (Deluxe Edition)", "Album - Special Edition", 
+    "Album (2024 Remaster)", "Album (Remastered)", etc. and extracts the edition part.
     """
     if not title:
         return title, None
     
-    # Pattern to match edition keywords in parentheses or after dash at end of title
+    # Pattern to match edition keywords and remaster patterns in parentheses or brackets at end of title
     edition_pattern = re.compile(
         r"[\(\[]?\s*("
-        r"(?:Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|"
+        r"(?:\d{4}\s+)?Remaster(?:ed)?"  # Matches "2024 Remaster", "Remastered", etc.
+        r"|(?:Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|"
         r"Bonus|Special|Super Deluxe|Digital|Japanese|International|Explicit|Clean"
         r")(?:\s+\w+)?\s+Edition"
         r"|Edition\s+\d+"
@@ -259,15 +260,19 @@ class MetadataMixin(ABC):
         Return a filtered title; all those parenthetical phrases belong
         in album info. We also filter out featured artists, since those are
         parsed with the artists.
-        Also extracts edition information from title (e.g., "Deluxe Edition", "Special Edition").
+        Also extracts edition information from title (e.g., "Deluxe Edition", "Special Edition", "2024 Remaster").
         """
         edition_extracted = None
         
         if cfg.upload.formatting.strip_useless_versions:
-            # First, check for edition information in parentheses at the end
+            # First, check for edition information and remaster patterns in parentheses at the end
             # Example: "Album Name (Deluxe Edition)" -> title: "Album Name", edition: "Deluxe Edition"
+            # Example: "Album Name (2024 Remaster)" -> title: "Album Name", edition: "2024 Remaster"
             edition_pattern = re.compile(
-                r"\s*\(([^)]*(?:Deluxe|Special|Limited|Collector'?s|Anniversary|Ultimate|Expanded|Reissue|Bonus)\s+Edition[^)]*)\)\s*$",
+                r"\s*\(([^)]*(?:"
+                r"(?:\d{4}\s+)?Remaster(?:ed)?"  # Matches "2024 Remaster", "Remastered"
+                r"|(?:Deluxe|Special|Limited|Collector'?s|Anniversary|Ultimate|Expanded|Reissue|Bonus)\s+Edition"
+                r")[^)]*)\)\s*$",
                 flags=re.IGNORECASE
             )
             edition_match = edition_pattern.search(title)
@@ -275,6 +280,8 @@ class MetadataMixin(ABC):
                 edition_extracted = edition_match.group(1).strip()
                 title = title[:edition_match.start()].strip()
             
+            # Note: We keep "Remastered" in the strip pattern below for when it's not part of edition
+            # (e.g., standalone "Remastered" without year or in different context)
             base = re.sub(
                 r" \(*(Original( Mix)?|Remastered|Clean|"
                 r"Album.+edition|Album.+mix|feat[^\)]+)\)*$",
