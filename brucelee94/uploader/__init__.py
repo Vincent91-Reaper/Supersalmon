@@ -527,12 +527,22 @@ def upload(
     torrent_content.comment = url
     torrent_content.write(torrent_path, overwrite=True)
 
-    print_torrents(gazelle_site, group_id, highlight_torrent_id=torrent_id)
+    # Fetch group info to determine if this is truly a new group
+    # by checking the number of torrents in the group
+    loop = asyncio.get_event_loop()
+    group_data = loop.run_until_complete(gazelle_site.torrentgroup(group_id))
+    torrent_count = len(group_data.get("torrents", []))
+    is_new_group = (torrent_count == 1)  # New group if only 1 torrent (the one we just uploaded)
+    
+    click.secho(f"DEBUG: Group has {torrent_count} torrent(s). is_new_group={is_new_group}", fg="yellow")
+    click.secho(f"DEBUG: API reported newgroup={newgroup}, but actual torrent count is {torrent_count}", fg="yellow")
+    
+    print_torrents(gazelle_site, group_id, rset=group_data, highlight_torrent_id=torrent_id)
 
     # NOW upload cover to ptpimg and update the group (after torrent is already uploaded)
-    # ONLY if this is a new group (newgroup == True)
-    click.secho(f"DEBUG: Checking if should update cover/description: cover_to_upload_later={bool(cover_to_upload_later)}, is_16bit_transcode={is_16bit_transcode}, newgroup={newgroup} (type={type(newgroup)})", fg="yellow")
-    if cover_to_upload_later and not is_16bit_transcode and newgroup:
+    # ONLY if this is a new group (is_new_group == True)
+    click.secho(f"DEBUG: Checking if should update cover/description: cover_to_upload_later={bool(cover_to_upload_later)}, is_16bit_transcode={is_16bit_transcode}, is_new_group={is_new_group}", fg="yellow")
+    if cover_to_upload_later and not is_16bit_transcode and is_new_group:
         click.secho("Uploading cover image to ptpimg...", fg="cyan")
         cover_url = upload_cover(cover_to_upload_later)
         click.secho("Updating torrent group with cover image and description...", fg="cyan")
