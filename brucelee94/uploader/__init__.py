@@ -537,7 +537,8 @@ def upload(
     click.secho(f"DEBUG: Group has {torrent_count} torrent(s). is_new_group={is_new_group}", fg="yellow")
     click.secho(f"DEBUG: API reported newgroup={newgroup}, but actual torrent count is {torrent_count}", fg="yellow")
     
-    print_torrents(gazelle_site, group_id, rset=group_data, highlight_torrent_id=torrent_id)
+    # Let print_torrents fetch and preprocess the data itself by passing rset=None
+    print_torrents(gazelle_site, group_id, rset=None, highlight_torrent_id=torrent_id)
 
     # NOW upload cover to ptpimg and update the group (after torrent is already uploaded)
     # ONLY if this is a new group (is_new_group == True)
