@@ -333,14 +333,27 @@ class BaseGazelleApi:
                             fg="green",
                         )
                 torrent_id = 0
+                newgroup = False  # Default to False (assume existing group for safety)
                 if "torrentid" in resp["response"]:
                     torrent_id = resp["response"]["torrentid"]
                     group_id = resp["response"]["groupid"]
-                    newgroup = resp["response"].get("newgroup", False)
+                    # Check if newgroup field exists in response
+                    if "newgroup" in resp["response"]:
+                        newgroup = bool(resp["response"]["newgroup"])
+                        click.secho(f"DEBUG: API returned newgroup={resp['response']['newgroup']} (type={type(resp['response']['newgroup'])}, bool={newgroup})", fg="yellow")
+                    else:
+                        click.secho(f"DEBUG: API did not return 'newgroup' field in response, defaulting to False", fg="yellow")
+                        click.secho(f"DEBUG: Response keys: {list(resp['response'].keys())}", fg="yellow")
                 elif "torrentId" in resp["response"]:
                     torrent_id = resp["response"]["torrentId"]
                     group_id = resp["response"]["groupId"]
-                    newgroup = resp["response"].get("newgroup", False)
+                    # Check if newgroup field exists in response
+                    if "newgroup" in resp["response"]:
+                        newgroup = bool(resp["response"]["newgroup"])
+                        click.secho(f"DEBUG: API returned newgroup={resp['response']['newgroup']} (type={type(resp['response']['newgroup'])}, bool={newgroup})", fg="yellow")
+                    else:
+                        click.secho(f"DEBUG: API did not return 'newgroup' field in response, defaulting to False", fg="yellow")
+                        click.secho(f"DEBUG: Response keys: {list(resp['response'].keys())}", fg="yellow")
                 return torrent_id, group_id, newgroup
         except TypeError as err:
             raise RequestError(f"API upload failed, response text: {resp.text}") from err

@@ -531,6 +531,7 @@ def upload(
 
     # NOW upload cover to ptpimg and update the group (after torrent is already uploaded)
     # ONLY if this is a new group (newgroup == True)
+    click.secho(f"DEBUG: Checking if should update cover/description: cover_to_upload_later={bool(cover_to_upload_later)}, is_16bit_transcode={is_16bit_transcode}, newgroup={newgroup} (type={type(newgroup)})", fg="yellow")
     if cover_to_upload_later and not is_16bit_transcode and newgroup:
         click.secho("Uploading cover image to ptpimg...", fg="cyan")
         cover_url = upload_cover(cover_to_upload_later)
@@ -542,6 +543,8 @@ def upload(
         loop = asyncio.get_event_loop()
         loop.run_until_complete(gazelle_site.update_group_cover_image(group_id, cover_url, album_desc))
         click.secho("Cover image and description added successfully!", fg="green")
+    else:
+        click.secho(f"DEBUG: Skipping cover/description update for this torrent", fg="yellow")
         
         if is_cover_downloaded and remove_downloaded_cover_image:
             click.secho("Removing downloaded Cover Image File", fg="yellow")
