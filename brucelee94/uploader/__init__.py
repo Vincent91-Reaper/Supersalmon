@@ -534,15 +534,11 @@ def upload(
     torrent_count = len(group_data.get("torrents", []))
     is_new_group = (torrent_count == 1)  # New group if only 1 torrent (the one we just uploaded)
     
-    click.secho(f"DEBUG: Group has {torrent_count} torrent(s). is_new_group={is_new_group}", fg="yellow")
-    click.secho(f"DEBUG: API reported newgroup={newgroup}, but actual torrent count is {torrent_count}", fg="yellow")
-    
     # Let print_torrents fetch and preprocess the data itself by passing rset=None
     print_torrents(gazelle_site, group_id, rset=None, highlight_torrent_id=torrent_id)
 
     # NOW upload cover to ptpimg and update the group (after torrent is already uploaded)
     # ONLY if this is a new group (is_new_group == True)
-    click.secho(f"DEBUG: Checking if should update cover/description: cover_to_upload_later={bool(cover_to_upload_later)}, is_16bit_transcode={is_16bit_transcode}, is_new_group={is_new_group}", fg="yellow")
     if cover_to_upload_later and not is_16bit_transcode and is_new_group:
         click.secho("Uploading cover image to ptpimg...", fg="cyan")
         cover_url = upload_cover(cover_to_upload_later)
@@ -555,8 +551,6 @@ def upload(
         loop.run_until_complete(gazelle_site.update_group_cover_image(group_id, cover_url, album_desc))
         click.secho("Cover image and description added successfully!", fg="green")
     else:
-        click.secho(f"DEBUG: Skipping cover/description update for this torrent", fg="yellow")
-        
         if is_cover_downloaded and remove_downloaded_cover_image:
             click.secho("Removing downloaded Cover Image File", fg="yellow")
             os.remove(cover_to_upload_later)
