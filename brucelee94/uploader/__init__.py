@@ -370,7 +370,7 @@ def upload(
                 if recompress:
                     recompress_path(path)
                 # Always run folder structure check for Tidal (since files don't have genre tags)
-                check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=True)
+                check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=True, from_url=True)
                 
                 # Refresh tags and audio info
                 tags = gather_tags(path)
@@ -686,7 +686,9 @@ def edit_metadata(
     tags = check_tags(path)
     if not metadata["scene"] and recompress:
         recompress_path(path)
-    check_folder_structure(path, metadata["scene"], metadata.get("genres", []))
+    # Always run folder structure check when metadata was scraped from a URL
+    # (Qobuz, Tidal, Deezer, Apple Music, Beatport)
+    check_folder_structure(path, metadata["scene"], metadata.get("genres", []), from_url=bool(source_url))
 
     # Convert genres to tags
     metadata["tags"] = convert_genres(metadata["genres"])

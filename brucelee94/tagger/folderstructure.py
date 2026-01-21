@@ -8,21 +8,22 @@ from brucelee94.constants import ALLOWED_EXTENSIONS
 from brucelee94.errors import NoncompliantFolderStructure
 
 
-def check_folder_structure(path, scene, genres=None, is_tidal=False):
+def check_folder_structure(path, scene, genres=None, is_tidal=False, from_url=False):
     """
     Run through every filesystem check that causes uploads to violate the rules
     or be rejected on the upload form. Only verify that path lengths <180.
-    Only runs for Classical genre or Tidal URLs.
+    Always runs when metadata was scraped from a URL (Tidal, Qobuz, Deezer, Apple Music, Beatport).
+    For non-URL uploads, only runs for Classical genre.
     """
-    # Always run for Tidal URLs (since they don't have genre tags)
-    if is_tidal:
+    # Always run when metadata was scraped from any URL
+    if from_url or is_tidal:
         pass  # Continue to run the check
-    # Skip folder structure check unless it's classical music
+    # For non-URL uploads, only run for classical music
     elif not genres:
         # If no genres provided, skip the check entirely
         return
     elif not any('classical' in str(g).lower() for g in genres):
-        # Not classical and not Tidal, skip the check
+        # Not classical and not from URL, skip the check
         return
     
     while True:
