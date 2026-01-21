@@ -369,7 +369,8 @@ def upload(
                 tags = check_tags(path)
                 if recompress:
                     recompress_path(path)
-                check_folder_structure(path, metadata["scene"], metadata.get("genres", []))
+                # Always run folder structure check for Tidal (since files don't have genre tags)
+                check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=True)
                 
                 # Refresh tags and audio info
                 tags = gather_tags(path)
