@@ -219,6 +219,20 @@ class Scraper(QobuzBase, MetadataMixin):
             main_artists.append(primary_artist)
         
         # Then check the artists array for additional main artists and featured artists
+        # Define roles that indicate non-main artists (should be treated as guests)
+        non_main_roles = {
+            "feat", "featuring", "featured",  # Featured artists
+            "remixer", "remix", "remixes",     # Remixers
+            "arranger", "arrangement",         # Arrangers
+            "producer", "production",          # Producers
+            "mixer", "mixing",                 # Mixers
+            "engineer", "engineering",         # Engineers
+            "composer", "composition",         # Composers (for non-classical)
+            "lyricist", "lyrics",              # Lyricists
+            "conductor",                       # Conductors
+            "performer",                       # Performers (when not main)
+        }
+        
         artist_list = soup.get("artists", [])
         if isinstance(artist_list, list):
             for artist_data in artist_list:
@@ -228,8 +242,14 @@ class Scraper(QobuzBase, MetadataMixin):
                     
                 roles = artist_data.get("roles", [])
                 
-                # Check if this is a featured artist
-                if any("feat" in role.lower() for role in roles):
+                # Check if this artist has non-main roles
+                has_non_main_role = any(
+                    any(non_main in role.lower() for non_main in non_main_roles)
+                    for role in roles
+                )
+                
+                if has_non_main_role:
+                    # Treat as featured/guest artist
                     if artist_name not in featured_artists:
                         featured_artists.append(artist_name)
                 # Otherwise, it's a main artist (if not already in the list)
