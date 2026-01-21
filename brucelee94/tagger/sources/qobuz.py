@@ -208,19 +208,33 @@ class Scraper(QobuzBase, MetadataMixin):
         """
         tracks = defaultdict(dict)
 
-        # Get main artist from release
-        main_artist = safe_get(soup, ["artist", "name"])
-
-        # Get any featured artists at the release level
+        # Get main artist(s) from release
+        # Qobuz can have multiple main artists listed in the artists array
+        main_artists = []
         featured_artists = []
+        
+        # First, try to get main artist from the primary artist field
+        primary_artist = safe_get(soup, ["artist", "name"])
+        if primary_artist:
+            main_artists.append(primary_artist)
+        
+        # Then check the artists array for additional main artists and featured artists
         artist_list = soup.get("artists", [])
         if isinstance(artist_list, list):
             for artist_data in artist_list:
                 artist_name = artist_data.get("name")
+                if not artist_name:
+                    continue
+                    
                 roles = artist_data.get("roles", [])
-                # Check for any variation of featured artist role
-                if artist_name and artist_name != main_artist and any("feat" in role.lower() for role in roles):
-                    featured_artists.append(artist_name)
+                
+                # Check if this is a featured artist
+                if any("feat" in role.lower() for role in roles):
+                    if artist_name not in featured_artists:
+                        featured_artists.append(artist_name)
+                # Otherwise, it's a main artist (if not already in the list)
+                elif artist_name not in main_artists:
+                    main_artists.append(artist_name)
 
         track_items = safe_get(soup, ["tracks", "items"], [])
         if not isinstance(track_items, list):
@@ -231,7 +245,7 @@ class Scraper(QobuzBase, MetadataMixin):
             track_number = str(track.get("track_number", 1))
 
             # Collect artists with their roles
-            artists = self._collect_track_artists(track, main_artist, featured_artists)
+            artists = self._collect_track_artists(track, main_artists, featured_artists)
 
             # Parse track title with version
             title = track.get("title", "")
@@ -398,7 +412,7 @@ class Scraper(QobuzBase, MetadataMixin):
 
         Args:
             track (dict): Track data from Qobuz API
-            main_artist (str): Main artist name from the release
+            main_artist (str or list): Main artist name(s) from the release
             featured_artists (list): Featured artists identified at release level
 
         Returns:
@@ -408,13 +422,20 @@ class Scraper(QobuzBase, MetadataMixin):
         seen_artists = set()
         # Track artists we've already processed
 
-        # 1. Add release's main artist if available
-        artists.append((main_artist, "main"))
-        seen_artists.add(main_artist)
+        # 1. Add release's main artist(s) if available
+        # Support both single artist (str) and multiple artists (list)
+        if isinstance(main_artist, list):
+            for artist_name in main_artist:
+                if artist_name and artist_name not in seen_artists:
+                    artists.append((artist_name, "main"))
+                    seen_artists.add(artist_name)
+        elif main_artist:
+            artists.append((main_artist, "main"))
+            seen_artists.add(main_artist)
 
-        # 2. Add track's performer as guest artist if different from main artist
+        # 2. Add track's performer as guest artist if different from main artist(s)
         performer = safe_get(track, ["performer", "name"])
-        if performer and performer != main_artist:
+        if performer and performer not in seen_artists:
             artists.append((performer, "guest"))
             seen_artists.add(performer)
 
