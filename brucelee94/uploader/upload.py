@@ -242,13 +242,13 @@ def generate_torrent(gazelle_site, path):
 
 
 def generate_description(track_data, metadata):
-    """Generate the group description with tracklist including per-track artists for all albums."""
+    """Generate the group description with tracklist including per-track artists only for Various Artists albums."""
     # Generate header with artist and album title
     main_artists = [a for a, i in metadata["artists"] if i == "main"]
-    # Use "Various Artists" in bold red for albums with 3+ main artists
+    # Use "Various Artists" in bold for albums with 3+ main artists
     is_various_artists = len(main_artists) >= 3
     if is_various_artists:
-        artist_display = "[color=red][b]Various Artists[/b][/color]"
+        artist_display = "[b]Various Artists[/b]"
     else:
         # Format each artist with individual [artist] tags
         sorted_artists = sorted(main_artists)
@@ -312,18 +312,19 @@ def generate_description(track_data, metadata):
                 track_num_raw = track['t'].tracknumber
                 if '/' in track_num_raw:
                     track_num_raw = track_num_raw.split('/')[0]
-                # No zero-padding for track numbers
-                track_num = str_to_int_if_int(track_num_raw, zpad=False)
+                # Zero-pad track numbers
+                track_num = str_to_int_if_int(track_num_raw, zpad=True)
                 description += f"[b]{track_num}.[/b] "
                 
-                # Add per-track artist info for all albums
-                track_artist = track['t'].artist
-                if isinstance(track_artist, list):
-                    # Format each artist with [artist] tags, joined by ", "
-                    artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
-                    description += f"{', '.join(artist_tags)} - "
-                elif track_artist:
-                    description += f"[artist]{track_artist}[/artist] - "
+                # Add per-track artist info only for Various Artists albums
+                if is_various_artists:
+                    track_artist = track['t'].artist
+                    if isinstance(track_artist, list):
+                        # Format each artist with [artist] tags, joined by ", "
+                        artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
+                        description += f"{', '.join(artist_tags)} - "
+                    elif track_artist:
+                        description += f"[artist]{track_artist}[/artist] - "
                 
                 description += f"{track['t'].title} [i]({length})[/i]\n"
             
@@ -340,18 +341,19 @@ def generate_description(track_data, metadata):
             track_num_raw = track['t'].tracknumber
             if '/' in track_num_raw:
                 track_num_raw = track_num_raw.split('/')[0]
-            # No zero-padding for track numbers
-            track_num = str_to_int_if_int(track_num_raw, zpad=False)
+            # Zero-pad track numbers
+            track_num = str_to_int_if_int(track_num_raw, zpad=True)
             description += f"[b]{track_num}.[/b] "
             
-            # Add per-track artist info for all albums
-            track_artist = track['t'].artist
-            if isinstance(track_artist, list):
-                # Format each artist with [artist] tags, joined by ", "
-                artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
-                description += f"{', '.join(artist_tags)} - "
-            elif track_artist:
-                description += f"[artist]{track_artist}[/artist] - "
+            # Add per-track artist info only for Various Artists albums
+            if is_various_artists:
+                track_artist = track['t'].artist
+                if isinstance(track_artist, list):
+                    # Format each artist with [artist] tags, joined by ", "
+                    artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
+                    description += f"{', '.join(artist_tags)} - "
+                elif track_artist:
+                    description += f"[artist]{track_artist}[/artist] - "
             
             description += f"{track['t'].title} [i]({length})[/i]\n"
 
