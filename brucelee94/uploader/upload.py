@@ -242,11 +242,12 @@ def generate_torrent(gazelle_site, path):
 
 
 def generate_description(track_data, metadata):
-    """Generate the group description with the tracklist (no artist names per track)."""
+    """Generate the group description with tracklist including per-track artists for Various Artists albums."""
     # Generate header with artist and album title
     main_artists = [a for a, i in metadata["artists"] if i == "main"]
     # Use "Various Artists" in bold red for albums with 3+ main artists
-    if len(main_artists) >= 3:
+    is_various_artists = len(main_artists) >= 3
+    if is_various_artists:
         artist_display = "[color=red][b]Various Artists[/b][/color]"
     else:
         # Format each artist with individual [artist] tags
@@ -304,15 +305,27 @@ def generate_description(track_data, metadata):
                                key=lambda t: int(t["t"].tracknumber.split("/")[0]) if t["t"].tracknumber else 0)
             
             for track in disc_tracks:
-                length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
+                length = "{:02d}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
                 total_duration += track["duration"]
                 
                 # Use original track number from metadata - extract just the number part if it contains "/"
                 track_num_raw = track['t'].tracknumber
                 if '/' in track_num_raw:
                     track_num_raw = track_num_raw.split('/')[0]
-                track_num = str_to_int_if_int(track_num_raw, zpad=True)
+                # No zero-padding for track numbers
+                track_num = str_to_int_if_int(track_num_raw, zpad=False)
                 description += f"[b]{track_num}.[/b] "
+                
+                # Add per-track artist info for Various Artists albums
+                if is_various_artists:
+                    track_artist = track['t'].artist
+                    if isinstance(track_artist, list):
+                        # Format each artist with [artist] tags, joined by ", "
+                        artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
+                        description += f"{', '.join(artist_tags)} - "
+                    elif track_artist:
+                        description += f"[artist]{track_artist}[/artist] - "
+                
                 description += f"{track['t'].title} [i]({length})[/i]\n"
             
             # Add blank line after each disc (except the last one)
@@ -321,14 +334,27 @@ def generate_description(track_data, metadata):
     else:
         # Single disc album - use simple numbering
         for track in track_data.values():
-            length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
+            length = "{:02d}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
             total_duration += track["duration"]
             
             # Extract just the number part if it contains "/"
             track_num_raw = track['t'].tracknumber
             if '/' in track_num_raw:
                 track_num_raw = track_num_raw.split('/')[0]
-            description += f"[b]{str_to_int_if_int(track_num_raw, zpad=True)}.[/b] "
+            # No zero-padding for track numbers
+            track_num = str_to_int_if_int(track_num_raw, zpad=False)
+            description += f"[b]{track_num}.[/b] "
+            
+            # Add per-track artist info for Various Artists albums
+            if is_various_artists:
+                track_artist = track['t'].artist
+                if isinstance(track_artist, list):
+                    # Format each artist with [artist] tags, joined by ", "
+                    artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
+                    description += f"{', '.join(artist_tags)} - "
+                elif track_artist:
+                    description += f"[artist]{track_artist}[/artist] - "
+            
             description += f"{track['t'].title} [i]({length})[/i]\n"
 
     # Format total length
