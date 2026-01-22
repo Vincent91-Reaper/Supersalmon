@@ -245,21 +245,20 @@ def generate_description(track_data, metadata):
     """Generate the group description with tracklist including per-track artists only for Various Artists albums."""
     # Generate header with artist and album title
     main_artists = [a for a, i in metadata["artists"] if i == "main"]
-    # Use "Various Artists" in bold for albums with 3+ main artists
+    # Use "Various Artists" for albums with 3+ main artists
     is_various_artists = len(main_artists) >= 3
     if is_various_artists:
-        artist_display = "[b]Various Artists[/b]"
+        description = f"[b]Various Artists - {metadata['title']}[/b]\n"
     else:
-        # Format each artist with individual [artist] tags
+        # Format each artist with individual [artist] tags inside [b] tags
         sorted_artists = sorted(main_artists)
         if len(sorted_artists) == 1:
-            artist_display = f"[artist]{sorted_artists[0]}[/artist]"
+            description = f"[b][artist]{sorted_artists[0]}[/artist] - {metadata['title']}[/b]\n"
         else:
             # Use " & " separator outside [artist] tags for 2 artists
             artist_tags = [f"[artist]{artist}[/artist]" for artist in sorted_artists]
             artist_display = " & ".join(artist_tags)
-    
-    description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
+            description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
     
     # Add release date if available (already formatted as "Month Day, Year")
     if metadata.get("date"):
