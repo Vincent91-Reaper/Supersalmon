@@ -91,7 +91,8 @@ class Scraper(DeezerBase, MetadataMixin):
 
     def process_label(self, data):
         if isinstance(data["label"], str) and any(
-            data["label"].lower().startswith(a.lower()) and i == "main" for a, i in data["artists"]
+            data["label"].lower().startswith(artist_name.lower()) and role == "main" 
+            for artist_name, role in data["artists"]
         ):
             return "Self-Released"
         return data["label"]
