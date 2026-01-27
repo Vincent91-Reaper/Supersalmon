@@ -113,6 +113,9 @@ def compile_data_new_group(
     """
     Compile the data dictionary that needs to be submitted with a brand new
     torrent group upload POST.
+    
+    NOTE: Label and catalog number are NOT included in initial upload.
+    They will be added via takegroupedit after successful upload.
     """
     data = {
         "submit": True,
@@ -121,14 +124,14 @@ def compile_data_new_group(
         "artists[]": [a[0] for a in metadata["artists"]],
         "importance[]": [ARTIST_IMPORTANCES[a[1]] for a in metadata["artists"]],
         "year": metadata["group_year"],
-        "record_label": metadata["label"],
-        "catalogue_number": generate_catno(metadata),
+        "record_label": "",  # Will be added post-upload
+        "catalogue_number": "",  # Will be added post-upload
         "releasetype": gazelle_site.release_types[metadata["rls_type"]],
         "remaster": True,
         "remaster_year": metadata["year"],
         "remaster_title": metadata["edition_title"],
-        "remaster_record_label": metadata["label"],
-        "remaster_catalogue_number": generate_catno(metadata),
+        "remaster_record_label": "",  # Will be added post-upload
+        "remaster_catalogue_number": "",  # Will be added post-upload
         "format": metadata["format"],
         "bitrate": metadata["encoding"],
         "other_bitrate": None,
@@ -163,7 +166,11 @@ def compile_data_existing_group(
     override_description=None,
 ):
     """Compile the data that needs to be submitted
-    with an upload to an existing group."""
+    with an upload to an existing group.
+    
+    NOTE: Label and catalog number are NOT included in initial upload for existing groups.
+    They will be added via takegroupedit after successful upload.
+    """
     return {
         "submit": True,
         "type": 0,
@@ -171,8 +178,8 @@ def compile_data_existing_group(
         "remaster": True,
         "remaster_year": metadata["year"],
         "remaster_title": metadata["edition_title"],
-        "remaster_record_label": metadata["label"],
-        "remaster_catalogue_number": generate_catno(metadata),
+        "remaster_record_label": "",  # Will be added post-upload
+        "remaster_catalogue_number": "",  # Will be added post-upload
         "format": metadata["format"],
         "bitrate": metadata["encoding"],
         **({"scene": metadata["scene"]} if metadata.get("scene") else {}),

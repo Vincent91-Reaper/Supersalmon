@@ -498,6 +498,53 @@ class BaseGazelleApi:
             error_message = edit_error.parent.parent.find("p").text
             raise RequestError(f"Failed to update cover image: {error_message}")
 
+    async def update_group_metadata(self, group_id, label=None, catalog_number=None, 
+                                    cover_url=None, album_desc=None):
+        """Update metadata for a torrent group after upload
+        
+        This method updates label, catalog number, cover, and/or description
+        for a group that was just uploaded. It fetches current group details
+        and updates only the specified fields while preserving others.
+        
+        Args:
+            group_id: The ID of the torrent group to update
+            label: Record label to set (both group and remaster). If None, preserves existing.
+            catalog_number: Catalog number to set (both group and remaster). If None, preserves existing.
+            cover_url: The ptpimg URL for the cover image. If None, preserves existing.
+            album_desc: Album description. If None, preserves existing description.
+        """
+        current_details = await self.request("torrentgroup", id=group_id)
+        
+        # Determine values to use (provided values or current values)
+        record_label = label if label is not None else (current_details["group"]["recordLabel"] or "")
+        catalogue_number = catalog_number if catalog_number is not None else (current_details["group"]["catalogueNumber"] or "")
+        image = cover_url if cover_url is not None else (current_details["group"]["wikiImage"] or "")
+        description = album_desc if album_desc is not None else current_details["group"]["wikiBody"]
+        
+        new_data = {
+            "action": "takegroupedit",
+            "groupid": group_id,
+            "year": current_details["group"]["year"],
+            "record_label": record_label,
+            "catalogue_number": catalogue_number,
+            "releasetype": current_details["group"]["releaseType"],
+            "image": image,
+            "tags": ",".join(current_details["group"]["tags"]),
+            "body": description,
+        }
+
+        url = self.base_url + "/torrents.php"
+        new_data["auth"] = self.authkey
+        resp = await loop.run_in_executor(
+            None,
+            lambda: self.session.post(url, data=new_data, headers=self.headers),
+        )
+        soup = BeautifulSoup(resp.text, "html.parser")
+        edit_error = soup.find("h2", text="Error")
+        if edit_error:
+            error_message = edit_error.parent.parent.find("p").text
+            raise RequestError(f"Failed to update group metadata: {error_message}")
+
     """The following three parsing functions are part of the gazelle class
     in order that they be easily overwritten in the derivative site classes.
     It is not because they depend on anything from the class"""

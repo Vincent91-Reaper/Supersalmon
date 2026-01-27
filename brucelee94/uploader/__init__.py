@@ -68,6 +68,7 @@ from brucelee94.uploader.seedbox import UploadManager
 # )
 from brucelee94.uploader.upload import (
     concat_track_data,
+    generate_catno,
     generate_description,
     prepare_and_upload,
 )
@@ -538,23 +539,38 @@ def upload(
     # Let print_torrents fetch and preprocess the data itself by passing rset=None
     print_torrents(gazelle_site, group_id, rset=None, highlight_torrent_id=torrent_id)
 
-    # NOW upload cover to ptpimg and update the group (after torrent is already uploaded)
-    # ONLY if this is a new group (is_new_group == True)
+    # NOW update group with metadata (label, catalog, cover, description) after torrent is uploaded
+    # Determine what metadata to update
+    label_to_add = metadata.get("label", "")
+    catalog_to_add = generate_catno(metadata)
+    album_desc_to_add = None
+    cover_url_to_add = None
+    
+    # Handle cover upload if needed
     if cover_to_upload_later and not is_16bit_transcode and is_new_group:
         click.secho("Uploading cover image to ptpimg...", fg="cyan")
-        cover_url = upload_cover(cover_to_upload_later)
-        click.secho("Updating torrent group with cover image and description...", fg="cyan")
-        
-        # Generate album description to include with cover update
-        album_desc = generate_description(track_data, metadata)
-        
+        cover_url_to_add = upload_cover(cover_to_upload_later)
+        # Generate album description to include with cover update (new groups only)
+        album_desc_to_add = generate_description(track_data, metadata)
+    elif is_cover_downloaded and remove_downloaded_cover_image:
+        click.secho("Removing downloaded Cover Image File", fg="yellow")
+        os.remove(cover_to_upload_later)
+    
+    # Update group with label, catalog, and optionally cover/description
+    # Do this for all uploads (both new groups and existing groups)
+    if label_to_add or catalog_to_add or cover_url_to_add or album_desc_to_add:
+        click.secho("Adding label and catalog information to torrent group...", fg="cyan")
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(gazelle_site.update_group_cover_image(group_id, cover_url, album_desc))
-        click.secho("Cover image and description added successfully!", fg="green")
-    else:
-        if is_cover_downloaded and remove_downloaded_cover_image:
-            click.secho("Removing downloaded Cover Image File", fg="yellow")
-            os.remove(cover_to_upload_later)
+        loop.run_until_complete(
+            gazelle_site.update_group_metadata(
+                group_id,
+                label=label_to_add if label_to_add else None,
+                catalog_number=catalog_to_add if catalog_to_add else None,
+                cover_url=cover_url_to_add,
+                album_desc=album_desc_to_add
+            )
+        )
+        click.secho("Metadata added successfully!", fg="green")
 
     # Check if 24-bit and prompt for downconversion to 16-bit
     if rls_data["encoding"] == "24bit Lossless":
