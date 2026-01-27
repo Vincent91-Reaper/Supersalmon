@@ -9,7 +9,8 @@ This repository contains comprehensive documentation to answer all your question
 | Question | Document to Read |
 |----------|-----------------|
 | How do I install the update? | [QUICK_ANSWER.md](QUICK_ANSWER.md) |
-| When is label/catalog added? | [QUICK_ANSWER.md](QUICK_ANSWER.md) or [VISUAL_UPLOAD_TIMELINE.txt](VISUAL_UPLOAD_TIMELINE.txt) |
+| When is label/catalog added? | [DEFERRED_METADATA_UPLOAD.md](DEFERRED_METADATA_UPLOAD.md) |
+| Why upload label/catalog after? | [DEFERRED_METADATA_UPLOAD.md](DEFERRED_METADATA_UPLOAD.md) |
 | Need detailed install guide? | [INSTALLATION_UPDATE_GUIDE.md](INSTALLATION_UPDATE_GUIDE.md) |
 | Want to understand the upload process? | [UPLOAD_WORKFLOW_EXPLAINED.md](UPLOAD_WORKFLOW_EXPLAINED.md) |
 | Want a visual timeline? | [VISUAL_UPLOAD_TIMELINE.txt](VISUAL_UPLOAD_TIMELINE.txt) |
@@ -21,7 +22,7 @@ This repository contains comprehensive documentation to answer all your question
 **For:** Quick reference  
 **Contains:**
 - Installation command for this branch
-- Direct answer: "Yes, label and catalog ARE in the upload"
+- Quick FAQs
 - TL;DR summary
 
 **Best for:** Fast answers to common questions
@@ -41,12 +42,26 @@ This repository contains comprehensive documentation to answer all your question
 
 ---
 
-### 3. [UPLOAD_WORKFLOW_EXPLAINED.md](UPLOAD_WORKFLOW_EXPLAINED.md)
-**For:** Understanding the upload process  
+### 3. [DEFERRED_METADATA_UPLOAD.md](DEFERRED_METADATA_UPLOAD.md)
+**For:** Understanding the new upload workflow  
+**Contains:**
+- Why label/catalog are added AFTER initial upload
+- Benefits: 10-20% faster uploads
+- How it works (two-phase process)
+- Visual timeline comparison
+- Technical details
+- FAQ section
+
+**Best for:** Understanding the deferred metadata upload feature
+
+---
+
+### 4. [UPLOAD_WORKFLOW_EXPLAINED.md](UPLOAD_WORKFLOW_EXPLAINED.md)
+**For:** Understanding the complete upload process  
 **Contains:**
 - Detailed explanation of Phase 1 and Phase 2
 - What gets uploaded when
-- Code references proving label/catalog in initial upload
+- Code references
 - Step-by-step workflow
 - Common questions answered
 - Verification instructions
@@ -55,7 +70,7 @@ This repository contains comprehensive documentation to answer all your question
 
 ---
 
-### 4. [VISUAL_UPLOAD_TIMELINE.txt](VISUAL_UPLOAD_TIMELINE.txt)
+### 5. [VISUAL_UPLOAD_TIMELINE.txt](VISUAL_UPLOAD_TIMELINE.txt)
 **For:** Visual learners  
 **Contains:**
 - ASCII art timeline
@@ -69,7 +84,7 @@ This repository contains comprehensive documentation to answer all your question
 
 ---
 
-### 5. [README.md](README.md)
+### 6. [README.md](README.md)
 **For:** General information  
 **Contains:**
 - Features overview

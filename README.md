@@ -8,9 +8,10 @@ A simplified music uploading tool for RED (Redacted). Completely separate from s
 
 ### Quick Links
 
-- **[QUICK_ANSWER.md](QUICK_ANSWER.md)** - Installation command & verification that label/catalog are in initial upload
+- **[QUICK_ANSWER.md](QUICK_ANSWER.md)** - Installation command & FAQs
 - **[INSTALLATION_UPDATE_GUIDE.md](INSTALLATION_UPDATE_GUIDE.md)** - Complete installation and update instructions
 - **[UPLOAD_WORKFLOW_EXPLAINED.md](UPLOAD_WORKFLOW_EXPLAINED.md)** - Detailed upload process with code references
+- **[DEFERRED_METADATA_UPLOAD.md](DEFERRED_METADATA_UPLOAD.md)** - How label/catalog are added AFTER upload for speed
 - **[VISUAL_UPLOAD_TIMELINE.txt](VISUAL_UPLOAD_TIMELINE.txt)** - ASCII art timeline showing upload phases
 - **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Navigation hub for all documentation
 
