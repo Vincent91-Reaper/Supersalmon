@@ -539,14 +539,12 @@ def upload(
     # Let print_torrents fetch and preprocess the data itself by passing rset=None
     print_torrents(gazelle_site, group_id, rset=None, highlight_torrent_id=torrent_id)
 
-    # NOW update group with metadata (label, catalog, cover, description) after torrent is uploaded
-    # Determine what metadata to update
-    label_to_add = metadata.get("label", "")
-    catalog_to_add = generate_catno(metadata)
+    # Update group with cover and description after torrent is uploaded (new groups only)
+    # NOTE: Label and catalog are now included in initial upload (torrent-specific remaster fields)
     album_desc_to_add = None
     cover_url_to_add = None
     
-    # Handle cover upload if needed
+    # Handle cover upload if needed (new groups only)
     if cover_to_upload_later and not is_16bit_transcode and is_new_group:
         click.secho("Uploading cover image to ptpimg...", fg="cyan")
         cover_url_to_add = upload_cover(cover_to_upload_later)
@@ -556,22 +554,20 @@ def upload(
         click.secho("Removing downloaded Cover Image File", fg="yellow")
         os.remove(cover_to_upload_later)
     
-    # Update group with label, catalog, and optionally cover/description
-    # Do this for all uploads (both new groups and existing groups)
-    # Always update if we have any metadata to add (even if label/catalog are empty strings from metadata)
-    if cover_url_to_add or album_desc_to_add or True:  # Always update to fill label/catalog
-        click.secho("Adding metadata to torrent group...", fg="cyan")
+    # Update group with cover and description (new groups only)
+    if cover_url_to_add or album_desc_to_add:
+        click.secho("Adding cover and description to torrent group...", fg="cyan")
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
             gazelle_site.update_group_metadata(
                 group_id,
-                label=label_to_add,  # Pass actual value, even if empty string
-                catalog_number=catalog_to_add,  # Pass actual value, even if empty string
+                label=None,  # Don't update label (already in torrent)
+                catalog_number=None,  # Don't update catalog (already in torrent)
                 cover_url=cover_url_to_add,
                 album_desc=album_desc_to_add
             )
         )
-        click.secho("Metadata added successfully!", fg="green")
+        click.secho("Cover and description added successfully!", fg="green")
 
     # Check if 24-bit and prompt for downconversion to 16-bit
     if rls_data["encoding"] == "24bit Lossless":
