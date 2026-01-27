@@ -247,3 +247,22 @@ A: The torrent is still successfully uploaded. You can manually edit the group o
 
 **Q: Can I disable this feature?**  
 A: Not currently. The feature is designed to be seamless and always beneficial. If you encounter issues, please report them!
+
+---
+
+## Bug Fix History
+
+### Commit 3aa542e (2026-01-27) - Label/Catalog Not Being Filled
+**Issue:** Record label and Catalogue number fields remained empty after upload despite scraped metadata containing values.
+
+**Root Cause:**
+1. Conditional check `if label_to_add or catalog_to_add or ...` would fail if both were empty strings
+2. Empty strings were converted to `None` with `label_to_add if label_to_add else None`
+3. This caused `update_group_metadata()` to preserve existing (empty) values instead of using scraped data
+
+**Fix:**
+1. Changed condition to always run metadata update: `if cover_url_to_add or album_desc_to_add or True:`
+2. Pass actual values directly: `label=label_to_add` and `catalog_number=catalog_to_add`
+3. No conversion to None - actual scraped metadata values are now properly sent to RED
+
+**Result:** ✅ Label and catalog from scraped metadata now correctly appear on RED after upload!
