@@ -130,8 +130,8 @@ def compile_data_new_group(
         "remaster": True,
         "remaster_year": metadata["year"],
         "remaster_title": metadata["edition_title"],
-        "remaster_record_label": "",  # Defer to post-upload update
-        "remaster_catalogue_number": "",  # Defer to post-upload update
+        "remaster_record_label": metadata.get("label", ""),  # Torrent-specific label
+        "remaster_catalogue_number": generate_catno(metadata),  # Torrent-specific catalog
         "format": metadata["format"],
         "bitrate": metadata["encoding"],
         "other_bitrate": None,
@@ -178,8 +178,8 @@ def compile_data_existing_group(
         "remaster": True,
         "remaster_year": metadata["year"],
         "remaster_title": metadata["edition_title"],
-        "remaster_record_label": "",  # Defer to post-upload update
-        "remaster_catalogue_number": "",  # Defer to post-upload update
+        "remaster_record_label": metadata.get("label", ""),  # Torrent-specific label
+        "remaster_catalogue_number": generate_catno(metadata),  # Torrent-specific catalog
         "format": metadata["format"],
         "bitrate": metadata["encoding"],
         **({"scene": metadata["scene"]} if metadata.get("scene") else {}),
