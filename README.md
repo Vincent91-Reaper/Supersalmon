@@ -2,11 +2,17 @@
 
 A simplified music uploading tool for RED (Redacted). Completely separate from smoked-salmon with its own configuration and data directories.
 
-## 📚 Quick Links
+## 📚 Documentation Hub
 
-- **[QUICK_ANSWER.md](QUICK_ANSWER.md)** - Quick answers for installation and upload verification
+**New to BruceLee94?** → Start with **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** for easy navigation to all guides.
+
+### Quick Links
+
+- **[QUICK_ANSWER.md](QUICK_ANSWER.md)** - Installation command & verification that label/catalog are in initial upload
 - **[INSTALLATION_UPDATE_GUIDE.md](INSTALLATION_UPDATE_GUIDE.md)** - Complete installation and update instructions
-- **[UPLOAD_WORKFLOW_EXPLAINED.md](UPLOAD_WORKFLOW_EXPLAINED.md)** - Detailed upload process explanation
+- **[UPLOAD_WORKFLOW_EXPLAINED.md](UPLOAD_WORKFLOW_EXPLAINED.md)** - Detailed upload process with code references
+- **[VISUAL_UPLOAD_TIMELINE.txt](VISUAL_UPLOAD_TIMELINE.txt)** - ASCII art timeline showing upload phases
+- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Navigation hub for all documentation
 
 ## 🌟 Features  
 
