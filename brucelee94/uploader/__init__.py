@@ -539,8 +539,23 @@ def upload(
     # Let print_torrents fetch and preprocess the data itself by passing rset=None
     print_torrents(gazelle_site, group_id, rset=None, highlight_torrent_id=torrent_id)
 
+    # Update the specific torrent with label and catalog (post-upload)
+    label_to_add = metadata.get("label", "")
+    catalog_to_add = generate_catno(metadata)
+    
+    if label_to_add or catalog_to_add:
+        click.secho("Adding label and catalog to torrent...", fg="cyan")
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            gazelle_site.update_torrent_metadata(
+                torrent_id,
+                label=label_to_add,
+                catalog_number=catalog_to_add
+            )
+        )
+        click.secho("Label and catalog added successfully!", fg="green")
+
     # Update group with cover and description after torrent is uploaded (new groups only)
-    # NOTE: Label and catalog are now included in initial upload (torrent-specific remaster fields)
     album_desc_to_add = None
     cover_url_to_add = None
     
@@ -559,10 +574,8 @@ def upload(
         click.secho("Adding cover and description to torrent group...", fg="cyan")
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
-            gazelle_site.update_group_metadata(
+            gazelle_site.update_group_cover_image(
                 group_id,
-                label=None,  # Don't update label (already in torrent)
-                catalog_number=None,  # Don't update catalog (already in torrent)
                 cover_url=cover_url_to_add,
                 album_desc=album_desc_to_add
             )

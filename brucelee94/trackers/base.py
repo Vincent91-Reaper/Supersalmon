@@ -456,6 +456,49 @@ class BaseGazelleApi:
                 fg="green",
             )
 
+    async def update_torrent_metadata(self, torrent_id, label=None, catalog_number=None):
+        """Update label and catalog number for a specific torrent
+        
+        Args:
+            torrent_id: The ID of the torrent to update
+            label: The record label to set (remaster_record_label)
+            catalog_number: The catalogue number to set (remaster_catalogue_number)
+        """
+        # Fetch current torrent details
+        current_details = await self.request("torrent", id=torrent_id)
+        
+        # Use provided values if given, otherwise preserve existing
+        new_label = label if label is not None else (current_details["torrent"]["remasterRecordLabel"] or "")
+        new_catalog = catalog_number if catalog_number is not None else (current_details["torrent"]["remasterCatalogueNumber"] or "")
+        
+        new_data = {
+            "action": "takeedit",
+            "torrentid": torrent_id,
+            "type": 1,
+            "groupremasters": 0,
+            "remaster_year": current_details["torrent"]["remasterYear"],
+            "remaster_title": current_details["torrent"]["remasterTitle"],
+            "remaster_record_label": new_label,
+            "remaster_catalogue_number": new_catalog,
+            "format": current_details["torrent"]["format"],
+            "bitrate": current_details["torrent"]["encoding"],
+            "other_bitrate": "",
+            "media": current_details["torrent"]["media"],
+            "release_desc": current_details["torrent"]["description"],
+        }
+
+        url = self.base_url + "/torrents.php"
+        new_data["auth"] = self.authkey
+        resp = await loop.run_in_executor(
+            None,
+            lambda: self.session.post(url, data=new_data, headers=self.headers),
+        )
+        soup = BeautifulSoup(resp.text, "html.parser")
+        edit_error = soup.find("h2", text="Error")
+        if edit_error:
+            error_message = edit_error.parent.parent.find("p").text
+            raise RequestError(f"Failed to update torrent metadata: {error_message}")
+
     async def update_group_cover_image(self, group_id, cover_url, album_desc=None):
         """Update the cover image for a torrent group
         This edits the group (not individual torrent) to add/update the cover image
