@@ -8,23 +8,52 @@ from brucelee94.constants import ALLOWED_EXTENSIONS
 from brucelee94.errors import NoncompliantFolderStructure
 
 
+def has_long_file_paths(path, max_length=180):
+    """
+    Check if any file paths in the directory exceed the specified length.
+    Returns True if any file path is longer than max_length characters.
+    """
+    root_len = len(cfg.directory.download_directory) + 1
+    for root, _, files in os.walk(path):
+        # Check if subfolder path exceeds limit
+        if len(os.path.abspath(root)) - root_len > max_length:
+            return True
+        # Check each file path
+        for f in files:
+            filepath = os.path.abspath(os.path.join(root, f))
+            filepathlen = len(filepath) - root_len
+            if filepathlen > max_length:
+                return True
+    return False
+
+
 def check_folder_structure(path, scene, genres=None, is_tidal=False, from_url=False):
     """
     Run through every filesystem check that causes uploads to violate the rules
     or be rejected on the upload form. Only verify that path lengths <180.
-    Always runs when metadata was scraped from a URL (Tidal, Qobuz, Deezer, Apple Music, Beatport).
-    For non-URL uploads, only runs for Classical genre.
+    
+    Smart detection logic:
+    - For Tidal URLs: Always check (no genre info available in files)
+    - For other URL sources (Qobuz, Deezer, Apple Music, Beatport): 
+      Check only if files have long paths (>180 chars)
+    - For non-URL uploads: Check if classical genre OR if files have long paths
     """
-    # Always run when metadata was scraped from any URL
-    if from_url or is_tidal:
+    # For Tidal, always run the check (no genre info available)
+    if is_tidal:
         pass  # Continue to run the check
-    # For non-URL uploads, only run for classical music
-    elif not genres:
-        # If no genres provided, skip the check entirely
-        return
-    elif not any('classical' in str(g).lower() for g in genres):
-        # Not classical and not from URL, skip the check
-        return
+    # For other URL sources, check only if files actually have long paths
+    elif from_url:
+        if not has_long_file_paths(path):
+            # No long paths detected, skip the check
+            return
+    # For non-URL uploads, check if classical OR if files have long paths
+    else:
+        is_classical = genres and any('classical' in str(g).lower() for g in genres)
+        has_long_paths = has_long_file_paths(path)
+        
+        if not is_classical and not has_long_paths:
+            # Not classical and no long paths, skip the check
+            return
     
     while True:
         click.secho("\nChecking folder structure...", fg="cyan", bold=True)
