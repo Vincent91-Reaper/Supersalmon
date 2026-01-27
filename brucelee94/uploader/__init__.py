@@ -558,14 +558,15 @@ def upload(
     
     # Update group with label, catalog, and optionally cover/description
     # Do this for all uploads (both new groups and existing groups)
-    if label_to_add or catalog_to_add or cover_url_to_add or album_desc_to_add:
-        click.secho("Adding label and catalog information to torrent group...", fg="cyan")
+    # Always update if we have any metadata to add (even if label/catalog are empty strings from metadata)
+    if cover_url_to_add or album_desc_to_add or True:  # Always update to fill label/catalog
+        click.secho("Adding metadata to torrent group...", fg="cyan")
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
             gazelle_site.update_group_metadata(
                 group_id,
-                label=label_to_add if label_to_add else None,
-                catalog_number=catalog_to_add if catalog_to_add else None,
+                label=label_to_add,  # Pass actual value, even if empty string
+                catalog_number=catalog_to_add,  # Pass actual value, even if empty string
                 cover_url=cover_url_to_add,
                 album_desc=album_desc_to_add
             )
