@@ -1,0 +1,142 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    BRUCELEE94 UPLOAD PROCESS TIMELINE
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 1: INITIAL TORRENT UPLOAD (HAPPENS FIRST - IMMEDIATE)                │
+│ Time: 0-2 seconds                                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │  What Gets Uploaded to RED Immediately:                              │
+    │                                                                       │
+    │  ✅ Label (record_label)                     [INCLUDED NOW]          │
+    │  ✅ Label (remaster_record_label)            [INCLUDED NOW]          │
+    │  ✅ Catalog Number (catalogue_number)        [INCLUDED NOW]          │
+    │  ✅ Catalog Number (remaster_catalogue_number) [INCLUDED NOW]        │
+    │  ✅ Tags/Genres                              [INCLUDED NOW]          │
+    │  ✅ Artists                                  [INCLUDED NOW]          │
+    │  ✅ Album Title                              [INCLUDED NOW]          │
+    │  ✅ Year & Release Year                      [INCLUDED NOW]          │
+    │  ✅ Edition Title                            [INCLUDED NOW]          │
+    │  ✅ Format (FLAC, MP3, etc.)                 [INCLUDED NOW]          │
+    │  ✅ Encoding (16bit, 24bit, etc.)            [INCLUDED NOW]          │
+    │  ✅ Source (WEB, CD, Vinyl, etc.)            [INCLUDED NOW]          │
+    │  ✅ Release Description                      [INCLUDED NOW]          │
+    │  ✅ .torrent File                            [INCLUDED NOW]          │
+    │  ✅ Log Files (for CD rips)                  [INCLUDED NOW]          │
+    │                                                                       │
+    │  ❌ Cover Image URL                          [NOT YET - Coming next] │
+    │  ❌ Album Description (tracklist)            [NOT YET - Coming next] │
+    └──────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                    ┌──────────────────────────┐
+                    │  TORRENT NOW LIVE ON RED │
+                    │   Label & Catalog Present│
+                    └──────────────────────────┘
+                                    ↓
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 2: POST-UPLOAD ENHANCEMENTS (HAPPENS AFTER - SECONDS LATER)          │
+│ Time: 2-8 seconds (only for NEW groups)                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │  Step 1: Upload Cover to ptpimg                                      │
+    │  ├─ Upload cover.jpg to ptpimg hosting                               │
+    │  └─ Receive cover URL back                                           │
+    │                                                                       │
+    │  Step 2: Update Group (New Groups Only)                              │
+    │  ├─ Generate album description with tracklist                        │
+    │  ├─ Submit cover URL to RED                                          │
+    │  └─ Submit album description to RED                                  │
+    │                                                                       │
+    │  ✅ Cover Image URL                          [ADDED NOW]             │
+    │  ✅ Album Description (tracklist)            [ADDED NOW]             │
+    └──────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                    ┌──────────────────────────┐
+                    │     UPLOAD COMPLETE!     │
+                    │  All Information Present │
+                    └──────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              KEY POINTS
+═══════════════════════════════════════════════════════════════════════════════
+
+  🎯 LABEL & CATALOG:  Included in PHASE 1 (initial upload)
+  🎯 WHEN VISIBLE:     Immediately when torrent goes live
+  🎯 NEVER MISSING:    Always present from the start
+  
+  🖼️  COVER IMAGE:     Added in PHASE 2 (post-upload)
+  📝 DESCRIPTION:      Added in PHASE 2 (new groups only)
+  
+  ⚡ WHY SPLIT?:       Speed! Faster upload = Better chance of being first
+  ✅ COMPLIANCE:       All RED requirements met in Phase 1
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                           VERIFICATION STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. Upload an album with BruceLee94
+     
+  2. Watch for: "Successfully uploaded https://redacted.sh/torrents.php..."
+     
+  3. Click the link IMMEDIATELY
+     
+  4. You will see:
+     ✅ Label is present
+     ✅ Catalog number is present
+     ✅ All tags are present
+     ⏳ Cover loading (will appear in 3-5 seconds)
+     
+  5. A few seconds later:
+     ✅ Cover image appears
+     ✅ Description appears (if new group)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                         COMMON MISCONCEPTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+  ❌ "Label is added after upload"
+     ✅ TRUTH: Label is in the initial upload
+  
+  ❌ "Catalog number is added after upload"
+     ✅ TRUTH: Catalog number is in the initial upload
+  
+  ❌ "Tags are added after upload"
+     ✅ TRUTH: Tags are in the initial upload
+  
+  ✅ "Cover is added after upload"
+     ✅ TRUTH: Yes, cover IS added after (for speed)
+  
+  ✅ "Description is added after upload"
+     ✅ TRUTH: Yes, description IS added after (new groups only)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                           CODE EVIDENCE
+═══════════════════════════════════════════════════════════════════════════════
+
+  File: brucelee94/uploader/upload.py
+  Function: compile_data_new_group()
+  Lines: 124-131
+
+  data = {
+      ...
+      "record_label": metadata["label"],              # ← Here!
+      "catalogue_number": generate_catno(metadata),   # ← Here!
+      ...
+      "remaster_record_label": metadata["label"],     # ← And here!
+      "remaster_catalogue_number": generate_catno(...),# ← And here!
+      ...
+  }
+
+  This data dictionary is passed to gazelle_site.upload() in Phase 1.
+
+
+═══════════════════════════════════════════════════════════════════════════════
