@@ -950,6 +950,27 @@ def _build_metadata_from_files(path, tags, rls_data):
         metadata["year"] = max(set(years), key=years.count)
         metadata["group_year"] = metadata["year"]  # Set group_year same as year
     
+    # Ensure year is set (required for remaster_year field)
+    # If year is not set, try to extract from date or use a fallback
+    if not metadata["year"]:
+        # Try to extract year from date if available
+        if dates:
+            most_common_date = max(set(dates), key=dates.count)
+            date_str = str(most_common_date).strip()
+            # Extract year from date string (first 4 digits)
+            year_match = re.search(r'(\d{4})', date_str)
+            if year_match:
+                metadata["year"] = int(year_match.group(1))
+                metadata["group_year"] = metadata["year"]
+        
+        # If still no year, use current year as fallback (should rarely happen)
+        if not metadata["year"]:
+            from datetime import datetime
+            current_year = datetime.now().year
+            logger.warning(f"No year found in metadata, using current year: {current_year}")
+            metadata["year"] = current_year
+            metadata["group_year"] = current_year
+    
     # Parse and format date for torrent description (Month Day, Year)
     if dates:
         most_common_date = max(set(dates), key=dates.count)
