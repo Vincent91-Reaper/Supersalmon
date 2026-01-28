@@ -121,6 +121,56 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
                     click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
                     metadata["rls_type"] = _prompt_for_release_type()
                 
+                # Fallback: If year is missing from scraped metadata, extract from file tags
+                if not metadata.get("year"):
+                    click.secho("Warning: No year found in scraped metadata, extracting from file tags...", fg="yellow")
+                    import re
+                    from datetime import datetime
+                    
+                    # Extract years from file tags
+                    years = []
+                    dates = []
+                    for filename, tagset in tags.items():
+                        try:
+                            # Try to get year from tag
+                            if hasattr(tagset, "year") and tagset.year:
+                                years.append(int(tagset.year))
+                        except (TypeError, ValueError, AttributeError):
+                            pass
+                        
+                        try:
+                            # Also collect dates for fallback
+                            if hasattr(tagset, "date") and tagset.date:
+                                dates.append(str(tagset.date))
+                        except (TypeError, AttributeError):
+                            pass
+                    
+                    # Use most common year from tags
+                    if years:
+                        metadata["year"] = max(set(years), key=years.count)
+                        if not metadata.get("group_year"):
+                            metadata["group_year"] = metadata["year"]
+                        click.secho(f"Extracted year from file tags: {metadata['year']}", fg="green")
+                    
+                    # If still no year, try to extract from date field
+                    if not metadata.get("year") and dates:
+                        most_common_date = max(set(dates), key=dates.count)
+                        date_str = str(most_common_date).strip()
+                        year_match = re.search(r'(\d{4})', date_str)
+                        if year_match:
+                            metadata["year"] = int(year_match.group(1))
+                            if not metadata.get("group_year"):
+                                metadata["group_year"] = metadata["year"]
+                            click.secho(f"Extracted year from date field: {metadata['year']}", fg="green")
+                    
+                    # If still no year, use current year as last resort
+                    if not metadata.get("year"):
+                        current_year = datetime.now().year
+                        metadata["year"] = current_year
+                        if not metadata.get("group_year"):
+                            metadata["group_year"] = current_year
+                        click.secho(f"Warning: Using current year as fallback: {current_year}", fg="yellow")
+                
                 return metadata, source_url
             else:
                 click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
