@@ -447,9 +447,12 @@ class Scraper(QobuzBase, MetadataMixin):
         performer = safe_get(track, ["performer", "name"])
         
         if performer:
-            # Track has specific performer - use it as main artist
-            artists.append((performer, "main"))
-            seen_artists.add(performer)
+            # Track has specific performer(s) - use as main artist(s)
+            # Handle comma-separated performers (e.g., "Celsius, Tripped")
+            performer_names = [p.strip() for p in performer.split(",") if p.strip()]
+            for performer_name in performer_names:
+                artists.append((performer_name, "main"))
+                seen_artists.add(performer_name)
         else:
             # No track-specific performer - fall back to release's main artist(s)
             # Support both single artist (str) and multiple artists (list)
