@@ -57,7 +57,14 @@ class Scraper(DeezerBase, MetadataMixin):
             return None
 
     def parse_release_label(self, soup):
-        return parse_copyright(soup["label"])
+        label = soup.get("label")
+        # Handle different label formats from Deezer API
+        # Label can be a string, dict with "name" field, or other types
+        if isinstance(label, dict):
+            label = label.get("name", "")
+        elif not isinstance(label, str):
+            label = str(label) if label else ""
+        return parse_copyright(label)
 
     def parse_genres(self, soup):
         return {g["name"] for g in soup["genres"]["data"]}
