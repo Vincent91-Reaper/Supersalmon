@@ -97,12 +97,23 @@ class Scraper(DeezerBase, MetadataMixin):
         return dict(tracks)
 
     def process_label(self, data):
-        if isinstance(data["label"], str) and any(
-            data["label"].lower().startswith(artist_name.lower()) and role == "main" 
+        label = data["label"]
+        
+        # Handle different label formats from Deezer API
+        # Label can be a string, dict with "name" field, or other types
+        if isinstance(label, dict):
+            label = label.get("name", "")
+        elif not isinstance(label, str):
+            label = str(label) if label else ""
+        
+        # Check for self-released albums
+        if label and any(
+            label.lower().startswith(artist_name.lower()) and role == "main" 
             for artist_name, role in data["artists"]
         ):
             return "Self-Released"
-        return data["label"]
+        
+        return label
 
     def parse_artists(self, artists, default_artists, title):
         """
