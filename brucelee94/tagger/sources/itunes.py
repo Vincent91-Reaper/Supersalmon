@@ -24,8 +24,17 @@ class Scraper(iTunesBase, MetadataMixin):
 
     def parse_cover_url(self, soup):
         try:
-            # Just choosing the last artwork url here.
-            return soup.find("meta", {"property": "og:image"})["content"].strip()
+            # Get artwork URL from og:image meta tag
+            cover_url = soup.find("meta", {"property": "og:image"})["content"].strip()
+            
+            # Enhance cover quality: Replace with ultra high-resolution version
+            # Standard patterns: 100x100bb, 200x200bb, 600x600bb, etc.
+            # Ultra high-res: 100000x100000-999 (gets maximum available resolution)
+            # Based on YADG userscript optimization
+            import re
+            # Match any resolution pattern like 100x100bb, 600x600bb, etc.
+            enhanced_url = re.sub(r'\d+x\d+bb', '100000x100000-999', cover_url)
+            return enhanced_url
         except (TypeError, IndexError) as e:
             raise ScrapeError("Could not parse cover URL.") from e
 

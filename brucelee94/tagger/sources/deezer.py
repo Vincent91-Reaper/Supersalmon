@@ -18,7 +18,14 @@ class Scraper(DeezerBase, MetadataMixin):
         return RE_FEAT.sub("", soup["title"])
 
     def parse_cover_url(self, soup):
-        return soup["cover_xl"]
+        cover_xl = soup["cover_xl"]
+        # Enhance cover quality: Replace standard resolution with high-resolution version
+        # Standard: 1000x1000-000000-80-0-0.jpg (80 quality)
+        # High-res: 1400x1400-000000-100-0-0.jpg (100 quality, larger size)
+        # Based on YADG userscript optimization
+        if cover_xl and '1000x1000-000000-80-0-0.jpg' in cover_xl:
+            return cover_xl.replace('1000x1000-000000-80-0-0.jpg', '1400x1400-000000-100-0-0.jpg')
+        return cover_xl
 
     def parse_release_year(self, soup):
         try:
