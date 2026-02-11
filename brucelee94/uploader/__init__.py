@@ -707,7 +707,9 @@ def edit_metadata(
     
     # Check if this is a DJ Mix release and adjust artist roles accordingly
     # DJ Mix pattern: matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
+    click.secho(f"DEBUG: Checking DJ Mix - rls_type: {metadata.get('rls_type')}, title: {metadata.get('title')}", fg="yellow")
     if metadata.get("rls_type") == "DJ Mix" and metadata.get("artists"):
+        click.secho("DEBUG: DJ Mix release type detected, processing artist roles...", fg="yellow")
         # For DJ Mix releases, the album artist should be the DJ/Compiler
         # and track artists should be the main artists
         # Extract album artist from file tags (albumartist field)
@@ -721,6 +723,7 @@ def edit_metadata(
         
         # Deduplicate album artists
         album_artists = list(set(album_artists))
+        click.secho(f"DEBUG: Album artists (from albumartist tag): {album_artists}", fg="yellow")
         
         # If we found album artists, restructure the artist list
         if album_artists:
@@ -735,6 +738,7 @@ def edit_metadata(
             
             # If we already have artists in metadata from scraping
             if metadata.get("artists"):
+                click.secho(f"DEBUG: Artists from metadata: {metadata['artists']}", fg="yellow")
                 for artist, importance in metadata["artists"]:
                     if artist.lower() not in [aa.lower() for aa in album_artists]:
                         track_artists_set.add(artist)
@@ -747,6 +751,8 @@ def edit_metadata(
                             if artist.lower() not in [aa.lower() for aa in album_artists]:
                                 track_artists_set.add(artist)
             
+            click.secho(f"DEBUG: Track artists (excluding album artists): {sorted(track_artists_set)}", fg="yellow")
+            
             # Add track artists as main (importance 1)
             for artist in sorted(track_artists_set):
                 new_artists.append((artist, "main"))
@@ -755,6 +761,9 @@ def edit_metadata(
             metadata["artists"] = new_artists
             
             click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
+            click.secho(f"DEBUG: Final artist list: {new_artists}", fg="yellow")
+        else:
+            click.secho("WARNING: DJ Mix detected but no albumartist tag found in files", fg="red")
     
     # Auto-tag files without prompting
     if not metadata["scene"]:
