@@ -56,6 +56,11 @@ class Scraper(iTunesBase, MetadataMixin):
     def parse_release_type(self, soup):
         try:
             title = soup.find("meta", {"name": "apple:title"})["content"].strip()
+            # Check for DJ Mix first (can appear anywhere in title, often in parentheses)
+            # Pattern matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
+            if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+                return "DJ Mix"
+            # Check for suffixes
             if re.match(r".*\sEP$", title, re.IGNORECASE):
                 return "EP"
             if re.match(r".*\sSingle$", title, re.IGNORECASE):
