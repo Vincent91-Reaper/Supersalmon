@@ -176,6 +176,10 @@ class MetadataMixin(ABC):
             return title, "Soundtrack"
         if rls_type == "compilation" and len(main_artists) <= 2:
             return title, "Anthology"
+        # Preserve DJ Mix release type before remix detection
+        # DJ Mix tracks often have "Mix" in their titles, which would trigger remix detection
+        if rls_type == "dj mix":
+            return title, "DJ Mix"
 
         # --- Track-based inference ---
         if num_tracks <= 3 or len(base_titles) <= 2:
