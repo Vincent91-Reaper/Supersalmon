@@ -117,6 +117,18 @@ def compile_data_new_group(
     NOTE: Label and catalog are torrent-specific (remaster fields), not group-level.
     Each torrent in a group can have different label/catalog.
     """
+    # Debug output for DJ Mix detection
+    if "DJ Mix" in str(metadata.get("title", "")) or "DJ Mix" in str(metadata.get("rls_type", "")):
+        click.secho(f"DEBUG: Release type before upload: {metadata['rls_type']}", fg="yellow")
+        click.secho(f"DEBUG: Title: {metadata['title']}", fg="yellow")
+        click.secho(f"DEBUG: Artists: {metadata['artists']}", fg="yellow")
+    
+    # Ensure DJ Mix is properly mapped, with fallback to Album if key doesn't exist
+    rls_type_id = gazelle_site.release_types.get(metadata["rls_type"])
+    if rls_type_id is None:
+        click.secho(f"WARNING: Release type '{metadata['rls_type']}' not found in tracker release types. Defaulting to Album.", fg="red")
+        rls_type_id = gazelle_site.release_types.get("Album", 1)
+    
     data = {
         "submit": True,
         "type": 0,
@@ -126,7 +138,7 @@ def compile_data_new_group(
         "year": metadata["group_year"],
         "record_label": metadata.get("label", ""),  # Group-level label
         "catalogue_number": generate_catno(metadata),  # Group-level catalog
-        "releasetype": gazelle_site.release_types[metadata["rls_type"]],
+        "releasetype": rls_type_id,
         "remaster": True,
         "remaster_year": metadata["year"],
         "remaster_title": metadata["edition_title"],
