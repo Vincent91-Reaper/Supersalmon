@@ -705,6 +705,57 @@ def edit_metadata(
             click.secho("Please try a different URL or use manual metadata entry.", fg="yellow")
             raise click.Abort()
     
+    # Check if this is a DJ Mix release and adjust artist roles accordingly
+    # DJ Mix pattern: matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
+    if metadata.get("rls_type") == "DJ Mix" and metadata.get("artists"):
+        # For DJ Mix releases, the album artist should be the DJ/Compiler
+        # and track artists should be the main artists
+        # Extract album artist from file tags (albumartist field)
+        album_artists = []
+        for filename, tagset in tags.items():
+            if hasattr(tagset, 'albumartist') and tagset.albumartist:
+                aa_list = tagset.albumartist if isinstance(tagset.albumartist, list) else [tagset.albumartist]
+                for aa in aa_list:
+                    if aa and aa.strip():
+                        album_artists.append(aa.strip())
+        
+        # Deduplicate album artists
+        album_artists = list(set(album_artists))
+        
+        # If we found album artists, restructure the artist list
+        if album_artists:
+            new_artists = []
+            
+            # Add album artists as DJ/Compiler (importance 6)
+            for aa in album_artists:
+                new_artists.append((aa, "djcompiler"))
+            
+            # Get track artists from metadata or file tags
+            track_artists_set = set()
+            
+            # If we already have artists in metadata from scraping
+            if metadata.get("artists"):
+                for artist, importance in metadata["artists"]:
+                    if artist.lower() not in [aa.lower() for aa in album_artists]:
+                        track_artists_set.add(artist)
+            
+            # Also extract from track metadata
+            for disc in metadata.get("tracks", {}).values():
+                for track in disc.values():
+                    if "artists" in track and track["artists"]:
+                        for artist, _ in track["artists"]:
+                            if artist.lower() not in [aa.lower() for aa in album_artists]:
+                                track_artists_set.add(artist)
+            
+            # Add track artists as main (importance 1)
+            for artist in sorted(track_artists_set):
+                new_artists.append((artist, "main"))
+            
+            # Update metadata with new artist list
+            metadata["artists"] = new_artists
+            
+            click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
+    
     # Auto-tag files without prompting
     if not metadata["scene"]:
         tag_files(path, tags, metadata, False, source_url)  # auto_rename always False
@@ -1037,6 +1088,44 @@ def _build_metadata_from_files(path, tags, rls_data):
         metadata["rls_type"] = "EP"
     else:
         metadata["rls_type"] = "Album"
+    
+    # Check if title contains "DJ Mix" and adjust release type and artist roles
+    # DJ Mix pattern: matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
+    if metadata.get("title") and re.search(r"DJ[\s\-]*Mix", metadata["title"], re.IGNORECASE):
+        metadata["rls_type"] = "DJ Mix"
+        
+        # For DJ Mix releases, the album artist should be the DJ/Compiler
+        # and track artists should be the main artists
+        # Extract album artist from file tags (albumartist field)
+        album_artists = []
+        for filename, tagset in tags.items():
+            if hasattr(tagset, 'albumartist') and tagset.albumartist:
+                aa_list = tagset.albumartist if isinstance(tagset.albumartist, list) else [tagset.albumartist]
+                for aa in aa_list:
+                    if aa and aa.strip():
+                        album_artists.append(aa.strip())
+        
+        # Deduplicate album artists
+        album_artists = list(set(album_artists))
+        
+        # If we found album artists, restructure the artist list
+        if album_artists:
+            new_artists = []
+            
+            # Add album artists as DJ/Compiler (importance 6)
+            for aa in album_artists:
+                new_artists.append((aa, "djcompiler"))
+            
+            # Add track artists as main (importance 1), excluding album artists to avoid duplication
+            album_artists_lower = [aa.lower() for aa in album_artists]
+            for artist, importance in metadata["artists"]:
+                if artist.lower() not in album_artists_lower:
+                    new_artists.append((artist, "main"))
+            
+            # Update metadata with new artist list
+            metadata["artists"] = new_artists
+            
+            click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
     
     # Validate we have required data
     if not metadata["artists"]:
