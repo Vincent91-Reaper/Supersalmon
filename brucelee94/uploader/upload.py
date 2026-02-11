@@ -129,6 +129,12 @@ def compile_data_new_group(
         click.secho(f"WARNING: Release type '{metadata['rls_type']}' not found in tracker release types. Defaulting to Album.", fg="red")
         rls_type_id = gazelle_site.release_types.get("Album", 1)
     
+    # For DJ Mix releases, use empty label (Apple Music doesn't provide proper label info)
+    if metadata.get("rls_type") == "DJ Mix":
+        record_label = ""
+    else:
+        record_label = metadata.get("label", "")
+    
     data = {
         "submit": True,
         "type": 0,
@@ -136,7 +142,7 @@ def compile_data_new_group(
         "artists[]": [a[0] for a in metadata["artists"]],
         "importance[]": [ARTIST_IMPORTANCES[a[1]] for a in metadata["artists"]],
         "year": metadata["group_year"],
-        "record_label": metadata.get("label", ""),  # Group-level label
+        "record_label": record_label,  # Group-level label (empty for DJ Mix)
         "catalogue_number": generate_catno(metadata),  # Group-level catalog
         "releasetype": rls_type_id,
         "remaster": True,
@@ -263,21 +269,52 @@ def generate_torrent(gazelle_site, path):
 def generate_description(track_data, metadata):
     """Generate the group description with tracklist including per-track artists only for Various Artists albums."""
     # Generate header with artist and album title
-    main_artists = [a for a, i in metadata["artists"] if i == "main"]
-    # Use "Various Artists" for albums with 3+ main artists
-    is_various_artists = len(main_artists) >= 3
-    if is_various_artists:
-        description = f"[b]Various Artists - {metadata['title']}[/b]\n"
-    else:
-        # Format each artist with individual [artist] tags inside [b] tags
-        sorted_artists = sorted(main_artists)
-        if len(sorted_artists) == 1:
-            description = f"[b][artist]{sorted_artists[0]}[/artist] - {metadata['title']}[/b]\n"
+    
+    # For DJ Mix releases, use DJ/Compiler artist in header instead of main artists
+    if metadata.get("rls_type") == "DJ Mix":
+        dj_artists = [a for a, i in metadata["artists"] if i == "djcompiler"]
+        if dj_artists:
+            # Use DJ/Compiler artist(s) for DJ Mix releases
+            if len(dj_artists) == 1:
+                description = f"[b][artist]{dj_artists[0]}[/artist] - {metadata['title']}[/b]\n"
+            else:
+                # Multiple DJ/Compilers - use " & " separator
+                artist_tags = [f"[artist]{artist}[/artist]" for artist in dj_artists]
+                artist_display = " & ".join(artist_tags)
+                description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
+            # DJ Mixes should show all performers, so mark as Various Artists
+            is_various_artists = True
         else:
-            # Use " & " separator outside [artist] tags for 2 artists
-            artist_tags = [f"[artist]{artist}[/artist]" for artist in sorted_artists]
-            artist_display = " & ".join(artist_tags)
-            description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
+            # Fallback if no DJ/Compiler found (shouldn't happen for DJ Mix)
+            main_artists = [a for a, i in metadata["artists"] if i == "main"]
+            is_various_artists = len(main_artists) >= 3
+            if is_various_artists:
+                description = f"[b]Various Artists - {metadata['title']}[/b]\n"
+            else:
+                sorted_artists = sorted(main_artists)
+                if len(sorted_artists) == 1:
+                    description = f"[b][artist]{sorted_artists[0]}[/artist] - {metadata['title']}[/b]\n"
+                else:
+                    artist_tags = [f"[artist]{artist}[/artist]" for artist in sorted_artists]
+                    artist_display = " & ".join(artist_tags)
+                    description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
+    else:
+        # Non-DJ Mix releases: use existing logic
+        main_artists = [a for a, i in metadata["artists"] if i == "main"]
+        # Use "Various Artists" for albums with 3+ main artists
+        is_various_artists = len(main_artists) >= 3
+        if is_various_artists:
+            description = f"[b]Various Artists - {metadata['title']}[/b]\n"
+        else:
+            # Format each artist with individual [artist] tags inside [b] tags
+            sorted_artists = sorted(main_artists)
+            if len(sorted_artists) == 1:
+                description = f"[b][artist]{sorted_artists[0]}[/artist] - {metadata['title']}[/b]\n"
+            else:
+                # Use " & " separator outside [artist] tags for 2 artists
+                artist_tags = [f"[artist]{artist}[/artist]" for artist in sorted_artists]
+                artist_display = " & ".join(artist_tags)
+                description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
     
     # Add release date if available (already formatted as "Month Day, Year")
     if metadata.get("date"):
