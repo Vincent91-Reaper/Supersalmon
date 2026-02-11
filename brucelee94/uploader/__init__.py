@@ -733,23 +733,22 @@ def edit_metadata(
             for aa in album_artists:
                 new_artists.append((aa, "djcompiler"))
             
-            # Get track artists from metadata or file tags
+            # Get track artists from individual file tags (not scraped metadata)
             track_artists_set = set()
+            album_artists_lower = [aa.lower() for aa in album_artists]
             
-            # If we already have artists in metadata from scraping
-            if metadata.get("artists"):
-                click.secho(f"DEBUG: Artists from metadata: {metadata['artists']}", fg="yellow")
-                for artist, importance in metadata["artists"]:
-                    if artist.lower() not in [aa.lower() for aa in album_artists]:
-                        track_artists_set.add(artist)
-            
-            # Also extract from track metadata
-            for disc in metadata.get("tracks", {}).values():
-                for track in disc.values():
-                    if "artists" in track and track["artists"]:
-                        for artist, _ in track["artists"]:
-                            if artist.lower() not in [aa.lower() for aa in album_artists]:
-                                track_artists_set.add(artist)
+            click.secho("DEBUG: Extracting track artists from file tags...", fg="yellow")
+            # Extract artists from individual track files
+            for filename, tagset in tags.items():
+                if hasattr(tagset, 'artist') and tagset.artist:
+                    # Handle both string and list formats
+                    artists_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+                    for artist in artists_list:
+                        artist_clean = artist.strip()
+                        if artist_clean and artist_clean.lower() not in album_artists_lower:
+                            if artist_clean not in track_artists_set:
+                                click.secho(f"DEBUG: Found track artist: {artist_clean}", fg="cyan")
+                                track_artists_set.add(artist_clean)
             
             click.secho(f"DEBUG: Track artists (excluding album artists): {sorted(track_artists_set)}", fg="yellow")
             
