@@ -745,10 +745,13 @@ def edit_metadata(
                     artists_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
                     for artist in artists_list:
                         artist_clean = artist.strip()
-                        if artist_clean and artist_clean.lower() not in album_artists_lower:
-                            if artist_clean not in track_artists_set:
-                                click.secho(f"DEBUG: Found track artist: {artist_clean}", fg="cyan")
-                                track_artists_set.add(artist_clean)
+                        # Split on " & " to separate multiple artists (e.g., "Shades & ID" -> ["Shades", "ID"])
+                        sub_artists = [a.strip() for a in artist_clean.split(' & ') if a.strip()]
+                        for sub_artist in sub_artists:
+                            if sub_artist and sub_artist.lower() not in album_artists_lower:
+                                if sub_artist not in track_artists_set:
+                                    click.secho(f"DEBUG: Found track artist: {sub_artist}", fg="cyan")
+                                    track_artists_set.add(sub_artist)
             
             click.secho(f"DEBUG: Track artists (excluding album artists): {sorted(track_artists_set)}", fg="yellow")
             
@@ -761,6 +764,13 @@ def edit_metadata(
             
             click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
             click.secho(f"DEBUG: Final artist list: {new_artists}", fg="yellow")
+            
+            # Remove "(DJ Mix)" suffix from title for cleaner group name
+            # Keep detection in title, but remove suffix for display
+            original_title = metadata["title"]
+            metadata["title"] = re.sub(r'\s*\(DJ[\s\-]*Mix\)\s*$', '', metadata["title"], flags=re.IGNORECASE).strip()
+            if metadata["title"] != original_title:
+                click.secho(f"DEBUG: Removed '(DJ Mix)' suffix from title: '{original_title}' -> '{metadata['title']}'", fg="cyan")
         else:
             click.secho("WARNING: DJ Mix detected but no albumartist tag found in files", fg="red")
     
@@ -1139,6 +1149,12 @@ def _build_metadata_from_files(path, tags, rls_data):
             click.secho(f"DEBUG (file-based): Final artist list: {new_artists}", fg="yellow")
             
             click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
+            
+            # Remove "(DJ Mix)" suffix from title for cleaner group name
+            original_title = metadata["title"]
+            metadata["title"] = re.sub(r'\s*\(DJ[\s\-]*Mix\)\s*$', '', metadata["title"], flags=re.IGNORECASE).strip()
+            if metadata["title"] != original_title:
+                click.secho(f"DEBUG (file-based): Removed '(DJ Mix)' suffix from title: '{original_title}' -> '{metadata['title']}'", fg="cyan")
     
     # Validate we have required data
     if not metadata["artists"]:
