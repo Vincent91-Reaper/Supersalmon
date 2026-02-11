@@ -174,7 +174,6 @@ class UploadManager:
                 click.secho(f"Failed to configure {seedbox.type} uploader: {e}", fg="red")
 
     def add_upload_task(self, directory, task_type, is_flac):
-        click.secho(f"Preparing upload tasks for: {directory}", fg="cyan")
         for uploader_info in self.uploaders:
             remote_directory = uploader_info.get("directory")
             label = uploader_info.get("label")

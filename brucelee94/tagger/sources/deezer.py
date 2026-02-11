@@ -18,7 +18,14 @@ class Scraper(DeezerBase, MetadataMixin):
         return RE_FEAT.sub("", soup["title"])
 
     def parse_cover_url(self, soup):
-        return soup["cover_xl"]
+        cover_xl = soup["cover_xl"]
+        # Enhance cover quality: Replace standard resolution with high-resolution version
+        # Standard: 1000x1000-000000-80-0-0.jpg (80 quality)
+        # High-res: 1400x1400-000000-100-0-0.jpg (100 quality, larger size)
+        # Based on YADG userscript optimization
+        if cover_xl and '1000x1000-000000-80-0-0.jpg' in cover_xl:
+            return cover_xl.replace('1000x1000-000000-80-0-0.jpg', '1400x1400-000000-100-0-0.jpg')
+        return cover_xl
 
     def parse_release_year(self, soup):
         try:
@@ -28,10 +35,46 @@ class Scraper(DeezerBase, MetadataMixin):
             # raise ScrapeError('Could not parse release year.') from e
 
     def parse_release_date(self, soup):
-        return soup["release_date"]
+        """
+        Parse the release date from the API response.
+        Formats the date to "Month Day, Year" format (e.g., "December 31, 2025").
+        """
+        try:
+            raw_date = soup["release_date"]
+            # Format date to "Month Day, Year" format (e.g., "December 31, 2025")
+            # Deezer typically returns dates in YYYY-MM-DD format
+            if raw_date:
+                from datetime import datetime
+                import platform
+                try:
+                    # Parse the date string
+                    parsed_date = datetime.strptime(raw_date, "%Y-%m-%d")
+                    # Format as "Month Day, Year"
+                    try:
+                        formatted_date = parsed_date.strftime("%B %-d, %Y") if platform.system() != "Windows" else parsed_date.strftime("%B %#d, %Y")
+                    except (ValueError, TypeError):
+                        # Fallback for platforms that don't support %- or %#
+                        formatted_date = parsed_date.strftime("%B %d, %Y").replace(' 0', ' ')
+                    return formatted_date
+                except (ValueError, TypeError):
+                    # If parsing fails, return the raw date
+                    return raw_date
+            return raw_date
+        except (KeyError, IndexError):
+            return None
 
     def parse_release_label(self, soup):
-        return parse_copyright(soup["label"])
+        label = soup.get("label")
+        # Handle different label formats from Deezer API
+        # Label can be a string, dict with "name" field, tuple/list, or other types
+        if isinstance(label, dict):
+            label = label.get("name", "")
+        elif isinstance(label, (tuple, list)):
+            # If tuple/list, take first element (usually the name)
+            label = label[0] if label else ""
+        elif not isinstance(label, str):
+            label = str(label) if label else ""
+        return parse_copyright(label)
 
     def parse_genres(self, soup):
         return {g["name"] for g in soup["genres"]["data"]}
@@ -64,11 +107,26 @@ class Scraper(DeezerBase, MetadataMixin):
         return dict(tracks)
 
     def process_label(self, data):
-        if isinstance(data["label"], str) and any(
-            data["label"].lower().startswith(a.lower()) and i == "main" for a, i in data["artists"]
+        label = data["label"]
+        
+        # Handle different label formats from Deezer API
+        # Label can be a string, dict with "name" field, tuple/list, or other types
+        if isinstance(label, dict):
+            label = label.get("name", "")
+        elif isinstance(label, (tuple, list)):
+            # If tuple/list, take first element (usually the name)
+            label = label[0] if label else ""
+        elif not isinstance(label, str):
+            label = str(label) if label else ""
+        
+        # Check for self-released albums
+        if label and any(
+            label.lower().startswith(artist_name.lower()) and role == "main" 
+            for artist_name, role in data["artists"]
         ):
             return "Self-Released"
-        return data["label"]
+        
+        return label
 
     def parse_artists(self, artists, default_artists, title):
         """

@@ -24,8 +24,17 @@ class Scraper(iTunesBase, MetadataMixin):
 
     def parse_cover_url(self, soup):
         try:
-            # Just choosing the last artwork url here.
-            return soup.find("meta", {"property": "og:image"})["content"].strip()
+            # Get artwork URL from og:image meta tag
+            cover_url = soup.find("meta", {"property": "og:image"})["content"].strip()
+            
+            # Enhance cover quality: Replace with ultra high-resolution version
+            # Standard patterns: 100x100bb, 200x200bb, 600x600bb, etc.
+            # Ultra high-res: 100000x100000-999 (gets maximum available resolution)
+            # Based on YADG userscript optimization
+            import re
+            # Match any resolution pattern like 100x100bb, 600x600bb, etc.
+            enhanced_url = re.sub(r'\d+x\d+bb', '100000x100000-999', cover_url)
+            return enhanced_url
         except (TypeError, IndexError) as e:
             raise ScrapeError("Could not parse cover URL.") from e
 
@@ -47,6 +56,11 @@ class Scraper(iTunesBase, MetadataMixin):
     def parse_release_type(self, soup):
         try:
             title = soup.find("meta", {"name": "apple:title"})["content"].strip()
+            # Check for DJ Mix first (can appear anywhere in title, often in parentheses)
+            # Pattern matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
+            if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+                return "DJ Mix"
+            # Check for suffixes
             if re.match(r".*\sEP$", title, re.IGNORECASE):
                 return "EP"
             if re.match(r".*\sSingle$", title, re.IGNORECASE):
@@ -56,10 +70,19 @@ class Scraper(iTunesBase, MetadataMixin):
             raise ScrapeError("Could not parse release type.") from e
 
     def parse_release_date(self, soup):
-        # This can't be enough. Can it?
+        """
+        Parse the release date from the meta tag.
+        Formats the date to "Month Day, Year" format (e.g., "December 31, 2025").
+        """
         try:
             date_string = soup.find(attrs={"property": "music:release_date"})["content"].split("T")[0]
-            return date_string
+            # Format date to "Month Day, Year" format
+            # Apple Music returns dates in YYYY-MM-DD format
+            if date_string:
+                from datetime import datetime
+                parsed_date = datetime.strptime(date_string, "%Y-%m-%d")
+                return parsed_date.strftime("%B %d, %Y")
+            return None
         except BaseException:
             return None
 
@@ -94,6 +117,30 @@ class Scraper(iTunesBase, MetadataMixin):
         if "tracks" not in data:
             raise ScrapeError("Tracks data not found in JSON.")
 
+        # Try multiple methods to extract album-level artists
+        header_artists = parse_artists_header(soup)
+        
+        # If header parsing fails, try extracting from JSON-LD data
+        if not header_artists and "byArtist" in data:
+            artist_data = data["byArtist"]
+            if isinstance(artist_data, dict) and "name" in artist_data:
+                header_artists = [artist_data["name"]]
+            elif isinstance(artist_data, list):
+                header_artists = [a["name"] for a in artist_data if "name" in a]
+        
+        # If still no artists found, try the meta tag
+        if not header_artists:
+            try:
+                artist_meta = soup.find("meta", {"property": "music:musician"})
+                if artist_meta and artist_meta.get("content"):
+                    header_artists = [artist_meta["content"].strip()]
+            except (TypeError, AttributeError):
+                pass
+        
+        # Convert to the format expected by generate_track: [(name, importance)]
+        # Use "main" importance for album-level artists
+        artists_tuples = [(artist, "main") for artist in header_artists]
+
         for index, track in enumerate(data["tracks"], start=1):
             try:
                 num = index
@@ -110,7 +157,7 @@ class Scraper(iTunesBase, MetadataMixin):
                 tracks[str(cur_disc)][num] = self.generate_track(
                     trackno=num,
                     discno=cur_disc,
-                    artists=[],
+                    artists=artists_tuples,
                     # artists=parse_artists(soup, track, raw_title),
                     title=title,
                     # explicit=explicit,

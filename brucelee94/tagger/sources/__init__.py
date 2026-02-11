@@ -8,6 +8,7 @@ from brucelee94.tagger.sources import (
     deezer,
     itunes,
     qobuz,
+    tidal,
 )
 
 METASOURCES = {
@@ -15,6 +16,7 @@ METASOURCES = {
     "Deezer": deezer,
     "Beatport": beatport,
     "Qobuz": qobuz,
+    "Tidal": tidal,
 }
 
 loop = asyncio.get_event_loop()

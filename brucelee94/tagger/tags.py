@@ -16,18 +16,10 @@ STANDARDIZED_TAGS = {
 
 
 def check_tags(path):
-    """Get and then check the tags for problems. Offer user way to edit tags."""
-    click.secho("\nChecking tags...", fg="yellow", bold=True)
+    """Get the tags without verification - just gather them for upload."""
     tags = gather_tags(path)
     if not tags:
         raise IndexError("No tracks were found.")
-
-    check_required_tags(tags)
-
-    if cfg.upload.prompt_puddletag:
-        print_a_tag(next(iter(tags.values())))
-        if prompt_editor(path):
-            tags = gather_tags(path)
 
     return tags
 
@@ -96,4 +88,3 @@ def standardize_tags(path):
                     found_aliased.add(alias)
         if found_aliased:
             mut.save()
-            click.secho(f"Unaliased the following tags for {filename}: " + ", ".join(found_aliased))

@@ -35,7 +35,8 @@ from brucelee94.uploader.seedbox import UploaderGenerator
 #     handle_spectrals_upload_and_deletion,
 #     post_upload_spectral_check,
 # )
-from brucelee94.uploader.upload import generate_source_links
+# Source links removed - no longer used
+# from brucelee94.uploader.upload import generate_source_links
 
 loop = asyncio.get_event_loop()
 
@@ -80,7 +81,7 @@ def descgen(urls):
     metadata = clean_metadata(combine_metadatas(*((s, m) for m, s in metadatas)))
     remove_various_artists(metadata["tracks"])
 
-    description = "[b][size=4]Tracklist[/b]\n\n"
+    description = "[b][size=2]Tracklist[/b]\n\n"
     multi_disc = len(metadata["tracks"]) > 1
     for dnum, disc in metadata["tracks"].items():
         for tnum, track in disc.items():
@@ -94,8 +95,9 @@ def descgen(urls):
             description += f"{create_artist_str(track['artists'])} - {track['title']}\n"
     if metadata["comment"]:
         description += f"\n{metadata['comment']}\n"
-    if metadata["urls"]:
-        description += "\n[b]More info:[/b] " + generate_source_links(metadata["urls"])
+    # "More info" links removed
+    # if metadata["urls"]:
+    #     description += "\n[b]More info:[/b] " + generate_source_links(metadata["urls"])
     click.secho("\nDescription:\n", fg="yellow", bold=True)
     click.echo(description)
     if cfg.upload.description.copy_uploaded_url_to_clipboard:

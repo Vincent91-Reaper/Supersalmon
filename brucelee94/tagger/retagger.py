@@ -18,29 +18,39 @@ from brucelee94.tagger.tagfile import TagFile
 Change = namedtuple("Change", ["tag", "old", "new"])
 
 
-def tag_files(path, tags, metadata, auto_rename):
+def tag_files(path, tags, metadata, auto_rename, source_url=None):
     """
     Wrapper function that calls the functions that create and print the
-    proposed changes, and then prompts for confirmation to retag the file.
+    proposed changes, and automatically applies tags without prompting.
     """
-    click.secho("\nRetagging files...", fg="cyan", bold=True)
-    if not check_whether_to_tag(tags, metadata):
+    if not check_whether_to_tag(tags, metadata, source_url):
         return
+    
+    # Check if source is Apple Music / iTunes
+    is_apple_music = source_url and ("music.apple.com" in source_url or "itunes.apple.com" in source_url)
+    
     album_changes = collect_album_data(metadata)
-    track_changes = create_track_changes(tags, metadata)
-    print_changes(album_changes, track_changes, next(iter(tags.values())))
-    if auto_rename or click.confirm(
-        click.style("\nWould you like to auto-tag the files with the updated metadata?", fg="magenta"),
-        default=True,
-    ):
-        retag_files(path, album_changes, track_changes)
+    track_changes = create_track_changes(tags, metadata, preserve_artists=is_apple_music)
+    
+    # Only print "Retagging files..." if there are actual changes to make
+    if any(t for t in track_changes.values()):
+        click.secho("\nRetagging files...", fg="cyan", bold=True)
+        # Removed showing proposed changes - just retag directly
+        # print_changes(album_changes, track_changes, next(iter(tags.values())))
+        # Auto-tag files without confirmation prompt
+        retag_files(path, album_changes, track_changes, preserve_artists=is_apple_music)
 
 
-def check_whether_to_tag(tags, metadata):
+def check_whether_to_tag(tags, metadata, source_url=None):
     """
     Make sure the number of tracks in the metadata equals the number of tracks
-    in the folder.
+    in the folder. For Tidal, skip this check as track structure may differ.
     """
+    # Skip track count check for Tidal sources
+    is_tidal = source_url and ("tidal.com" in source_url or "wimpmusic.com" in source_url)
+    if is_tidal:
+        return True
+        
     if len(tags) != sum([len(disc) for disc in metadata["tracks"].values()]):
         click.secho(
             "Number of tracks differed from number of tracks in metadata, skipping retagging procedure...",
@@ -51,25 +61,11 @@ def check_whether_to_tag(tags, metadata):
 
 
 def collect_album_data(metadata):
-    """Create a dictionary of the proposed album tags (consistent across every track)."""
-    if cfg.upload.formatting.add_edition_title_to_album_tag and metadata["edition_title"]:
-        title = f"{metadata['title']} ({metadata['edition_title']})"
-    else:
-        title = metadata["title"]
-    return {
-        k: v
-        for k, v in {
-            "album": title,
-            "genre": "; ".join(sorted(metadata["genres"])),
-            "date": metadata["group_year"],
-            "label": metadata["label"],
-            "catno": metadata["catno"],
-            "albumartist": _generate_album_artist(metadata["artists"]),
-            "upc": metadata["upc"],
-            "comment": metadata["comment"] if cfg.upload.description.review_as_comment_tag else None,
-        }.items()
-        if v
-    }
+    """Create a dictionary of the proposed album tags (consistent across every track).
+    Changed: No longer tags files with label, catno, or albumartist.
+    Artist tags are validated and updated to match scraped metadata."""
+    # Return empty dict - we don't apply album-level tags to files anymore
+    return {}
 
 
 def _generate_album_artist(artists):
@@ -80,42 +76,46 @@ def _generate_album_artist(artists):
     return c.join(sorted(main_artists))
 
 
-def create_track_changes(tags, metadata):
+def create_track_changes(tags, metadata, preserve_artists=False):
     """
     Compare the track data in the metadata to the track data in the tags
-    and record all differences.
+    and auto-tag with correct artists from scraped metadata.
+    Only retags main artists (and composers for classical albums).
+    
+    Args:
+        preserve_artists: If True (for Apple Music), don't modify artist tags
     """
     changes = {}
     tracks = metadata_to_track_list(metadata["tracks"])
+    
+    # Check if this is a classical album
+    is_classical = "Classical" in metadata.get("genres", [])
+    
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
+        
+        # Auto-tag artists from scraped metadata (unless preserve_artists is True for Apple Music)
+        if not preserve_artists:
+            try:
+                old_artist_str = ", ".join(tagset.artist) if tagset.artist else "None"
+            except (TypeError, AttributeError):
+                old_artist_str = "None"
 
-        try:
-            old_artist_str = ", ".join(tagset.artist)
-        except TypeError:
-            old_artist_str = "None"
+            # Get the correct artist string from scraped metadata (main artists only)
+            new_artist_str = create_main_artist_str(trackmeta["artists"], is_classical)
+            
+            # Skip retagging if scraped metadata returns "Various Artists"
+            # This preserves the original per-track artist info on files
+            if new_artist_str.lower() == "various artists":
+                continue
+            
+            # Update artist tag if it's missing OR the actual artist names are different
+            # Normalize comparison to ignore order and separator differences
+            if old_artist_str == "None" or not old_artist_str:
+                changes[filename].append(Change("artist", old_artist_str, new_artist_str))
+            elif not _artists_match(old_artist_str, new_artist_str):
+                changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
-        new_artist_str = create_artist_str(trackmeta["artists"])
-        if old_artist_str != new_artist_str:
-            changes[filename].append(Change("artist", old_artist_str, new_artist_str))
-
-        if cfg.upload.formatting.guests_in_track_title:
-            trackmeta["title"] = append_guests_to_track_titles(trackmeta)
-
-        if cfg.upload.description.empty_track_comment_tag and getattr(tagset, "comment", False):
-            changes[filename].append(Change("comment", tagset.comment, ""))
-
-        for tagfield, metafield in [
-            ("title", "title"),
-            ("isrc", "isrc"),
-            ("tracknumber", "track#"),
-            ("discnumber", "disc#"),
-            ("tracktotal", "tracktotal"),
-            ("disctotal", "disctotal"),
-        ]:
-            change = _compare_tag(tagfield, metafield, tagset, trackmeta)
-            if change:
-                changes[filename].append(change)
     return changes
 
 
@@ -172,41 +172,79 @@ def create_artist_str(artists):
     return artist_str
 
 
+def create_main_artist_str(artists, is_classical=False):
+    """
+    Create the artist string with ONLY main artists (and composers for classical).
+    No guest/featured artists, remixers, compilers, DJs, etc.
+    """
+    main_artists = [a for a, i in artists if i == "main"]
+    c = ", " if len(main_artists) > 2 and "&" not in "".join(main_artists) else " & "
+    artist_str = c.join(sorted(main_artists))
+    
+    # For classical albums, also include composers
+    if is_classical:
+        composers = [a for a, i in artists if i == "composer"]
+        if composers:
+            c_comp = ", " if len(composers) > 2 and "&" not in "".join(composers) else " & "
+            composer_str = c_comp.join(sorted(composers))
+            if artist_str and composer_str:
+                artist_str = f"{composer_str}; {artist_str}"
+            elif composer_str:
+                artist_str = composer_str
+    
+    return artist_str
+
+
+def _artists_match(old_artist_str, new_artist_str):
+    """
+    Check if two artist strings contain the same artists, regardless of order or separator.
+    This prevents unnecessary retagging when artists are the same but formatted differently.
+    
+    Example: "Hannah Boleyn & Punctual" matches "Punctual, Hannah Boleyn"
+    """
+    # Normalize both strings: split by common separators and create sets of artist names
+    def normalize_artists(artist_str):
+        # Replace common separators with a single delimiter
+        normalized = artist_str.replace(" & ", "|").replace(", ", "|").replace(",", "|").replace(";", "|")
+        # Split and strip whitespace, convert to lowercase for case-insensitive comparison
+        artists = {name.strip().lower() for name in normalized.split("|") if name.strip()}
+        return artists
+    
+    old_artists = normalize_artists(old_artist_str)
+    new_artists = normalize_artists(new_artist_str)
+    
+    # Artists match if both sets contain the same names
+    return old_artists == new_artists
+
+
 def print_changes(album_changes, track_changes, a_track):
-    """Print all the proposed track changes, then all the album data."""
+    """Print all the proposed track changes. Album-level tags are no longer modified on files."""
     if any(t for t in track_changes.values()):
-        click.secho("\nProposed tag changes:", fg="yellow", bold=True)
+        click.secho("\nProposed tag changes (updating artists to match scraped metadata):", fg="yellow", bold=True)
+        for filename, changes in track_changes.items():
+            if changes:
+                click.secho(f"> {filename}", fg="yellow")
+                for change in changes:
+                    click.echo(f"  {change.tag.ljust(20)} ••• {change.old} {ARROWS} {change.new}")
+
+
+def retag_files(path, album_changes, track_changes, preserve_artists=False):
+    """Apply the proposed metadata changes to the files.
+    
+    Note: album_changes is now empty - we only tag artist info, updating to match scraped metadata.
+    """
+    # Only save files if there are actual changes
+    files_changed = 0
     for filename, changes in track_changes.items():
-        if changes:
-            click.secho(f"> {filename}", fg="yellow")
+        if changes:  # Only process files with changes
+            mut = TagFile(os.path.join(path, filename))
             for change in changes:
-                click.echo(f"  {change.tag.ljust(20)} ••• {change.old} {ARROWS} {change.new}")
-
-    click.secho("\nAlbum tags (applied to all):", fg="yellow", bold=True)
-    for field, value in album_changes.items():
-        previous = getattr(a_track, field, "None")
-        if isinstance(previous, list):
-            previous = "; ".join(previous)
-        kwargs = {"bold": True} if str(previous) != str(value) else {}  # Bold if different
-        if str(previous) == str(value):
-            click.secho(f"> {field.ljust(13)} ••• {previous}", **kwargs)
-        else:
-            click.echo(
-                f"> {click.style(str(field.ljust(13)), bold=True)} ••• {str(previous)} "
-                f"{ARROWS} {click.style(str(value), bold=True)}"
-            )
-
-
-def retag_files(path, album_changes, track_changes):
-    """Apply the proposed metadata changes to the files."""
-    for filename, changes in track_changes.items():
-        mut = TagFile(os.path.join(path, filename))
-        for change in changes:
-            setattr(mut, change.tag, str(change.new))
-        for tag, value in album_changes.items():
-            setattr(mut, tag, str(value))
-        mut.save()
-    click.secho("Retagged files.", fg="green")
+                setattr(mut, change.tag, str(change.new))
+            mut.save()
+            files_changed += 1
+    
+    if files_changed > 0:
+        click.secho(f"Retagged {files_changed} file(s) with correct artist tags from scraped metadata.", fg="green")
 
 
 def rename_files(path, tags, metadata, auto_rename, spectral_ids, source=None):

@@ -57,10 +57,12 @@ class Scraper(TidalBase, MetadataMixin):
     def parse_tracks(self, soup):
         tracks = defaultdict(dict)
         for track in soup["tracklist"]:
+            parsed_artists = self.parse_artists(track["artists"], track["title"], track["id"])
+            
             tracks[str(track["volumeNumber"])][str(track["trackNumber"])] = self.generate_track(
                 trackno=track["trackNumber"],
                 discno=track["volumeNumber"],
-                artists=self.parse_artists(track["artists"], track["title"], track["id"]),
+                artists=parsed_artists,
                 title=self.parse_title(track["title"], track["version"]),
                 replay_gain=track["replayGain"],
                 peak=track["peak"],

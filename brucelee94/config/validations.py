@@ -157,9 +157,7 @@ class UploadWebInterface(BaseStruct):
 
 class UploadRequests(BaseStruct):
     always_ask_for_request_fill: bool = False
-    check_recent_uploads: bool = True
     check_requests: bool = True
-    last_minute_dupe_check: bool = False
 
 
 class UploadCompression(BaseStruct):
@@ -171,7 +169,7 @@ class UploadCompression(BaseStruct):
 
 
 class Upload(BaseStruct):
-    simultaneous_threads: int = 3
+    simultaneous_threads: int = 24
     user_agent: str = "salmon uploading tools"
 
     # Default text editor for click.edit operations
@@ -181,8 +179,6 @@ class Upload(BaseStruct):
     native_spectrals_viewer: bool = False
     feh_fullscreen: bool = True
     prompt_puddletag: bool = False
-    # must be within 0-1
-    log_dupe_tolerance: Annotated[float, msgspec.Meta(ge=0.0, le=1.0)] = 0.5
     windows_use_recycle_bin: bool = True
 
     multi_tracker_upload: bool = True

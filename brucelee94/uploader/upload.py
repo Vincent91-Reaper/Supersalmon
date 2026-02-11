@@ -1,6 +1,5 @@
 import asyncio
 import os
-import re
 
 import click
 from torf import Torrent
@@ -9,14 +8,26 @@ from brucelee94 import cfg
 from brucelee94.common import str_to_int_if_int
 from brucelee94.constants import ARTIST_IMPORTANCES
 from brucelee94.errors import RequestError
-from brucelee94.sources import SOURCE_ICONS
-from brucelee94.tagger.sources import METASOURCES
+# Source icons and metasources removed (no longer used in descriptions)
+# from brucelee94.sources import SOURCE_ICONS
+# from brucelee94.tagger.sources import METASOURCES
 # Spectral imports removed
 # from salmon.uploader.spectrals import (
 #     make_spectral_bbcode,
 # )
 
-loop = asyncio.get_event_loop()
+
+def _get_event_loop():
+    """Get or create an event loop for async operations."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
 
 
 def prepare_and_upload(
@@ -27,7 +38,7 @@ def prepare_and_upload(
     cover_url,
     track_data,
     hybrid,
-    lossy_master,
+    # lossy_master,  # removed
     # spectral_urls,  # removed
     # spectral_ids,  # removed
     # lossy_comment,  # removed
@@ -70,8 +81,9 @@ def prepare_and_upload(
 
     click.secho("Uploading torrent...", fg="yellow")
     try:
-        torrent_id, group_id = loop.run_until_complete(gazelle_site.upload(data, files))
-        return torrent_id, group_id, torrent_path, torrent_content
+        loop = _get_event_loop()
+        torrent_id, group_id, newgroup = loop.run_until_complete(gazelle_site.upload(data, files))
+        return torrent_id, group_id, torrent_path, torrent_content, newgroup
     except RequestError as e:
         click.secho(str(e), fg="red", bold=True)
         exit()
@@ -101,22 +113,43 @@ def compile_data_new_group(
     """
     Compile the data dictionary that needs to be submitted with a brand new
     torrent group upload POST.
+    
+    NOTE: Label and catalog are torrent-specific (remaster fields), not group-level.
+    Each torrent in a group can have different label/catalog.
     """
-    return {
+    # Debug output for DJ Mix detection
+    if "DJ Mix" in str(metadata.get("title", "")) or "DJ Mix" in str(metadata.get("rls_type", "")):
+        click.secho(f"DEBUG: Release type before upload: {metadata['rls_type']}", fg="yellow")
+        click.secho(f"DEBUG: Title: {metadata['title']}", fg="yellow")
+        click.secho(f"DEBUG: Artists: {metadata['artists']}", fg="yellow")
+    
+    # Ensure DJ Mix is properly mapped, with fallback to Album if key doesn't exist
+    rls_type_id = gazelle_site.release_types.get(metadata["rls_type"])
+    if rls_type_id is None:
+        click.secho(f"WARNING: Release type '{metadata['rls_type']}' not found in tracker release types. Defaulting to Album.", fg="red")
+        rls_type_id = gazelle_site.release_types.get("Album", 1)
+    
+    # For DJ Mix releases, use empty label (Apple Music doesn't provide proper label info)
+    if metadata.get("rls_type") == "DJ Mix":
+        record_label = ""
+    else:
+        record_label = metadata.get("label", "")
+    
+    data = {
         "submit": True,
         "type": 0,
         "title": metadata["title"],
         "artists[]": [a[0] for a in metadata["artists"]],
         "importance[]": [ARTIST_IMPORTANCES[a[1]] for a in metadata["artists"]],
         "year": metadata["group_year"],
-        "record_label": metadata["label"],
-        "catalogue_number": generate_catno(metadata),
-        "releasetype": gazelle_site.release_types[metadata["rls_type"]],
+        "record_label": record_label,  # Group-level label (empty for DJ Mix)
+        "catalogue_number": generate_catno(metadata),  # Group-level catalog
+        "releasetype": rls_type_id,
         "remaster": True,
         "remaster_year": metadata["year"],
         "remaster_title": metadata["edition_title"],
-        "remaster_record_label": metadata["label"],
-        "remaster_catalogue_number": generate_catno(metadata),
+        "remaster_record_label": "",  # Defer to post-upload update
+        "remaster_catalogue_number": "",  # Defer to post-upload update
         "format": metadata["format"],
         "bitrate": metadata["encoding"],
         "other_bitrate": None,
@@ -124,13 +157,16 @@ def compile_data_new_group(
         "vbr": metadata["encoding_vbr"],
         "media": metadata["source"],
         "tags": metadata["tags"],
-        "image": cover_url,
         "album_desc": generate_description(track_data, metadata),
         "release_desc": generate_t_description(
             metadata, track_data, hybrid, metadata["urls"], source_url  # spectral params removed
         ),
         # "requestid": request_id,  # removed
     }
+    # Only include image if cover_url is provided (not None)
+    if cover_url:
+        data["image"] = cover_url
+    return data
 
 
 def compile_data_existing_group(
@@ -148,7 +184,11 @@ def compile_data_existing_group(
     override_description=None,
 ):
     """Compile the data that needs to be submitted
-    with an upload to an existing group."""
+    with an upload to an existing group.
+    
+    NOTE: Label and catalog are torrent-specific (remaster fields), not group-level.
+    Each torrent in a group can have different label/catalog.
+    """
     return {
         "submit": True,
         "type": 0,
@@ -156,8 +196,8 @@ def compile_data_existing_group(
         "remaster": True,
         "remaster_year": metadata["year"],
         "remaster_title": metadata["edition_title"],
-        "remaster_record_label": metadata["label"],
-        "remaster_catalogue_number": generate_catno(metadata),
+        "remaster_record_label": "",  # Defer to post-upload update
+        "remaster_catalogue_number": "",  # Defer to post-upload update
         "format": metadata["format"],
         "bitrate": metadata["encoding"],
         **({"scene": metadata["scene"]} if metadata.get("scene") else {}),
@@ -227,8 +267,62 @@ def generate_torrent(gazelle_site, path):
 
 
 def generate_description(track_data, metadata):
-    """Generate the group description with the tracklist and metadata source links."""
-    description = "[b][size=4]Tracklist[/b]\n"
+    """Generate the group description with tracklist including per-track artists only for Various Artists albums."""
+    # Generate header with artist and album title
+    
+    # For DJ Mix releases, use DJ/Compiler artist in header instead of main artists
+    if metadata.get("rls_type") == "DJ Mix":
+        dj_artists = [a for a, i in metadata["artists"] if i == "djcompiler"]
+        if dj_artists:
+            # Use DJ/Compiler artist(s) for DJ Mix releases
+            if len(dj_artists) == 1:
+                description = f"[b][artist]{dj_artists[0]}[/artist] - {metadata['title']}[/b]\n"
+            else:
+                # Multiple DJ/Compilers - use " & " separator
+                artist_tags = [f"[artist]{artist}[/artist]" for artist in dj_artists]
+                artist_display = " & ".join(artist_tags)
+                description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
+            # DJ Mixes should show all performers, so mark as Various Artists
+            is_various_artists = True
+        else:
+            # Fallback if no DJ/Compiler found (shouldn't happen for DJ Mix)
+            main_artists = [a for a, i in metadata["artists"] if i == "main"]
+            is_various_artists = len(main_artists) >= 3
+            if is_various_artists:
+                description = f"[b]Various Artists - {metadata['title']}[/b]\n"
+            else:
+                sorted_artists = sorted(main_artists)
+                if len(sorted_artists) == 1:
+                    description = f"[b][artist]{sorted_artists[0]}[/artist] - {metadata['title']}[/b]\n"
+                else:
+                    artist_tags = [f"[artist]{artist}[/artist]" for artist in sorted_artists]
+                    artist_display = " & ".join(artist_tags)
+                    description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
+    else:
+        # Non-DJ Mix releases: use existing logic
+        main_artists = [a for a, i in metadata["artists"] if i == "main"]
+        # Use "Various Artists" for albums with 3+ main artists
+        is_various_artists = len(main_artists) >= 3
+        if is_various_artists:
+            description = f"[b]Various Artists - {metadata['title']}[/b]\n"
+        else:
+            # Format each artist with individual [artist] tags inside [b] tags
+            sorted_artists = sorted(main_artists)
+            if len(sorted_artists) == 1:
+                description = f"[b][artist]{sorted_artists[0]}[/artist] - {metadata['title']}[/b]\n"
+            else:
+                # Use " & " separator outside [artist] tags for 2 artists
+                artist_tags = [f"[artist]{artist}[/artist]" for artist in sorted_artists]
+                artist_display = " & ".join(artist_tags)
+                description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
+    
+    # Add release date if available (already formatted as "Month Day, Year")
+    if metadata.get("date"):
+        description += f"{metadata['date']}\n"
+    
+    description += "\n"
+    
+    # Check if multi-disc album
     multi_disc = any(
         (
             t["t"].discnumber
@@ -237,28 +331,121 @@ def generate_description(track_data, metadata):
         )
         for t in track_data.values()
     )
+    
     total_duration = 0
-    for track in track_data.values():
-        length = "{}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
-        total_duration += track["duration"]
-        if multi_disc:
-            description += (
-                f"[b]{str_to_int_if_int(track['t'].discnumber, zpad=True)}-"
-                f"{str_to_int_if_int(track['t'].tracknumber, zpad=True)}.[/b] "
-            )
-        else:
-            description += f"[b]{str_to_int_if_int(track['t'].tracknumber, zpad=True)}.[/b] "
+    
+    if multi_disc:
+        # Group tracks by disc for multi-disc albums
+        from collections import defaultdict
+        tracks_by_disc = defaultdict(list)
+        
+        for track in track_data.values():
+            disc_num = track["t"].discnumber
+            if disc_num:
+                # Extract just the disc number (e.g., "2" from "2/3")
+                disc_num = disc_num.split("/")[0]
+            else:
+                disc_num = "1"
+            tracks_by_disc[disc_num].append(track)
+        
+        # Sort discs and tracks
+        sorted_discs = sorted(tracks_by_disc.keys(), key=lambda x: int(x))
+        
+        for disc_num in sorted_discs:
+            # Add disc header
+            description += f"[size=2][b]Disc {disc_num}[/b][/size]\n"
+            
+            # Sort tracks within disc by track number
+            disc_tracks = sorted(tracks_by_disc[disc_num], 
+                               key=lambda t: int(t["t"].tracknumber.split("/")[0]) if t["t"].tracknumber else 0)
+            
+            for track in disc_tracks:
+                length = "{:02d}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
+                total_duration += track["duration"]
+                
+                # Use original track number from metadata - extract just the number part if it contains "/"
+                track_num_raw = track['t'].tracknumber
+                if '/' in track_num_raw:
+                    track_num_raw = track_num_raw.split('/')[0]
+                # Zero-pad track numbers
+                track_num = str_to_int_if_int(track_num_raw, zpad=True)
+                description += f"[b]{track_num}.[/b] "
+                
+                # Add per-track artist info only for Various Artists albums
+                if is_various_artists:
+                    track_artist = track['t'].artist
+                    if isinstance(track_artist, list):
+                        # Split each artist on both ", " and " & " and create separate [artist] tags
+                        all_artists = []
+                        for artist in track_artist:
+                            # Split on both ", " and " & " to separate combined artists
+                            # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                            for comma_part in artist.split(', '):
+                                all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                        artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
+                        description += f"{', '.join(artist_tags)} - "
+                    elif track_artist:
+                        # Split single artist string on both ", " and " & "
+                        artists = []
+                        for comma_part in track_artist.split(', '):
+                            artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                        artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
+                        description += f"{', '.join(artist_tags)} - "
+                
+                description += f"{track['t'].title} [i]({length})[/i]\n"
+            
+            # Add blank line after each disc (except the last one)
+            if disc_num != sorted_discs[-1]:
+                description += "\n"
+    else:
+        # Single disc album - use simple numbering
+        for track in track_data.values():
+            length = "{:02d}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
+            total_duration += track["duration"]
+            
+            # Extract just the number part if it contains "/"
+            track_num_raw = track['t'].tracknumber
+            if '/' in track_num_raw:
+                track_num_raw = track_num_raw.split('/')[0]
+            # Zero-pad track numbers
+            track_num = str_to_int_if_int(track_num_raw, zpad=True)
+            description += f"[b]{track_num}.[/b] "
+            
+            # Add per-track artist info only for Various Artists albums
+            if is_various_artists:
+                track_artist = track['t'].artist
+                if isinstance(track_artist, list):
+                    # Split each artist on both ", " and " & " and create separate [artist] tags
+                    all_artists = []
+                    for artist in track_artist:
+                        # Split on both ", " and " & " to separate combined artists
+                        # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                        for comma_part in artist.split(', '):
+                            all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                    artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
+                    description += f"{', '.join(artist_tags)} - "
+                elif track_artist:
+                    # Split single artist string on both ", " and " & "
+                    artists = []
+                    for comma_part in track_artist.split(', '):
+                        artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                    artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
+                    description += f"{', '.join(artist_tags)} - "
+            
+            description += f"{track['t'].title} [i]({length})[/i]\n"
 
-        description += f"{', '.join(track['t'].artist)} - {track['t'].title} [i]({length})[/i]\n"
-
+    # Format total length
     if len(track_data.values()) > 1:
-        description += f"\n[b]Total length: [/b]{total_duration // 60}:{total_duration % 60:02d}\n"
+        if total_duration >= 3600:  # 1 hour or more
+            hours = total_duration // 3600
+            minutes = (total_duration % 3600) // 60
+            seconds = total_duration % 60
+            description += f"\n[b]Total length:[/b] {hours}:{minutes:02d}:{seconds:02d}\n"
+        else:
+            description += f"\n[b]Total length:[/b] {total_duration // 60}:{total_duration % 60:02d}\n"
 
     if metadata["comment"]:
         description += f"\n{metadata['comment']}\n"
-
-    if metadata["urls"]:
-        description += "\n[b]More info:[/b] " + generate_source_links(metadata["urls"])
 
     return description
 
@@ -267,30 +454,20 @@ def generate_t_description(
     metadata, track_data, hybrid, metadata_urls, source_url  # spectral params removed
 ):
     """
-    Generate the torrent description. Add information about each file.
-    Spectral URLs have been removed.
+    Generate the torrent description. Only print bitrates and bit depth.
+    Icons, images, release date, source links, and more info have been removed.
     """
     description = ""
-    # Spectral bbcode removed
-    # if spectral_urls:
-    #     description += make_spectral_bbcode(spectral_ids, spectral_urls)
 
     if not hybrid:
         track = next(iter(track_data.values()))
         if track["precision"]:
-            if cfg.upload.description.icons_in_descriptions:
-                description += "[img]https://ptpimg.me/pu93q2.png[/img]"
-            else:
-                description += "Encode Specifics:"
-            description += " [b]{} bit [color=#2E86C1]{:.01f}[/color] kHz[/b]".format(
+            description += "[b]{} bit [color=#2E86C1]{:.01f}[/color] kHz[/b]".format(
                 track["precision"], track["sample rate"] / 1000
             )
             description += "\n"
         else:
-            description += "Encode Specifics: {:.01f} kHz\n".format(track["sample rate"] / 1000)
-
-    if metadata["date"]:
-        description += f"Released on [b]{metadata['date']}[/b]\n"
+            description += "{:.01f} kHz\n".format(track["sample rate"] / 1000)
 
     if cfg.upload.description.include_tracklist_in_t_desc or hybrid:
         for filename, track in track_data.items():
@@ -303,65 +480,5 @@ def generate_t_description(
                 description += " [{} bit / {} kHz]".format(track["precision"], track["sample rate"] / 1000)
 
             description += "\n"
-        description += "\n"
-
-    # Lossy comment removed
-    # if lossy_comment and cfg.upload.compression.lma_comment_in_t_desc:
-    #     description += f"[u]Lossy Notes:[/u]\n{lossy_comment}\n\n"
-
-    if source_url is not None:
-        matched = False
-        for name, source in METASOURCES.items():
-            if source.Scraper.regex.match(source_url):
-                if cfg.upload.description.icons_in_descriptions:
-                    description += (
-                        f"[b]Source:[/b] [pad=0|3][url={source_url}][img]"
-                        f"{SOURCE_ICONS[name]}[/img] {name}[/url][/pad]\n\n"
-                    )
-                else:
-                    description += f"[b]Source:[/b] [url={source_url}]{name}[/url]\n\n"
-                matched = True
-                break
-
-        if not matched:
-            # Extract hostname without TLD for unmatched URLs
-            hostname = re.match(r"https?://(?:www\.)?([^/]+)", source_url)
-            if hostname:
-                description += f"[b]Source:[/b] [url={source_url}]{hostname.group(1)}[/url]\n\n"
-
-    if metadata_urls:
-        description += "[b]More info:[/b] " + generate_source_links(metadata_urls, source_url)
-        description += "\n"
 
     return description
-
-
-def generate_source_links(metadata_urls, source_url=None):
-    links = []
-    unmatched_urls = []
-
-    for url in metadata_urls:
-        matched = False
-        for name, source in METASOURCES.items():
-            if source.Scraper.regex.match(url):
-                if cfg.upload.description.icons_in_descriptions:
-                    links.append(f"[pad=0|3][url={url}][img]{SOURCE_ICONS[name]}[/img] {name}[/url][/pad]")
-                else:
-                    links.append(f"[url={url}]{name}[/url]")
-                matched = True
-                break
-
-        if not matched:
-            # Extract hostname without TLD for unmatched URLs
-            hostname = re.match(r"https?://(?:www\.)?([^/]+)", url)
-            if hostname:
-                unmatched_urls.append(f"[url={url}]{hostname.group(1)}[/url]")
-
-    result = " ".join(links) if cfg.upload.description.icons_in_descriptions else " | ".join(links)
-
-    if unmatched_urls:
-        if links:
-            result += " | "
-        result += " | ".join(unmatched_urls)
-
-    return result

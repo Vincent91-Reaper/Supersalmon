@@ -333,13 +333,16 @@ class BaseGazelleApi:
                             fg="green",
                         )
                 torrent_id = 0
+                # Note: We no longer rely on the 'newgroup' field from RED's API as it's unreliable.
+                # Instead, we determine if it's a new group by checking the torrent count after upload.
+                newgroup = None  # Not used anymore, will be determined by torrent count
                 if "torrentid" in resp["response"]:
                     torrent_id = resp["response"]["torrentid"]
                     group_id = resp["response"]["groupid"]
                 elif "torrentId" in resp["response"]:
                     torrent_id = resp["response"]["torrentId"]
                     group_id = resp["response"]["groupId"]
-                return torrent_id, group_id
+                return torrent_id, group_id, newgroup
         except TypeError as err:
             raise RequestError(f"API upload failed, response text: {resp.text}") from err
 
@@ -368,7 +371,8 @@ class BaseGazelleApi:
                 torrent_id = self.parse_torrent_id_from_filled_request_page(resp.text)
                 group_id = await self.get_redirect_torrentgroupid(torrent_id)
                 click.secho(f"Filled request: {resp.url}", fg="green")
-                return torrent_id, group_id
+                # Filling a request doesn't create a new group
+                return torrent_id, group_id, False
             except (TypeError, ValueError) as err:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 error = soup.find("h2", text="Error")
@@ -376,7 +380,11 @@ class BaseGazelleApi:
                 error_message = p_tag.text if p_tag else resp.text
                 raise RequestError(f"Request fill failed: {error_message}") from err
         try:
-            return self.parse_most_recent_torrent_and_group_id_from_group_page(resp.text)
+            torrent_id, group_id = self.parse_most_recent_torrent_and_group_id_from_group_page(resp.text)
+            # For site page upload, we can't easily determine if it's a new group from the response
+            # but if we didn't have a group_id in the request data, it's definitely new
+            newgroup = "groupid" not in data
+            return torrent_id, group_id, newgroup
         except TypeError as err:
             raise RequestError(f"Site upload failed, response text: {resp.text}") from err
 
@@ -447,6 +455,138 @@ class BaseGazelleApi:
                 "Added spectrals to the torrent description.",
                 fg="green",
             )
+
+    async def update_torrent_metadata(self, torrent_id, label=None, catalog_number=None):
+        """Update label and catalog number for a specific torrent
+        
+        Args:
+            torrent_id: The ID of the torrent to update
+            label: The record label to set (remaster_record_label)
+            catalog_number: The catalogue number to set (remaster_catalogue_number)
+        """
+        # Fetch current torrent details
+        current_details = await self.request("torrent", id=torrent_id)
+        
+        # Use provided values if given, otherwise preserve existing
+        new_label = label if label is not None else (current_details["torrent"]["remasterRecordLabel"] or "")
+        new_catalog = catalog_number if catalog_number is not None else (current_details["torrent"]["remasterCatalogueNumber"] or "")
+        
+        new_data = {
+            "action": "takeedit",
+            "torrentid": torrent_id,
+            "type": 1,
+            "groupremasters": 0,
+            "remaster_year": current_details["torrent"]["remasterYear"],
+            "remaster_title": current_details["torrent"]["remasterTitle"],
+            "remaster_record_label": new_label,
+            "remaster_catalogue_number": new_catalog,
+            "format": current_details["torrent"]["format"],
+            "bitrate": current_details["torrent"]["encoding"],
+            "other_bitrate": "",
+            "media": current_details["torrent"]["media"],
+            "release_desc": current_details["torrent"]["description"],
+        }
+
+        url = self.base_url + "/torrents.php"
+        new_data["auth"] = self.authkey
+        resp = await loop.run_in_executor(
+            None,
+            lambda: self.session.post(url, data=new_data, headers=self.headers),
+        )
+        soup = BeautifulSoup(resp.text, "html.parser")
+        edit_error = soup.find("h2", text="Error")
+        if edit_error:
+            error_message = edit_error.parent.parent.find("p").text
+            raise RequestError(f"Failed to update torrent metadata: {error_message}")
+
+    async def update_group_cover_image(self, group_id, cover_url, album_desc=None):
+        """Update the cover image for a torrent group
+        This edits the group (not individual torrent) to add/update the cover image
+        
+        Args:
+            group_id: The ID of the torrent group to update
+            cover_url: The ptpimg URL for the cover image
+            album_desc: Optional album description. If provided, will update the description
+                       along with the cover. If not provided, preserves existing description.
+        """
+        current_details = await self.request("torrentgroup", id=group_id)
+        
+        # Get the first torrent's details to populate required fields
+        first_torrent = current_details["torrents"][0]
+        
+        # Use provided album_desc if available, otherwise preserve existing
+        description = album_desc if album_desc is not None else current_details["group"]["wikiBody"]
+        
+        new_data = {
+            "action": "takegroupedit",
+            "groupid": group_id,
+            "year": current_details["group"]["year"],
+            "record_label": current_details["group"]["recordLabel"] or "",
+            "catalogue_number": current_details["group"]["catalogueNumber"] or "",
+            "releasetype": current_details["group"]["releaseType"],
+            "image": cover_url,
+            "tags": ",".join(current_details["group"]["tags"]),
+            "body": description,  # RED's API uses "body" for the group wiki description
+        }
+
+        url = self.base_url + "/torrents.php"
+        new_data["auth"] = self.authkey
+        resp = await loop.run_in_executor(
+            None,
+            lambda: self.session.post(url, data=new_data, headers=self.headers),
+        )
+        soup = BeautifulSoup(resp.text, "html.parser")
+        edit_error = soup.find("h2", text="Error")
+        if edit_error:
+            error_message = edit_error.parent.parent.find("p").text
+            raise RequestError(f"Failed to update cover image: {error_message}")
+
+    async def update_group_metadata(self, group_id, label=None, catalog_number=None, 
+                                    cover_url=None, album_desc=None):
+        """Update metadata for a torrent group after upload
+        
+        This method updates label, catalog number, cover, and/or description
+        for a group that was just uploaded. It fetches current group details
+        and updates only the specified fields while preserving others.
+        
+        Args:
+            group_id: The ID of the torrent group to update
+            label: Record label to set (both group and remaster). If None, preserves existing.
+            catalog_number: Catalog number to set (both group and remaster). If None, preserves existing.
+            cover_url: The ptpimg URL for the cover image. If None, preserves existing.
+            album_desc: Album description. If None, preserves existing description.
+        """
+        current_details = await self.request("torrentgroup", id=group_id)
+        
+        # Determine values to use (provided values or current values)
+        record_label = label if label is not None else (current_details["group"]["recordLabel"] or "")
+        catalogue_number = catalog_number if catalog_number is not None else (current_details["group"]["catalogueNumber"] or "")
+        image = cover_url if cover_url is not None else (current_details["group"]["wikiImage"] or "")
+        description = album_desc if album_desc is not None else current_details["group"]["wikiBody"]
+        
+        new_data = {
+            "action": "takegroupedit",
+            "groupid": group_id,
+            "year": current_details["group"]["year"],
+            "record_label": record_label,
+            "catalogue_number": catalogue_number,
+            "releasetype": current_details["group"]["releaseType"],
+            "image": image,
+            "tags": ",".join(current_details["group"]["tags"]),
+            "body": description,
+        }
+
+        url = self.base_url + "/torrents.php"
+        new_data["auth"] = self.authkey
+        resp = await loop.run_in_executor(
+            None,
+            lambda: self.session.post(url, data=new_data, headers=self.headers),
+        )
+        soup = BeautifulSoup(resp.text, "html.parser")
+        edit_error = soup.find("h2", text="Error")
+        if edit_error:
+            error_message = edit_error.parent.parent.find("p").text
+            raise RequestError(f"Failed to update group metadata: {error_message}")
 
     """The following three parsing functions are part of the gazelle class
     in order that they be easily overwritten in the derivative site classes.

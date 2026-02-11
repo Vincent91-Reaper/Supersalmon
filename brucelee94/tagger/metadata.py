@@ -7,28 +7,184 @@ import click
 
 from brucelee94 import cfg
 from brucelee94.common import handle_scrape_errors, make_searchstrs, re_strip
+from brucelee94.constants import RELEASE_TYPES
 from brucelee94.search import SEARCHSOURCES, run_metasearch
 from brucelee94.tagger.combine import combine_metadatas
 from brucelee94.tagger.sources import METASOURCES
 from brucelee94.tagger.sources.base import generate_artists
 
-loop = asyncio.get_event_loop()
+
+def _get_event_loop():
+    """Get or create an event loop for async operations."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
 
 
-def get_metadata(path, tags, rls_data=None):
+def _prompt_for_release_type():
+    """Prompt user to select a release type if not found in metadata."""
+    types_list = list(RELEASE_TYPES.keys())
+    click.echo("Available release types:")
+    for i, rls_type in enumerate(types_list, 1):
+        click.echo(f"  {i}. {rls_type}")
+    
+    while True:
+        choice = click.prompt("Enter the number for the release type", type=int)
+        if 1 <= choice <= len(types_list):
+            return types_list[choice - 1]
+        click.secho(f"Invalid choice. Please enter a number between 1 and {len(types_list)}", fg="red")
+
+
+def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     """
-    Get metadata pertaining to a release from various metadata sources. Have the user
-    decide which sources to use, and then combine their information.
+    Get metadata from a URL provided by the user. Skips automatic search.
+    If provided_source_url is given, use it directly instead of prompting.
+    
+    Special case: For Tidal URLs, returns a flag to skip scraping and extract from file tags.
     """
-    click.secho("\nChecking metadata...", fg="cyan", bold=True)
-    searchstrs = make_searchstrs(rls_data["artists"], rls_data["title"])
-    click.secho(f"Searching for '{searchstrs}' releases...")
-    kwargs = dict(artists=[a for a, _ in rls_data["artists"]], album=rls_data["title"]) if rls_data else {}
-    search_results = run_metasearch(searchstrs, filter=False, track_count=len(tags), **kwargs)
-    choices = _print_search_results(search_results, rls_data)
-    metadata, source_url = _select_choice(choices, rls_data)
-    remove_various_artists(metadata["tracks"])
-    return metadata, source_url
+    # Initialize rls_data if needed
+    rls_data = rls_data or {}
+    if "urls" not in rls_data:
+        rls_data["urls"] = []
+    
+    # If a source URL was provided (e.g., for 16-bit downconversion), use it directly
+    if provided_source_url:
+        url_input = provided_source_url
+        click.secho(f"\nUsing provided source URL: {url_input}", fg="cyan")
+    else:
+        # Normal flow: prompt for URL
+        import sys
+        while True:
+            # Only show prompt if stdin is a TTY (interactive mode)
+            if sys.stdin.isatty():
+                click.echo(
+                    click.style(
+                        "\nPlease provide a URL to scrape metadata from (or [m]anual, [a]bort): ",
+                        fg="magenta",
+                    ),
+                    nl=False,
+                )
+                sys.stdout.flush()
+                url_input = sys.stdin.readline().strip()
+            else:
+                # Non-TTY mode (piped input from bl94_helper): read silently
+                url_input = sys.stdin.readline().strip()
+            
+            if url_input.lower().startswith("m"):
+                metadata = _get_manual_metadata(rls_data)
+                return metadata, None
+            elif url_input.lower().startswith("a"):
+                raise click.Abort()
+            
+            # Break out of prompt loop to scrape
+            break
+    
+    # Special case: Check if this is a Tidal URL
+    # For Tidal, we want to skip scraping and extract metadata from file tags instead
+    import re
+    tidal_pattern = re.compile(r"^https?://.*(?:tidal|wimpmusic)\.com.*\/(album)\/([0-9]+)")
+    if tidal_pattern.match(url_input):
+        click.secho("Tidal URL detected - skipping metadata scraping", fg="cyan")
+        # Return a special marker to indicate we should extract from file tags
+        return {"_extract_from_files": True, "_source_url": url_input}, url_input
+    
+    # Try to scrape from the URL
+    source_url = None
+    metadata = None
+    
+    for name, source in METASOURCES.items():
+        if source.Scraper.regex.match(url_input):
+            click.secho(f"Scraping metadata from {name}...", fg="cyan")
+            source_url = url_input
+            if url_input not in rls_data["urls"]:
+                rls_data["urls"].append(url_input)
+            
+            scraper = source.Scraper()
+            # Create async task and run it
+            loop = _get_event_loop()
+            task = handle_scrape_errors(scraper.scrape_release(url_input))
+            metadata = loop.run_until_complete(task)
+            
+            if metadata:
+                # Clean and prepare metadata
+                metadata = clean_metadata(metadata)
+                remove_various_artists(metadata["tracks"])
+                
+                # Validate required fields
+                if not metadata.get("rls_type"):
+                    click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
+                    metadata["rls_type"] = _prompt_for_release_type()
+                
+                # Fallback: If year is missing from scraped metadata, extract from file tags
+                if not metadata.get("year"):
+                    click.secho("Warning: No year found in scraped metadata, extracting from file tags...", fg="yellow")
+                    import re
+                    from datetime import datetime
+                    
+                    # Extract years from file tags
+                    years = []
+                    dates = []
+                    for filename, tagset in tags.items():
+                        try:
+                            # Try to get year from tag
+                            if hasattr(tagset, "year") and tagset.year:
+                                years.append(int(tagset.year))
+                        except (TypeError, ValueError, AttributeError):
+                            pass
+                        
+                        try:
+                            # Also collect dates for fallback
+                            if hasattr(tagset, "date") and tagset.date:
+                                dates.append(str(tagset.date))
+                        except (TypeError, AttributeError):
+                            pass
+                    
+                    # Use most common year from tags
+                    if years:
+                        metadata["year"] = max(set(years), key=years.count)
+                        if not metadata.get("group_year"):
+                            metadata["group_year"] = metadata["year"]
+                        click.secho(f"Extracted year from file tags: {metadata['year']}", fg="green")
+                    
+                    # If still no year, try to extract from date field
+                    if not metadata.get("year") and dates:
+                        most_common_date = max(set(dates), key=dates.count)
+                        date_str = str(most_common_date).strip()
+                        year_match = re.search(r'(\d{4})', date_str)
+                        if year_match:
+                            metadata["year"] = int(year_match.group(1))
+                            if not metadata.get("group_year"):
+                                metadata["group_year"] = metadata["year"]
+                            click.secho(f"Extracted year from date field: {metadata['year']}", fg="green")
+                    
+                    # If still no year, use current year as last resort
+                    if not metadata.get("year"):
+                        current_year = datetime.now().year
+                        metadata["year"] = current_year
+                        if not metadata.get("group_year"):
+                            metadata["group_year"] = current_year
+                        click.secho(f"Warning: Using current year as fallback: {current_year}", fg="yellow")
+                
+                return metadata, source_url
+            else:
+                click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
+                if provided_source_url:
+                    # If we were given a URL and it failed, raise an error
+                    raise click.Abort("Failed to scrape from provided URL")
+                break
+    
+    if not metadata:
+        if provided_source_url:
+            raise click.Abort("URL not recognized or failed to scrape")
+        click.secho(f"URL not recognized or failed to scrape. Please try again.", fg="red")
+        # Recursively try again
+        return get_metadata(path, tags, rls_data, provided_source_url)
 
 
 def _print_search_results(results, rls_data=None):
@@ -148,6 +304,7 @@ def _select_choice(choices, rls_data):
                 return meta, source_url
             continue
 
+        loop = _get_event_loop()
         metadatas = loop.run_until_complete(asyncio.gather(*tasks))
         meta = combine_metadatas(
             *((s, m) for s, m in zip(sources, metadatas, strict=False) if m), base=rls_data, source_url=source_url

@@ -30,17 +30,31 @@ class TidalBase(BaseScraper):
         """Run a GET request to Tidal's JSON API for album data."""
         params = params or {}
         album_id = self.parse_release_id(url)
+        
         for cc in get_tidal_regions_to_fetch():
             try:
                 self.country_code = cc
                 params["countrycode"] = cc
+                
                 data = await self.get_json(f"/albums/{album_id}", params=params)
-                tracklist = await self.get_json(f"/albums/{album_id}/tracks", params=params)
+                
+                # Add limit parameter to ensure we get tracks
+                tracks_params = params.copy()
+                tracks_params["limit"] = 100  # Request up to 100 tracks
+                
+                tracklist_url = f"/albums/{album_id}/tracks"
+                tracklist = await self.get_json(tracklist_url, params=tracks_params)
+                
+                if not tracklist.get("items"):
+                    # Continue to try next region instead of failing here
+                    if cc != get_tidal_regions_to_fetch()[-1]:
+                        continue
+                
                 data["tracklist"] = tracklist["items"]
                 return data
             except json.decoder.JSONDecodeError as e:
                 raise ScrapeError("Tidal page did not return valid JSON.") from e
-            except (KeyError, ScrapeError):
+            except (KeyError, ScrapeError) as e:
                 pass
         raise ScrapeError(f"Failed to grab metadata for {url}.")
 

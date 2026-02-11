@@ -17,14 +17,16 @@ FLAC_FOLDER_REGEX = re.compile(r"(24 ?bit )?FLAC", flags=re.IGNORECASE)
 
 
 def convert_folder(path, bit_depth=16, sample_rate=None):
-    new_path = _generate_conversion_path_name(path)
-    if sample_rate and bit_depth == 24:
-        new_path = re.sub(
-            "FLAC",
-            f"24-{sample_rate / 1000:.0f}",
-            new_path,
-            flags=re.IGNORECASE,
-        )
+    # Determine the target sample rate if not specified
+    if not sample_rate:
+        audio_info = gather_audio_info(path)
+        if audio_info:
+            first_file_info = next(iter(audio_info.values()))
+            original_rate = first_file_info["sample rate"]
+            sample_rate = _get_final_sample_rate(original_rate)
+    
+    new_path = _generate_conversion_path_name(path, target_bit_depth=bit_depth, target_sample_rate=sample_rate)
+    
     if os.path.isdir(new_path):
         click.secho(f"{new_path} already exists.", fg="yellow")
         return sample_rate, new_path
@@ -47,14 +49,56 @@ def _determine_files_actions(path):
     return convert_files, copy_files
 
 
-def _generate_conversion_path_name(path):
+def _generate_conversion_path_name(path, target_bit_depth=16, target_sample_rate=None):
+    """
+    Generate folder name for converted release.
+    For 16-bit downconversion: Updates bit depth and sample rate in format:
+    {Artists} - {Album title} ({Release_year}) [WEB FLAC] [{Bit_depth}-{Sample_rate}]
+    Sample rates are simplified: 44100 -> 44.1, 48000 -> 48, 96000 -> 96, 192000 -> 192
+    """
     foldername = os.path.basename(path)
-    if re.search("24 ?bit FLAC", foldername, flags=re.IGNORECASE):
-        foldername = re.sub("24 ?bit FLAC", "FLAC", foldername, flags=re.IGNORECASE)
-    elif re.search("FLAC", foldername, flags=re.IGNORECASE):
-        foldername = re.sub("FLAC", "16bit FLAC", foldername, flags=re.IGNORECASE)
+    
+    # If we have target sample rate info, format it properly
+    if target_sample_rate and target_bit_depth == 16:
+        # Simplify sample rate format: 44100 -> 44.1, 48000 -> 48, etc.
+        if target_sample_rate == 44100:
+            rate_str = "44.1"
+        elif target_sample_rate == 48000:
+            rate_str = "48"
+        elif target_sample_rate == 96000:
+            rate_str = "96"
+        elif target_sample_rate == 192000:
+            rate_str = "192"
+        elif target_sample_rate == 88200:
+            rate_str = "88.2"
+        elif target_sample_rate == 176400:
+            rate_str = "176.4"
+        else:
+            rate_str = f"{target_sample_rate / 1000:.1f}".rstrip('0').rstrip('.')
+        
+        # Pattern to match and replace bit depth/sample rate in brackets
+        # Matches patterns like [24-96], [24bit-96], [24-96.0], etc.
+        pattern = r'\[(\d+)(?:bit)?[-\s]*(\d+(?:\.\d+)?)\]'
+        replacement = f"[{target_bit_depth}-{rate_str}]"
+        
+        if re.search(pattern, foldername, flags=re.IGNORECASE):
+            foldername = re.sub(pattern, replacement, foldername, flags=re.IGNORECASE)
+        else:
+            # If no existing bit depth/rate found, try to add it before last closing bracket
+            # or append at the end
+            if ']' in foldername:
+                # Insert before the last bracket group
+                foldername = re.sub(r'\](?=[^\]]*$)', f" {replacement}]", foldername)
+            else:
+                foldername += f" {replacement}"
     else:
-        foldername += " [FLAC]"
+        # Fallback to original logic for other cases
+        if re.search("24 ?bit FLAC", foldername, flags=re.IGNORECASE):
+            foldername = re.sub("24 ?bit FLAC", "FLAC", foldername, flags=re.IGNORECASE)
+        elif re.search("FLAC", foldername, flags=re.IGNORECASE):
+            foldername = re.sub("FLAC", "16bit FLAC", foldername, flags=re.IGNORECASE)
+        else:
+            foldername += " [FLAC]"
 
     return os.path.join(os.path.dirname(path), foldername)
 
@@ -112,10 +156,12 @@ def _convert_single_file(file_, output, files_left, bit_depth=16, sample_rate=No
 
     command = [
         "sox",
+        "--buffer", "8192",  # Increase I/O buffer for better disk performance
         file_,
         "-R",
         "-G",
         *([] if bit_depth == 24 else ["-b", str(bit_depth)]),
+        "-C", "0",  # FLAC compression level 0 for fastest encoding
         output,
         "rate",
         "-v",
@@ -150,13 +196,13 @@ def generate_conversion_description(url, sample_rate):
             f"Encode Specifics: 16 bit {sample_rate / 1000:.01f} kHz\n"
             f"[b]Source:[/b] {url}\n"
             f"[b]Transcode process:[/b] "
-            f"[code]sox input.flac -R -G -b 16 output.flac rate -v -L {sample_rate} dither[/code]\n"
+            f"[code]sox --buffer 8192 input.flac -R -G -b 16 -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
         )
     else:
         description += (
             f"Encode Specifics: 24 bit {sample_rate / 1000:.01f} kHz\n"
             f"[b]Source:[/b] {url}\n"
-            f"[b]Transcode process:[/b] [code]sox input.flac -R -G output.flac rate -v -L {sample_rate} dither[/code]\n"
+            f"[b]Transcode process:[/b] [code]sox --buffer 8192 input.flac -R -G -C 0 output.flac rate -v -L {sample_rate} dither[/code]\n"
         )
 
     return description

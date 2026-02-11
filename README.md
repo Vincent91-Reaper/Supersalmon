@@ -2,18 +2,28 @@
 
 A simplified music uploading tool for RED (Redacted). Completely separate from smoked-salmon with its own configuration and data directories.
 
+## 📚 Documentation Hub
+
+**New to BruceLee94?** → Start with **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** for easy navigation to all guides.
+
+### Quick Links
+
+- **[QUICK_ANSWER.md](QUICK_ANSWER.md)** - Installation command & FAQs
+- **[INSTALLATION_UPDATE_GUIDE.md](INSTALLATION_UPDATE_GUIDE.md)** - Complete installation and update instructions
+- **[UPLOAD_WORKFLOW_EXPLAINED.md](UPLOAD_WORKFLOW_EXPLAINED.md)** - Detailed upload process with code references
+- **[DEFERRED_METADATA_UPLOAD.md](DEFERRED_METADATA_UPLOAD.md)** - How label/catalog are added AFTER upload for speed
+- **[VISUAL_UPLOAD_TIMELINE.txt](VISUAL_UPLOAD_TIMELINE.txt)** - ASCII art timeline showing upload phases
+- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Navigation hub for all documentation
+
 ## 🌟 Features  
 
 - **RED Upload** – Upload music to RED (Redacted) tracker
-- **Upconvert Detection** – Checks 24-bit flac files for potential upconverts
-- **Duplicate Upload Detection** – Prevents redundant uploads  
 - **Metadata Retrieval** – Fetches metadata from:
   - Bandcamp, Beatport, Deezer, Discogs, iTunes, JunoDownload, MusicBrainz, Qobuz, Tidal
 - **File Management** –  
-  - Retags files with updated metadata
-  - Checks file integrity and sanitizes if needed
+  - Retags files with updated metadata (artists, catalog #/UPC, label only)
   - Original folder and file names are preserved
-- **Description generation** – Edition description generation (tracklist, sources, available streaming platforms, encoding details...)
+- **Description generation** – Edition description generation (tracklist, bitrate/bit depth)
 - **Update Notifications** – Informs users when a new version is available
 
 ## ⚠️ Removed Features
@@ -26,6 +36,15 @@ These features have been removed from the original smoked-salmon:
 - ❌ Downconversion and transcoding
 - ❌ Spectral image generation and uploading
 - ❌ MQA detection
+- ❌ Duplicate upload detection
+- ❌ Lossy master detection
+- ❌ 24-bit upconvert detection
+- ❌ Integrity check and sanitization
+- ❌ Zero-length folder check
+- ❌ File extension validation
+- ❌ Genre tag updates (genres kept as original)
+- ❌ Icons/images in descriptions
+- ❌ "More info" links in descriptions
 
 ## 📥 Installation  
 
@@ -268,8 +287,10 @@ BruceLee94 is a streamlined fork of the original smoked-salmon tool with the fol
 - **Renamed Tool**: Changed from "salmon" to "brucelee94" command
 - **Simplified Upload Process**: File and folder names are preserved in their original state - no automatic renaming
 - **RED-Only**: Focused exclusively on uploading to RED (Redacted), removing complexity of multi-tracker support
-- **Streamlined Workflow**: Removed spectral generation, MQA detection, request filling, and downconversion features
-- **Core Functionality**: Retains essential features like metadata retrieval, file tagging, duplicate detection, and upconvert checking
+- **Streamlined Workflow**: Removed spectral generation, MQA detection, request filling, duplicate detection, lossy master detection, upconvert detection, integrity check, and downconversion features
+- **Simplified Tagging**: Only proposes tag updates for artists, catalog #/UPC, and label (genres kept as original)
+- **Minimal Descriptions**: Torrent descriptions only show bitrate/bit depth - no icons, images, or "More info" links
+- **Simplified Folder Check**: Only checks path length (no zero-length folder or file extension checks)
 
 ### Removed Features:
 1. Folder renaming (original folder names are kept)
@@ -279,6 +300,15 @@ BruceLee94 is a streamlined fork of the original smoked-salmon tool with the fol
 5. Downconversion and transcoding
 6. Spectral image generation and uploading
 7. MQA detection
+8. Duplicate upload detection
+9. Lossy master detection
+10. 24-bit upconvert detection
+11. Integrity check and sanitization
+12. Zero-length folder check
+13. File extension validation
+14. Genre tag updates
+15. Icons/images in descriptions
+16. "More info" links in descriptions
 
 ## 🎩 Credits
 * Based on the original [smoked-salmon](https://github.com/smokin-salmon/smoked-salmon) - created by [ligh7s](https://github.com/ligh7s/smoked-salmon)

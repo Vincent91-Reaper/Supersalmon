@@ -57,7 +57,26 @@ class Scraper(BeatportBase, MetadataMixin):
 
     def parse_release_date(self, soup):
         try:
-            return soup["state"]["data"]["results"][0]["new_release_date"]
+            raw_date = soup["state"]["data"]["results"][0]["new_release_date"]
+            # Format date to "Month Day, Year" format (e.g., "December 31, 2025")
+            # Beatport typically returns dates in YYYY-MM-DD format
+            if raw_date:
+                from datetime import datetime
+                import platform
+                try:
+                    # Parse the date string
+                    parsed_date = datetime.strptime(raw_date, "%Y-%m-%d")
+                    # Format as "Month Day, Year"
+                    try:
+                        formatted_date = parsed_date.strftime("%B %-d, %Y") if platform.system() != "Windows" else parsed_date.strftime("%B %#d, %Y")
+                    except (ValueError, TypeError):
+                        # Fallback for platforms that don't support %- or %#
+                        formatted_date = parsed_date.strftime("%B %d, %Y").replace(' 0', ' ')
+                    return formatted_date
+                except (ValueError, TypeError):
+                    # If parsing fails, return the raw date
+                    return raw_date
+            return raw_date
         except (KeyError, IndexError) as e:
             raise ScrapeError("Could not parse release date") from e
 

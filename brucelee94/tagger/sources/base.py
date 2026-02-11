@@ -9,6 +9,41 @@ from brucelee94.common import fetch_genre, less_uppers, normalize_accents
 from brucelee94.errors import GenreNotInWhitelist
 
 
+def extract_edition_from_title(title):
+    """
+    Extract edition information from album title.
+    Returns tuple: (cleaned_title, edition_string or None)
+    
+    Detects patterns like "Album Name (Deluxe Edition)", "Album - Special Edition", 
+    "Album (2024 Remaster)", "Album (Remastered)", etc. and extracts the edition part.
+    """
+    if not title:
+        return title, None
+    
+    # Pattern to match edition keywords and remaster patterns in parentheses or brackets at end of title
+    edition_pattern = re.compile(
+        r"[\(\[]?\s*("
+        r"(?:\d{4}\s+)?Remaster(?:ed)?"  # Matches "2024 Remaster", "Remastered", etc.
+        r"|(?:Expanded|Deluxe|Anniversary|Limited|Collector'?s|Ultimate|Reissue|"
+        r"Bonus|Special|Super Deluxe|Digital|Japanese|International|Explicit|Clean"
+        r")(?:\s+\w+)?\s+Edition"
+        r"|Edition\s+\d+"
+        r")\s*[\)\]]?$",
+        flags=re.IGNORECASE
+    )
+    
+    match = edition_pattern.search(title)
+    if match:
+        edition = match.group(1).strip()
+        # Remove the matched portion from the title
+        cleaned_title = title[:match.start()].strip()
+        # Remove trailing dash or parentheses markers
+        cleaned_title = re.sub(r'[\s\-\(\[]+$', '', cleaned_title).strip()
+        return cleaned_title, edition
+    
+    return title, None
+
+
 class MetadataMixin(ABC):
     async def scrape_release_from_id(self, rls_id):
         """Run a scrape from the release ID."""
@@ -21,8 +56,21 @@ class MetadataMixin(ABC):
         as None.
         """
         soup = await self.create_soup(url)
+        
+        # Parse title first
+        raw_title = self.parse_release_title(soup)
+        
+        # Extract edition from title if present
+        title_parsed, edition_from_title = self.parse_title(raw_title, None)
+        
+        # Get edition from explicit parse_edition_title method
+        edition_from_method = self.parse_edition_title(soup)
+        
+        # Prefer edition from the title extraction, fallback to method
+        final_edition = edition_from_title or edition_from_method
+        
         data = {
-            "title": self.parse_release_title(soup),
+            "title": title_parsed,
             "cover": self.parse_cover_url(soup),
             "genres": standardize_genres(
                 [
@@ -34,7 +82,7 @@ class MetadataMixin(ABC):
             "year": self.parse_release_year(soup),
             "group_year": self.parse_release_group_year(soup),
             "date": self.parse_release_date(soup),
-            "edition_title": self.parse_edition_title(soup),
+            "edition_title": final_edition,
             "label": self.parse_release_label(soup),
             "catno": self.parse_release_catno(soup),
             "rls_type": self.parse_release_type(soup),
@@ -48,6 +96,13 @@ class MetadataMixin(ABC):
             "source": None,
             "url": url,
         }
+
+        # Extract edition from title if not already set by specific scraper
+        if not data["edition_title"] and data["title"]:
+            cleaned_title, extracted_edition = extract_edition_from_title(data["title"])
+            if extracted_edition:
+                data["title"] = cleaned_title
+                data["edition_title"] = extracted_edition
 
         if rls_id:
             data["url"] = self.format_url(rls_id=rls_id, rls_name=data["title"])
@@ -121,6 +176,10 @@ class MetadataMixin(ABC):
             return title, "Soundtrack"
         if rls_type == "compilation" and len(main_artists) <= 2:
             return title, "Anthology"
+        # Preserve DJ Mix release type before remix detection
+        # DJ Mix tracks often have "Mix" in their titles, which would trigger remix detection
+        if rls_type == "dj mix":
+            return title, "DJ Mix"
 
         # --- Track-based inference ---
         if num_tracks <= 3 or len(base_titles) <= 2:
@@ -205,8 +264,28 @@ class MetadataMixin(ABC):
         Return a filtered title; all those parenthetical phrases belong
         in album info. We also filter out featured artists, since those are
         parsed with the artists.
+        Also extracts edition information from title (e.g., "Deluxe Edition", "Special Edition", "2024 Remaster").
         """
+        edition_extracted = None
+        
         if cfg.upload.formatting.strip_useless_versions:
+            # First, check for edition information and remaster patterns in parentheses at the end
+            # Example: "Album Name (Deluxe Edition)" -> title: "Album Name", edition: "Deluxe Edition"
+            # Example: "Album Name (2024 Remaster)" -> title: "Album Name", edition: "2024 Remaster"
+            edition_pattern = re.compile(
+                r"\s*\(([^)]*(?:"
+                r"(?:\d{4}\s+)?Remaster(?:ed)?"  # Matches "2024 Remaster", "Remastered"
+                r"|(?:Deluxe|Special|Limited|Collector'?s|Anniversary|Ultimate|Expanded|Reissue|Bonus)\s+Edition"
+                r")[^)]*)\)\s*$",
+                flags=re.IGNORECASE
+            )
+            edition_match = edition_pattern.search(title)
+            if edition_match:
+                edition_extracted = edition_match.group(1).strip()
+                title = title[:edition_match.start()].strip()
+            
+            # Note: We keep "Remastered" in the strip pattern below for when it's not part of edition
+            # (e.g., standalone "Remastered" without year or in different context)
             base = re.sub(
                 r" \(*(Original( Mix)?|Remastered|Clean|"
                 r"Album.+edition|Album.+mix|feat[^\)]+)\)*$",
@@ -231,7 +310,7 @@ class MetadataMixin(ABC):
             version = re.sub(r"[\(\)\[\]]", "", version)
             if version.lower() not in strip_set and version.lower() not in base.lower():
                 base += f" ({version})"
-        return base
+        return base, edition_extracted
 
 
 def determine_label_type(label, artists):
