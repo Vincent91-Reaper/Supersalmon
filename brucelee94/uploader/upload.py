@@ -338,16 +338,20 @@ def generate_description(track_data, metadata):
                 if is_various_artists:
                     track_artist = track['t'].artist
                     if isinstance(track_artist, list):
-                        # Split each artist on " & " and create separate [artist] tags
+                        # Split each artist on both ", " and " & " and create separate [artist] tags
                         all_artists = []
                         for artist in track_artist:
-                            # Split on " & " to separate combined artists (e.g., "Shades & Eprom")
-                            all_artists.extend([a.strip() for a in artist.split(' & ') if a.strip()])
+                            # Split on both ", " and " & " to separate combined artists
+                            # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                            for comma_part in artist.split(', '):
+                                all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
                         artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
                         description += f"{', '.join(artist_tags)} - "
                     elif track_artist:
-                        # Split single artist string on " & "
-                        artists = [a.strip() for a in track_artist.split(' & ') if a.strip()]
+                        # Split single artist string on both ", " and " & "
+                        artists = []
+                        for comma_part in track_artist.split(', '):
+                            artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
                         artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
                         description += f"{', '.join(artist_tags)} - "
                 
@@ -374,16 +378,20 @@ def generate_description(track_data, metadata):
             if is_various_artists:
                 track_artist = track['t'].artist
                 if isinstance(track_artist, list):
-                    # Split each artist on " & " and create separate [artist] tags
+                    # Split each artist on both ", " and " & " and create separate [artist] tags
                     all_artists = []
                     for artist in track_artist:
-                        # Split on " & " to separate combined artists (e.g., "Shades & Eprom")
-                        all_artists.extend([a.strip() for a in artist.split(' & ') if a.strip()])
+                        # Split on both ", " and " & " to separate combined artists
+                        # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                        for comma_part in artist.split(', '):
+                            all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
                     artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
                     description += f"{', '.join(artist_tags)} - "
                 elif track_artist:
-                    # Split single artist string on " & "
-                    artists = [a.strip() for a in track_artist.split(' & ') if a.strip()]
+                    # Split single artist string on both ", " and " & "
+                    artists = []
+                    for comma_part in track_artist.split(', '):
+                        artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
                     artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
                     description += f"{', '.join(artist_tags)} - "
             

@@ -745,8 +745,12 @@ def edit_metadata(
                     artists_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
                     for artist in artists_list:
                         artist_clean = artist.strip()
-                        # Split on " & " to separate multiple artists (e.g., "Shades & ID" -> ["Shades", "ID"])
-                        sub_artists = [a.strip() for a in artist_clean.split(' & ') if a.strip()]
+                        # Split on both ", " and " & " to separate multiple artists
+                        # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                        sub_artists = []
+                        for comma_part in artist_clean.split(', '):
+                            sub_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                        
                         for sub_artist in sub_artists:
                             if sub_artist and sub_artist.lower() not in album_artists_lower:
                                 if sub_artist not in track_artists_set:
@@ -1140,9 +1144,19 @@ def _build_metadata_from_files(path, tags, rls_data):
             # Add track artists as main (importance 1), excluding album artists to avoid duplication
             album_artists_lower = [aa.lower() for aa in album_artists]
             click.secho(f"DEBUG (file-based): Artists before filtering: {metadata['artists']}", fg="yellow")
+            seen_track_artists = set()
             for artist, importance in metadata["artists"]:
                 if artist.lower() not in album_artists_lower:
-                    new_artists.append((artist, "main"))
+                    # Split on both ", " and " & " to separate multiple artists
+                    # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                    sub_artists = []
+                    for comma_part in artist.split(', '):
+                        sub_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                    
+                    for sub_artist in sub_artists:
+                        if sub_artist and sub_artist.lower() not in seen_track_artists:
+                            new_artists.append((sub_artist, "main"))
+                            seen_track_artists.add(sub_artist.lower())
             
             # Update metadata with new artist list
             metadata["artists"] = new_artists
