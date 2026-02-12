@@ -2,6 +2,16 @@
 
 A simplified music uploading tool for RED (Redacted). Completely separate from smoked-salmon with its own configuration and data directories.
 
+---
+
+## 📚 Documentation Quick Links
+
+- **[How to Update](HOW_TO_UPDATE.md)** - Quick guide to installing the latest update
+- **[Update Guide](UPDATE_GUIDE.md)** - Comprehensive update instructions and troubleshooting
+- **[Changelog](CHANGELOG.md)** - What's new in each version
+
+---
+
 ## 🚀 Quick Start
 
 ### New Installation
