@@ -207,7 +207,6 @@ def _normalize_artists(artist_str):
     Also handles 'feat.' and 'featuring' as separators.
     """
     # First, handle feat/featuring patterns - replace with delimiter
-    import re
     # Match variations: feat., feat, featuring, ft., ft
     artist_str = re.sub(r'\s+(feat\.?|featuring|ft\.?)\s+', '|', artist_str, flags=re.IGNORECASE)
     
