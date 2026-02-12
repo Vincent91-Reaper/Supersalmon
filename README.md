@@ -2,6 +2,28 @@
 
 A simplified music uploading tool for RED (Redacted). Completely separate from smoked-salmon with its own configuration and data directories.
 
+## 🚀 Quick Start
+
+### New Installation
+```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install BruceLee94
+uv tool install git+https://github.com/Vincent91-Reaper/Supersalmon
+```
+
+### Updating to Latest Version
+```bash
+# Update BruceLee94 to the latest version
+uv tool upgrade brucelee94
+
+# Verify the update
+brucelee94 --version
+```
+
+See [detailed installation instructions](#-installation) and [update guide](#-updating-brucelee94) below.
+
 ## 🌟 Features  
 
 - **RED Upload** – Upload music to RED (Redacted) tracker
@@ -241,19 +263,91 @@ brucelee94 up --help
 - `--source-url <URL>` or `-su <URL>` - Add a source URL to the description
 - `-yyy` - Automatically accept all prompts (use with caution)
 
-## 🔄 Updating
+## 🔄 Updating BruceLee94
 
-For **normal installs**:
+### 📦 For Standard Installations (Installed with `uv tool install`)
+
+If you installed BruceLee94 using the recommended `uv tool install` method, updating is simple:
+
 ```bash
-uv tool update brucelee94
+uv tool upgrade brucelee94
 ```
 
-For **manual installs**:
+**Note:** Use `upgrade` (not `update`) with uv tools.
+
+After upgrading, verify the new version:
 ```bash
-cd Supersalmon
-git pull
-uv sync
+brucelee94 --version
 ```
+
+### 🛠️ For Development/Manual Installations
+
+If you cloned the repository and installed manually:
+
+1. Navigate to your Supersalmon directory:
+   ```bash
+   cd /path/to/Supersalmon
+   ```
+
+2. Pull the latest changes:
+   ```bash
+   git pull origin main
+   ```
+
+3. Sync dependencies:
+   ```bash
+   uv sync
+   ```
+
+4. Verify the installation:
+   ```bash
+   python run.py --version
+   ```
+
+### ✅ Verifying the Update
+
+After updating, you can verify everything is working:
+
+1. Check the version:
+   ```bash
+   brucelee94 --version
+   ```
+
+2. Test your configuration:
+   ```bash
+   brucelee94 checkconf
+   ```
+
+3. Check system dependencies:
+   ```bash
+   brucelee94 health
+   ```
+
+### 🆕 What's New in Recent Updates
+
+**Latest Updates (v0.9.7.4+):**
+- ✅ **Fixed DJ Mix Label Parsing** - DJ mix releases no longer show release descriptions (e.g., "26 July 2025 20 songs, 59 minutes") as record labels
+- ✅ **Universal Artist HTML Entity Handling** - Artists with HTML entities like `&amp;` in their names are now parsed correctly across all metadata sources (Deezer, Qobuz, Tidal, Beatport, iTunes)
+- ✅ **Cleaner Debug Output** - Removed debug print statements for a cleaner user experience
+
+### 🔧 Troubleshooting Updates
+
+**Issue: "Command not found" after update**
+- Solution: Restart your terminal or run `source ~/.bashrc` (Linux/macOS) or restart PowerShell (Windows)
+
+**Issue: Update doesn't seem to apply**
+- Solution: Try uninstalling and reinstalling:
+  ```bash
+  uv tool uninstall brucelee94
+  uv tool install git+https://github.com/Vincent91-Reaper/Supersalmon
+  ```
+
+**Issue: Configuration errors after update**
+- Solution: Check if new configuration options were added. Compare your `config.toml` with `config.default.toml`:
+  ```bash
+  # View the default config
+  cat ~/.config/brucelee94/config.default.toml
+  ```
 
 ## 📞 Support
 For bug reports and feature requests, use GitHub Issues at https://github.com/Vincent91-Reaper/Supersalmon
