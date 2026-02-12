@@ -33,12 +33,6 @@ def parse_copyright(copyright):
     """
     if not copyright:
         return ""
-
-    # Check if this looks like a release description rather than copyright
-    # e.g., "26 July 2025 20 songs, 59 minutes" or "XX songs, YY minutes"
-    if re.search(r'\d+\s+songs?\s*,\s*\d+\s+minutes?', copyright, flags=re.IGNORECASE):
-        return None
-
     for search in COPYRIGHT_SEARCHES:
         res = re.search(search, copyright, flags=re.IGNORECASE)
         if res:

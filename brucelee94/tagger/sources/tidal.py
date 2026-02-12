@@ -89,9 +89,9 @@ class Scraper(TidalBase, MetadataMixin):
 
         feat = RE_FEAT.search(title)
         if feat:
-            for artist in re_split(unescape(feat[1])):
-                result.append((artist, "guest"))
-                artist_set.add(artist.lower())
+            for artist in re_split(feat[1]):
+                result.append((unescape(artist), "guest"))
+                artist_set.add(unescape(artist).lower())
 
         remix_str = ""
         remixer_str = re.search(r" \((.*) [Rr]emix\)", title)
@@ -100,22 +100,22 @@ class Scraper(TidalBase, MetadataMixin):
 
         all_guests = all(a["type"] == "FEATURED" for a in artists)
         for artist in artists:
-            artist_without_feat = unescape(artist["name"])
-            feat = RE_FEAT.search(artist_without_feat)
+            artist_without_feat = artist["name"]
+            feat = RE_FEAT.search(artist["name"])
             if feat:
-                for artist_ in re_split(unescape(feat[1])):
-                    result.append((artist_, "guest"))
-                    artist_set.add(artist_.lower())
+                for artist_ in re_split(feat[1]):
+                    result.append((unescape(artist_), "guest"))
+                    artist_set.add(unescape(artist_).lower())
                 artist_without_feat = re.sub(re.escape(feat[0]) + "$", "", artist_without_feat).rstrip()
             for a in re_split(artist_without_feat):
-                if artist["type"] in ROLES and a.lower() not in artist_set:
-                    if a.lower() in remix_str:
-                        result.append((a, "remixer"))
+                if artist["type"] in ROLES and unescape(a).lower() not in artist_set:
+                    if unescape(a).lower() in remix_str:
+                        result.append((unescape(a), "remixer"))
                     elif all_guests:
-                        result.append((a, "main"))
+                        result.append((unescape(a), "main"))
                     else:
-                        result.append((a, ROLES[artist["type"]]))
-                    artist_set.add(a.lower())
+                        result.append((unescape(a), ROLES[artist["type"]]))
+                    artist_set.add(unescape(a).lower())
 
         if "mix" in title.lower():  # Get contributors for (re)mixes.
             attempts = 0
