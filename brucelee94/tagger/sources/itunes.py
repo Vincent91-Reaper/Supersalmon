@@ -88,6 +88,11 @@ class Scraper(iTunesBase, MetadataMixin):
 
     def parse_release_label(self, soup):
         try:
+            # Check if this is a DJ Mix release - if so, return empty label
+            title = soup.find("meta", {"name": "apple:title"})["content"].strip()
+            if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+                return ""
+            
             json.loads(soup.find("script", {"id": "serialized-server-data"}).text)
             copyright = soup.find("p", {"data-testid": "tracklist-footer-description"}).text
             return parse_copyright(copyright)

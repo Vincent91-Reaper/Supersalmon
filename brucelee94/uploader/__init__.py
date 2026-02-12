@@ -707,9 +707,7 @@ def edit_metadata(
     
     # Check if this is a DJ Mix release and adjust artist roles accordingly
     # DJ Mix pattern: matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
-    click.secho(f"DEBUG: Checking DJ Mix - rls_type: {metadata.get('rls_type')}, title: {metadata.get('title')}", fg="yellow")
     if metadata.get("rls_type") == "DJ Mix" and metadata.get("artists"):
-        click.secho("DEBUG: DJ Mix release type detected, processing artist roles...", fg="yellow")
         # For DJ Mix releases, the album artist should be the DJ/Compiler
         # and track artists should be the main artists
         # Extract album artist from file tags (albumartist field)
@@ -723,7 +721,6 @@ def edit_metadata(
         
         # Deduplicate album artists
         album_artists = list(set(album_artists))
-        click.secho(f"DEBUG: Album artists (from albumartist tag): {album_artists}", fg="yellow")
         
         # If we found album artists, restructure the artist list
         if album_artists:
@@ -737,7 +734,6 @@ def edit_metadata(
             track_artists_set = set()
             album_artists_lower = [aa.lower() for aa in album_artists]
             
-            click.secho("DEBUG: Extracting track artists from file tags...", fg="yellow")
             # Extract artists from individual track files
             for filename, tagset in tags.items():
                 if hasattr(tagset, 'artist') and tagset.artist:
@@ -754,10 +750,7 @@ def edit_metadata(
                         for sub_artist in sub_artists:
                             if sub_artist and sub_artist.lower() not in album_artists_lower:
                                 if sub_artist not in track_artists_set:
-                                    click.secho(f"DEBUG: Found track artist: {sub_artist}", fg="cyan")
                                     track_artists_set.add(sub_artist)
-            
-            click.secho(f"DEBUG: Track artists (excluding album artists): {sorted(track_artists_set)}", fg="yellow")
             
             # Add track artists as main (importance 1)
             for artist in sorted(track_artists_set):
@@ -767,14 +760,11 @@ def edit_metadata(
             metadata["artists"] = new_artists
             
             click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
-            click.secho(f"DEBUG: Final artist list: {new_artists}", fg="yellow")
             
             # Remove "(DJ Mix)" suffix from title for cleaner group name
             # Keep detection in title, but remove suffix for display
             original_title = metadata["title"]
             metadata["title"] = re.sub(r'\s*\(DJ[\s\-]*Mix\)\s*$', '', metadata["title"], flags=re.IGNORECASE).strip()
-            if metadata["title"] != original_title:
-                click.secho(f"DEBUG: Removed '(DJ Mix)' suffix from title: '{original_title}' -> '{metadata['title']}'", fg="cyan")
         else:
             click.secho("WARNING: DJ Mix detected but no albumartist tag found in files", fg="red")
     
@@ -1113,10 +1103,8 @@ def _build_metadata_from_files(path, tags, rls_data):
     
     # Check if title contains "DJ Mix" and adjust release type and artist roles
     # DJ Mix pattern: matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
-    click.secho(f"DEBUG (file-based): Checking title for DJ Mix pattern: {metadata.get('title')}", fg="yellow")
     if metadata.get("title") and re.search(r"DJ[\s\-]*Mix", metadata["title"], re.IGNORECASE):
         metadata["rls_type"] = "DJ Mix"
-        click.secho("DEBUG (file-based): DJ Mix detected in title, processing artist roles...", fg="yellow")
         
         # For DJ Mix releases, the album artist should be the DJ/Compiler
         # and track artists should be the main artists
@@ -1131,7 +1119,6 @@ def _build_metadata_from_files(path, tags, rls_data):
         
         # Deduplicate album artists
         album_artists = list(set(album_artists))
-        click.secho(f"DEBUG (file-based): Album artists from tags: {album_artists}", fg="yellow")
         
         # If we found album artists, restructure the artist list
         if album_artists:
@@ -1143,7 +1130,6 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             # Add track artists as main (importance 1), excluding album artists to avoid duplication
             album_artists_lower = [aa.lower() for aa in album_artists]
-            click.secho(f"DEBUG (file-based): Artists before filtering: {metadata['artists']}", fg="yellow")
             seen_track_artists = set()
             for artist, importance in metadata["artists"]:
                 if artist.lower() not in album_artists_lower:
@@ -1160,15 +1146,12 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             # Update metadata with new artist list
             metadata["artists"] = new_artists
-            click.secho(f"DEBUG (file-based): Final artist list: {new_artists}", fg="yellow")
             
             click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
             
             # Remove "(DJ Mix)" suffix from title for cleaner group name
             original_title = metadata["title"]
             metadata["title"] = re.sub(r'\s*\(DJ[\s\-]*Mix\)\s*$', '', metadata["title"], flags=re.IGNORECASE).strip()
-            if metadata["title"] != original_title:
-                click.secho(f"DEBUG (file-based): Removed '(DJ Mix)' suffix from title: '{original_title}' -> '{metadata['title']}'", fg="cyan")
     
     # Validate we have required data
     if not metadata["artists"]:

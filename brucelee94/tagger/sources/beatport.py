@@ -107,11 +107,13 @@ class Scraper(BeatportBase, MetadataMixin):
                 # Get artists and remixers
                 artists = []
                 for artist in track["artists"]:
-                    for split in re.split(" & |; | / ", artist["name"]):
-                        artists.append((split, "main"))
+                    # Split on &, ;, /, and comma to handle multiple artist separators
+                    for split in re.split(r" & |; | / |, ", artist["name"]):
+                        artists.append((split.strip(), "main"))
                 for remixer in track["remixers"]:
-                    for split in re.split(" & |; | / ", remixer["name"]):
-                        artists.append((split, "remixer"))
+                    # Split on &, ;, /, and comma to handle multiple artist separators
+                    for split in re.split(r" & |; | / |, ", remixer["name"]):
+                        artists.append((split.strip(), "remixer"))
 
                 # Get title with mix name if not Original Mix
                 title = track["name"]
