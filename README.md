@@ -4,9 +4,23 @@ A simplified music uploading tool for RED (Redacted). Completely separate from s
 
 ---
 
+## ⚠️ Want the Latest DJ Mix Fixes?
+
+**NEW FIXES AVAILABLE (Development Branch):**
+- ✅ DJ Mix label parsing fixed
+- ✅ Artist name HTML entity handling fixed
+- ✅ Clean output (debug messages removed)
+
+**👉 [Click here for installation instructions](INSTALL_DEV_FIXES.md)** 
+
+*Note: These fixes are on the development branch and not yet in the main release. Standard `uv tool upgrade` won't get them yet.*
+
+---
+
 ## 📚 Documentation Quick Links
 
-- **[How to Update](HOW_TO_UPDATE.md)** - Quick guide to installing the latest update
+- **[Install Development Fixes](INSTALL_DEV_FIXES.md)** - Get the latest DJ Mix and artist parsing fixes NOW
+- **[How to Update](HOW_TO_UPDATE.md)** - Update guide for stable releases
 - **[Update Guide](UPDATE_GUIDE.md)** - Comprehensive update instructions and troubleshooting
 - **[Changelog](CHANGELOG.md)** - What's new in each version
 

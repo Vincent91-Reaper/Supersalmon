@@ -2,12 +2,25 @@
 
 Welcome! This guide will help you find the right documentation for your needs.
 
+## 🚨 URGENT: Want the Latest Fixes?
+
+**If you want the DJ Mix detection, artist attribution, and metadata formatting fixes:**
+
+👉 **[INSTALL_DEV_FIXES.md](INSTALL_DEV_FIXES.md)** - Install from development branch NOW
+
+*Standard upgrade commands won't work for these fixes yet because they're not merged to main.*
+
+---
+
 ## 🚀 I Want To...
+
+### Get the Latest DJ Mix Fixes Right Now
+→ See **[INSTALL_DEV_FIXES.md](INSTALL_DEV_FIXES.md)** - Install from development branch
 
 ### Install BruceLee94 for the First Time
 → See **[README.md](README.md#-installation)** - Full installation instructions for Linux, Windows, and macOS
 
-### Update to the Latest Version
+### Update to the Latest Stable Release
 → See **[HOW_TO_UPDATE.md](HOW_TO_UPDATE.md)** - Quick answer: run `uv tool upgrade brucelee94`
 
 ### Get Detailed Update Instructions
@@ -31,7 +44,8 @@ Welcome! This guide will help you find the right documentation for your needs.
 
 | File | Purpose | When to Read |
 |------|---------|--------------|
-| **[HOW_TO_UPDATE.md](HOW_TO_UPDATE.md)** | Quick update instructions | When you need to install an update right now |
+| **[INSTALL_DEV_FIXES.md](INSTALL_DEV_FIXES.md)** | Install development branch fixes | When you need DJ Mix/artist fixes NOW |
+| **[HOW_TO_UPDATE.md](HOW_TO_UPDATE.md)** | Quick update instructions | When updating stable releases |
 | **[UPDATE_GUIDE.md](UPDATE_GUIDE.md)** | Detailed update guide | When you need comprehensive update help or troubleshooting |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history | When you want to know what changed in each version |
 | **[README.md](README.md)** | Main documentation | For installation, configuration, and general usage |
@@ -42,8 +56,11 @@ Welcome! This guide will help you find the right documentation for your needs.
 
 ### Most Common Questions
 
-**Q: How do I update BruceLee94?**  
-A: Run `uv tool upgrade brucelee94` → [Details](HOW_TO_UPDATE.md)
+**Q: How do I get the DJ Mix fixes right now?**  
+A: See [INSTALL_DEV_FIXES.md](INSTALL_DEV_FIXES.md) - they're on a development branch
+
+**Q: Why doesn't `uv tool upgrade brucelee94` give me the fixes?**  
+A: The fixes aren't merged to main yet. Install from dev branch: [INSTALL_DEV_FIXES.md](INSTALL_DEV_FIXES.md)
 
 **Q: How do I install BruceLee94 for the first time?**  
 A: Run `uv tool install git+https://github.com/Vincent91-Reaper/Supersalmon` → [Details](README.md#-installation)

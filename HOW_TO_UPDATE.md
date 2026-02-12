@@ -1,8 +1,18 @@
 # How to Install the New Update for BruceLee94
 
-## TL;DR - Quick Update
+## ⚠️ IMPORTANT: DJ Mix Fixes Not Yet in Main Release
 
-If you already have BruceLee94 installed, just run:
+**If you're trying to get the DJ Mix detection, artist attribution, and metadata formatting fixes:**
+
+👉 **See [INSTALL_DEV_FIXES.md](INSTALL_DEV_FIXES.md)** for instructions on installing from the development branch.
+
+The standard `uv tool upgrade brucelee94` command below **will NOT give you these fixes yet** because they haven't been merged to the main branch.
+
+---
+
+## TL;DR - Quick Update (For Regular Releases)
+
+If you already have BruceLee94 installed and want to update to the latest **stable** release, just run:
 
 ```bash
 uv tool upgrade brucelee94
@@ -15,6 +25,8 @@ brucelee94 --version
 ```
 
 That's it! 🎉
+
+**Note:** This only works for releases on the main branch. For development branch fixes, see [INSTALL_DEV_FIXES.md](INSTALL_DEV_FIXES.md).
 
 ---
 
