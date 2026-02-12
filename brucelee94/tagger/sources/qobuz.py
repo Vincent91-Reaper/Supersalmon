@@ -418,10 +418,9 @@ class Scraper(QobuzBase, MetadataMixin):
         # 5. Check for "feat." in title and add those artists as guests
         title = track.get("title", "")
         if feat := RE_FEAT.search(title):
-            for artist in re_split(feat[1]):
-                guest_name = unescape(artist)
-                if guest_name not in seen_artists:
-                    artists.append((guest_name, "guest"))
-                    seen_artists.add(guest_name)
+            for artist in re_split(unescape(feat[1])):
+                if artist not in seen_artists:
+                    artists.append((artist, "guest"))
+                    seen_artists.add(artist)
 
         return artists

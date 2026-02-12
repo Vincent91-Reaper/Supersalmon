@@ -1,6 +1,5 @@
 import asyncio
 from itertools import chain
-from pprint import pprint
 
 import click
 
@@ -103,7 +102,10 @@ def meta(url):
         for key in ["encoding", "media", "encoding_vbr", "source"]:
             del metadata[key]
         click.echo()
-        pprint(metadata)
+        click.echo("Metadata scraped successfully:")
+        for key, value in metadata.items():
+            if value and key not in ["tracks", "cover"]:
+                click.echo(f"  {key}: {value}")
     except ScrapeError as e:
         click.secho(f"Scrape failed: {e}", fg="red")
 

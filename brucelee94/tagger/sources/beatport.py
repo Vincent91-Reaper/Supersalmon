@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from html import unescape
 
 from brucelee94.errors import ScrapeError
 from brucelee94.sources import BeatportBase
@@ -88,10 +89,10 @@ class Scraper(BeatportBase, MetadataMixin):
                 # Get artists and remixers
                 artists = []
                 for artist in track["artists"]:
-                    for split in re.split(" & |; | / ", artist["name"]):
+                    for split in re.split(" & |; | / ", unescape(artist["name"])):
                         artists.append((split, "main"))
                 for remixer in track["remixers"]:
-                    for split in re.split(" & |; | / ", remixer["name"]):
+                    for split in re.split(" & |; | / ", unescape(remixer["name"])):
                         artists.append((split, "remixer"))
 
                 # Get title with mix name if not Original Mix
