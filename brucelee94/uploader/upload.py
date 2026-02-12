@@ -130,7 +130,7 @@ def compile_data_new_group(
         "artists[]": [a[0] for a in metadata["artists"]],
         "importance[]": [ARTIST_IMPORTANCES[a[1]] for a in metadata["artists"]],
         "year": metadata["group_year"],
-        "record_label": metadata.get("label", "")
+        "record_label": metadata.get("label", ""),
         "catalogue_number": generate_catno(metadata),  # Group-level catalog
         "releasetype": rls_type_id,
         "remaster": True,
