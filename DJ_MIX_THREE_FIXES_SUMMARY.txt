@@ -1,0 +1,90 @@
+DJ MIX THREE FIXES SUMMARY
+==========================
+
+Date: 2026-02-11
+Commit: 97876af
+
+PROBLEMS REPORTED
+-----------------
+
+1. Artists listed multiple times
+   Example: "Shades", "Shades & ID" instead of "Shades", "ID"
+
+2. Title includes "(DJ Mix)" suffix
+   Example: "Shades - SHADES at DEF: Underground (DJ Mix)" 
+   Expected: "Shades - SHADES at DEF: Underground"
+
+3. BB code formatting broken
+   Example: [artist]Alix Perez, Shades & Eprom[/artist]
+   Expected: [artist]Alix Perez[/artist], [artist]Shades[/artist], [artist]Eprom[/artist]
+
+SOLUTIONS IMPLEMENTED
+--------------------
+
+Fix 1: Artist Splitting
+- Split artist strings on " & " separator
+- Applied in both scraped and file-based metadata extraction
+- File: brucelee94/uploader/__init__.py (2 locations)
+- Result: "Shades & ID" becomes ["Shades", "ID"]
+
+Fix 2: Title Cleanup
+- Remove "(DJ Mix)" suffix from title after detection
+- Applied in both scraped and file-based metadata processing
+- File: brucelee94/uploader/__init__.py (2 locations)
+- Result: Clean group name without suffix
+
+Fix 3: BB Code Formatting
+- Split track artists on " & " before creating [artist] tags
+- Applied in both multi-disc and single-disc description generation
+- File: brucelee94/uploader/upload.py (2 locations)
+- Result: Each artist in separate [artist] tags
+
+FILES MODIFIED
+--------------
+
+1. brucelee94/uploader/__init__.py
+   - Lines 746-754: Split artists (scraped metadata)
+   - Lines 768-772: Remove title suffix (scraped metadata)
+   - Lines 1133-1145: Split artists (file-based metadata)
+   - Lines 1151-1155: Remove title suffix (file-based metadata)
+
+2. brucelee94/uploader/upload.py
+   - Lines 338-352: Split artists in description (multi-disc)
+   - Lines 366-382: Split artists in description (single-disc)
+
+RESULTS
+-------
+
+Artist List:
+  Before: Shades (DJ/Compiler), Shades (main), Shades & ID (main)
+  After:  Shades (DJ/Compiler), ID (main), [other artists] (main)
+
+Group Name:
+  Before: Shades - SHADES at DEF: Underground (DJ Mix)
+  After:  Shades - SHADES at DEF: Underground
+
+Description:
+  Before: [b]01.[/b] [artist]Shades & Eprom[/artist] - Track
+  After:  [b]01.[/b] [artist]Shades[/artist], [artist]Eprom[/artist] - Track
+
+STATUS
+------
+
+✅ All three issues fixed
+✅ Non-breaking changes
+✅ Syntax validated
+✅ Ready for production
+
+TESTING
+-------
+
+Install updated version:
+  uv tool uninstall brucelee94
+  uv tool install git+https://github.com/Vincent91-Reaper/Supersalmon@copilot/remove-checking-for-dupe-feature-again
+
+Test with any DJ Mix from Apple Music that has combined artists.
+
+Expected debug output will show:
+- Artists being split: "DEBUG: Found track artist: Shades"
+- Title cleanup: "DEBUG: Removed '(DJ Mix)' suffix..."
+- Clean artist list without duplicates

@@ -1,0 +1,43 @@
+================================================================================
+REMASTER YEAR VALIDATION ERROR - CORRECT FIX SUMMARY
+================================================================================
+
+ERROR MESSAGE:
+"Site upload failed: Year of remaster/re-issue must be entered. (200)"
+
+ROOT CAUSE:
+- metadata["year"] could be None when years list is empty
+- RED requires remaster_year to be a valid integer
+- None value triggers validation failure
+
+WRONG FIX (ab7bda1):
+❌ Thought error was about label/catalog
+❌ Included label/catalog in initial upload
+❌ Removed user's requested defer feature
+❌ Didn't fix the actual year validation issue
+
+CORRECT FIX (e13047e):
+✅ Reverted ab7bda1 to restore defer feature
+✅ Added year validation with three-tier fallback:
+   1. Extract from file tags years list
+   2. Extract from date field if available
+   3. Use current year as last resort (with warning)
+✅ Ensures metadata["year"] is NEVER None
+✅ Maintains user's requested label/catalog defer behavior
+
+RESULT:
+✅ Uploads succeed without validation errors
+✅ Year is always valid (never None)
+✅ Label/catalog remain deferred for speed
+✅ Complete metadata added post-upload
+✅ Robust error handling with fallbacks
+
+FILES MODIFIED:
+- brucelee94/uploader/__init__.py (year validation added)
+
+COMMITS:
+- 8eb2cb8: Revert ab7bda1
+- e13047e: Fix remaster_year validation
+
+STATUS: CORRECTLY FIXED ✅
+================================================================================

@@ -1,0 +1,51 @@
+FOLDER STRUCTURE CHECK DECISION TREE
+=====================================
+
+                    check_folder_structure() called
+                                |
+                                v
+                    ┌───────────────────────┐
+                    │   is_tidal = True?    │
+                    └───────────────────────┘
+                          /           \
+                        YES            NO
+                         |              |
+                         v              v
+                   RUN CHECK    ┌───────────────────┐
+                                │  from_url = True? │
+                                └───────────────────┘
+                                      /           \
+                                    YES            NO
+                                     |              |
+                                     v              v
+                            ┌──────────────┐   ┌────────────────┐
+                            │ has_long_    │   │ is_classical?  │
+                            │ file_paths() │   └────────────────┘
+                            └──────────────┘         /        \
+                                  /      \          YES       NO
+                                YES      NO          |         |
+                                 |        |          v         v
+                                 v        v     RUN CHECK  ┌──────────────┐
+                            RUN CHECK  SKIP               │ has_long_    │
+                                       CHECK              │ file_paths() │
+                                                          └──────────────┘
+                                                               /      \
+                                                             YES      NO
+                                                              |        |
+                                                              v        v
+                                                         RUN CHECK  SKIP
+                                                                    CHECK
+
+
+LEGEND:
+-------
+- Tidal: Always check (no genre info)
+- Other URLs: Check only if long paths exist
+- Non-URLs: Check if classical OR long paths
+
+BENEFITS:
+---------
+✓ Skips unnecessary checks for most albums
+✓ Maintains full compliance
+✓ Faster upload workflow
+✓ Still catches all problematic paths
