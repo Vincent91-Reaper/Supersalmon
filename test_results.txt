@@ -1,0 +1,42 @@
+============================================================
+RETAGGING FEATURE TEST SUITE
+============================================================
+
+Testing _normalize_artists...
+  ✓ Simple artist normalization
+  ✓ Multiple artists with & separator
+  ✓ Multiple artists with comma separator
+  ✓ Multiple artists with mixed separators
+All _normalize_artists tests passed!
+
+Testing _main_artists_present...
+  ✓ Main artist present alone (exact match)
+  ✓ Main artist present with featured artist (should NOT retag)
+  ✓ Main artist missing (should retag)
+  ✓ Multiple main artists present with additional artist
+  ✓ Multiple main artists, one missing (should retag)
+  ✓ Case-insensitive matching works
+  ✓ Different separators (& vs ,) work correctly
+All _main_artists_present tests passed!
+
+Testing real-world retagging scenarios...
+  ✓ Main artist present with featured artist - NO RETAG
+    File: 'Artist A, Artist B (feat.)' | Main: 'Artist A' → NO RETAG
+  ✓ Main artist missing - RETAG
+    File: 'Artist B' | Main: 'Artist A' → RETAG
+  ✓ Both main artists present with featured - NO RETAG
+    File: 'Artist A & Artist B feat. Artist C' | Main: 'Artist A & Artist B' → NO RETAG
+  ✓ Empty file artist - RETAG
+    File: '' | Main: 'Artist A' → RETAG
+  ✓ Exact match - NO RETAG
+    File: 'Artist A' | Main: 'Artist A' → NO RETAG
+All retagging scenarios passed!
+
+============================================================
+ALL TESTS PASSED! ✓
+============================================================
+
+Summary of new behavior:
+- Main artist present + featured artists → NO RETAG (preserves file tags)
+- Main artist missing → RETAG (updates to correct main artist)
+- This prevents overwriting files that have correct main artist + features
