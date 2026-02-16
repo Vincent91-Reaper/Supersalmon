@@ -254,6 +254,42 @@ def generate_torrent(gazelle_site, path):
     return tpath, t
 
 
+def format_track_artists(track_metadata):
+    """
+    Format track artists by separating main artists from guest/featured artists.
+    Returns tuple: (main_artists_str, guest_artists_str)
+    
+    Example:
+        If track has Jon Hansen (main) and Mary Doufle (guest):
+        Returns: ("[artist]Jon Hansen[/artist]", "[artist]Mary Doufle[/artist]")
+    """
+    if not track_metadata or "artists" not in track_metadata:
+        return "", ""
+    
+    main_artists = []
+    guest_artists = []
+    
+    for artist_name, importance in track_metadata["artists"]:
+        if importance == "main":
+            main_artists.append(artist_name)
+        elif importance == "guest":
+            guest_artists.append(artist_name)
+    
+    # Format main artists with [artist] tags
+    main_str = ""
+    if main_artists:
+        artist_tags = [f"[artist]{artist}[/artist]" for artist in main_artists]
+        main_str = ", ".join(artist_tags)
+    
+    # Format guest artists with [artist] tags
+    guest_str = ""
+    if guest_artists:
+        artist_tags = [f"[artist]{artist}[/artist]" for artist in guest_artists]
+        guest_str = ", ".join(artist_tags)
+    
+    return main_str, guest_str
+
+
 def generate_description(track_data, metadata):
     """Generate the group description with tracklist including per-track artists only for Various Artists albums."""
     # Generate header with artist and album title
@@ -320,6 +356,15 @@ def generate_description(track_data, metadata):
         for t in track_data.values()
     )
     
+    # Create a mapping from (disc, track) to metadata track for artist info
+    # metadata["tracks"] structure: {disc_num: {track_num: track_metadata}}
+    metadata_tracks_map = {}
+    if metadata.get("tracks"):
+        for disc_num, disc_tracks in metadata["tracks"].items():
+            for track_num, track_meta in disc_tracks.items():
+                # Store using string keys for consistent lookup
+                metadata_tracks_map[(str(disc_num), str(track_num))] = track_meta
+    
     total_duration = 0
     
     if multi_disc:
@@ -359,28 +404,35 @@ def generate_description(track_data, metadata):
                 track_num = str_to_int_if_int(track_num_raw, zpad=True)
                 description += f"[b]{track_num}.[/b] "
                 
-                # Add per-track artist info only for Various Artists albums
-                if is_various_artists:
-                    track_artist = track['t'].artist
-                    if isinstance(track_artist, list):
-                        # Split each artist on both ", " and " & " and create separate [artist] tags
-                        all_artists = []
-                        for artist in track_artist:
-                            # Split on both ", " and " & " to separate combined artists
-                            # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
-                            for comma_part in artist.split(', '):
-                                all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
-                        artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
-                        description += f"{', '.join(artist_tags)} - "
-                    elif track_artist:
-                        # Split single artist string on both ", " and " & "
-                        artists = []
-                        for comma_part in track_artist.split(', '):
-                            artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
-                        artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
-                        description += f"{', '.join(artist_tags)} - "
+                # Get track metadata for artist info (if available)
+                # Extract disc number for lookup
+                disc_for_lookup = track['t'].discnumber
+                if disc_for_lookup:
+                    disc_for_lookup = disc_for_lookup.split("/")[0]
+                else:
+                    disc_for_lookup = "1"
                 
-                description += f"{track['t'].title} [i]({length})[/i]\n"
+                track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
+                
+                # Format artists: main before title, guest/featured after in (feat. ...)
+                if is_various_artists and track_metadata:
+                    main_artists_str, guest_artists_str = format_track_artists(track_metadata)
+                    
+                    # Add main artists before the title
+                    if main_artists_str:
+                        description += f"{main_artists_str} - "
+                    
+                    # Add title
+                    description += track['t'].title
+                    
+                    # Add guest/featured artists after title in (feat. ...)
+                    if guest_artists_str:
+                        description += f" (feat. {guest_artists_str})"
+                    
+                    description += f" [i]({length})[/i]\n"
+                else:
+                    # No artist separation for non-various albums
+                    description += f"{track['t'].title} [i]({length})[/i]\n"
             
             # Add blank line after each disc (except the last one)
             if disc_num != sorted_discs[-1]:
@@ -399,28 +451,29 @@ def generate_description(track_data, metadata):
             track_num = str_to_int_if_int(track_num_raw, zpad=True)
             description += f"[b]{track_num}.[/b] "
             
-            # Add per-track artist info only for Various Artists albums
-            if is_various_artists:
-                track_artist = track['t'].artist
-                if isinstance(track_artist, list):
-                    # Split each artist on both ", " and " & " and create separate [artist] tags
-                    all_artists = []
-                    for artist in track_artist:
-                        # Split on both ", " and " & " to separate combined artists
-                        # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
-                        for comma_part in artist.split(', '):
-                            all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
-                    artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
-                    description += f"{', '.join(artist_tags)} - "
-                elif track_artist:
-                    # Split single artist string on both ", " and " & "
-                    artists = []
-                    for comma_part in track_artist.split(', '):
-                        artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
-                    artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
-                    description += f"{', '.join(artist_tags)} - "
+            # Get track metadata for artist info (if available)
+            # For single disc, use disc "1"
+            track_metadata = metadata_tracks_map.get(("1", track_num_raw))
             
-            description += f"{track['t'].title} [i]({length})[/i]\n"
+            # Format artists: main before title, guest/featured after in (feat. ...)
+            if is_various_artists and track_metadata:
+                main_artists_str, guest_artists_str = format_track_artists(track_metadata)
+                
+                # Add main artists before the title
+                if main_artists_str:
+                    description += f"{main_artists_str} - "
+                
+                # Add title
+                description += track['t'].title
+                
+                # Add guest/featured artists after title in (feat. ...)
+                if guest_artists_str:
+                    description += f" (feat. {guest_artists_str})"
+                
+                description += f" [i]({length})[/i]\n"
+            else:
+                # No artist separation for non-various albums
+                description += f"{track['t'].title} [i]({length})[/i]\n"
 
     # Format total length
     if len(track_data.values()) > 1:
