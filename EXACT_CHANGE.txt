@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════════════════════════
+                        EXACT CHANGE REQUESTED
+═══════════════════════════════════════════════════════════════════════
+
+REQUIREMENT FROM ISSUE:
+───────────────────────────────────────────────────────────────────────
+For track 01. My love is forever:
+  - Main artist: Jon Hansen
+  - Featured/guest artist: Mary Doufle (based on scraped metadata)
+
+BEFORE (What it was):
+───────────────────────────────────────────────────────────────────────
+[b]01.[/b] [artist]Jon Hansen[/artist], [artist]Mary Doufle[/artist] - My love is forever [i](03:45)[/i]
+           └────────────────────────────────────────────────────────┘
+           Both artists mixed together before title with comma
+
+AFTER (What it is now):
+───────────────────────────────────────────────────────────────────────
+[b]01.[/b] [artist]Jon Hansen[/artist] - My love is forever (feat. [artist]Mary Doufle[/artist]) [i](03:45)[/i]
+           └─────────────────────────┘   └──────────────────┘        └────────────────────────────┘
+           Main artist before title      Title in middle              Featured in (feat. ...) after
+
+VISUAL COMPARISON:
+───────────────────────────────────────────────────────────────────────
+
+BEFORE:  [Main], [Guest] - Title
+           ↓
+AFTER:   [Main] - Title (feat. [Guest])
+
+═══════════════════════════════════════════════════════════════════════
+                            ✓ REQUIREMENT MET
+═══════════════════════════════════════════════════════════════════════
+
+The implementation exactly matches the requested format:
+  • Main artist (Jon Hansen) appears before the title
+  • Featured/guest artist (Mary Doufle) appears after title in (feat. ...)
+  • Each artist has proper [artist]...[/artist] BBCode tags
+  • Duration remains at the end in italics
+
+This format is now applied to ALL tracks in Various Artists albums
+where the metadata contains artist importance information.
+
+═══════════════════════════════════════════════════════════════════════
