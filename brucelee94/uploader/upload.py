@@ -254,6 +254,18 @@ def generate_torrent(gazelle_site, path):
     return tpath, t
 
 
+def get_disc_number_for_lookup(track_tag):
+    """
+    Extract disc number from track tag for metadata lookup.
+    Returns string representation of disc number (defaults to "1" if not set).
+    """
+    disc_num = track_tag.discnumber
+    if disc_num:
+        # Extract just the disc number (e.g., "2" from "2/3")
+        return disc_num.split("/")[0]
+    return "1"
+
+
 def format_track_artists(track_metadata):
     """
     Format track artists by separating main artists from guest/featured artists.
@@ -358,6 +370,7 @@ def generate_description(track_data, metadata):
     
     # Create a mapping from (disc, track) to metadata track for artist info
     # metadata["tracks"] structure: {disc_num: {track_num: track_metadata}}
+    # Note: Keys are stored as strings for consistent lookup with track numbers extracted from tags
     metadata_tracks_map = {}
     if metadata.get("tracks"):
         for disc_num, disc_tracks in metadata["tracks"].items():
@@ -405,13 +418,7 @@ def generate_description(track_data, metadata):
                 description += f"[b]{track_num}.[/b] "
                 
                 # Get track metadata for artist info (if available)
-                # Extract disc number for lookup
-                disc_for_lookup = track['t'].discnumber
-                if disc_for_lookup:
-                    disc_for_lookup = disc_for_lookup.split("/")[0]
-                else:
-                    disc_for_lookup = "1"
-                
+                disc_for_lookup = get_disc_number_for_lookup(track['t'])
                 track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
                 
                 # Format artists: main before title, guest/featured after in (feat. ...)
@@ -452,8 +459,8 @@ def generate_description(track_data, metadata):
             description += f"[b]{track_num}.[/b] "
             
             # Get track metadata for artist info (if available)
-            # For single disc, use disc "1"
-            track_metadata = metadata_tracks_map.get(("1", track_num_raw))
+            disc_for_lookup = get_disc_number_for_lookup(track['t'])
+            track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
             
             # Format artists: main before title, guest/featured after in (feat. ...)
             if is_various_artists and track_metadata:
