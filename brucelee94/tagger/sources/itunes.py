@@ -122,6 +122,10 @@ class Scraper(iTunesBase, MetadataMixin):
         if "tracks" not in data:
             raise ScrapeError("Tracks data not found in JSON.")
 
+        # Check if this is a DJ Mix - only extract per-track artists for DJ Mix releases
+        release_type = self.parse_release_type(soup)
+        is_dj_mix = (release_type == "DJ Mix")
+
         # Try multiple methods to extract album-level artists
         header_artists = parse_artists_header(soup)
         
@@ -159,27 +163,32 @@ class Scraper(iTunesBase, MetadataMixin):
                 # if int(num) == 1 and num in tracks[str(cur_disc)]:
                 #    cur_disc += 1
 
-                # Extract per-track artists from JSON-LD data (important for DJ Mix releases)
-                track_artists = []
-                if "byArtist" in track:
-                    artist_data = track["byArtist"]
-                    if isinstance(artist_data, dict) and "name" in artist_data:
-                        track_artists = [(artist_data["name"], "main")]
-                    elif isinstance(artist_data, list):
-                        track_artists = [(a["name"], "main") for a in artist_data if "name" in a]
+                # For DJ Mix ONLY: Extract per-track artists from JSON-LD data
+                # For regular albums: Use album-level artists (existing behavior)
+                track_artists = artists_tuples  # Default to album artists
                 
-                # Extract guest artists from title (feat. ...)
-                feat_match = RE_FEAT.search(raw_title)
-                if feat_match:
-                    feat_str = feat_match.group(1)
-                    # Parse featured artists
-                    guest_artists = _parse_artists_commas(feat_str)
-                    for guest in guest_artists:
-                        track_artists.append((guest, "guest"))
-                
-                # If no per-track artists found, fall back to album-level artists
-                if not track_artists:
-                    track_artists = artists_tuples
+                if is_dj_mix:
+                    # Extract per-track artists for DJ Mix releases
+                    per_track_artists = []
+                    if "byArtist" in track:
+                        artist_data = track["byArtist"]
+                        if isinstance(artist_data, dict) and "name" in artist_data:
+                            per_track_artists = [(artist_data["name"], "main")]
+                        elif isinstance(artist_data, list):
+                            per_track_artists = [(a["name"], "main") for a in artist_data if "name" in a]
+                    
+                    # Extract guest artists from title (feat. ...)
+                    feat_match = RE_FEAT.search(raw_title)
+                    if feat_match:
+                        feat_str = feat_match.group(1)
+                        # Parse featured artists
+                        guest_artists = _parse_artists_commas(feat_str)
+                        for guest in guest_artists:
+                            per_track_artists.append((guest, "guest"))
+                    
+                    # Use per-track artists if found, otherwise fall back to album artists
+                    if per_track_artists:
+                        track_artists = per_track_artists
 
                 tracks[str(cur_disc)][num] = self.generate_track(
                     trackno=num,

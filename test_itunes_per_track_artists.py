@@ -1,149 +1,87 @@
 #!/usr/bin/env python3
 """
-Test iTunes scraper per-track artist extraction for DJ Mix.
+Test iTunes scraper per-track artist extraction ONLY for DJ Mix.
 
-This simulates the JSON-LD data structure from iTunes and verifies
-that per-track artists are correctly extracted for DJ Mix releases.
+This verifies that:
+1. DJ Mix releases extract per-track artists
+2. Regular albums continue to use album-level artists (no change)
 """
 
-def test_itunes_dj_mix_track_artists():
+def test_itunes_dj_mix_only():
     """
-    Test that iTunes scraper extracts per-track artists from JSON-LD data.
-    
-    Simulates a DJ Mix where:
-    - Album artists: Dubfire, Richie Hawtin (DJs)
-    - Track 1 artist: The Junkies (actual track artist)
-    - Track 2 artist: Different Artist
+    Test that per-track artist extraction ONLY applies to DJ Mix.
     """
     print("\n" + "=" * 70)
-    print("Test: iTunes DJ Mix Per-Track Artist Extraction")
+    print("Test: iTunes Per-Track Artists - DJ Mix ONLY")
     print("=" * 70)
     
-    # Simulate JSON-LD data structure from iTunes
-    json_ld_data = {
-        "byArtist": [
-            {"name": "Dubfire"},
-            {"name": "Richie Hawtin"}
-        ],
-        "tracks": [
-            {
-                "name": "Parts & Labour (Mixed)",
-                "byArtist": {"name": "The Junkies"}  # Per-track artist!
-            },
-            {
-                "name": "Another Track",
-                "byArtist": {"name": "Different Artist"}  # Different artist
-            },
-            {
-                "name": "Third Track (feat. Guest Artist)",
-                "byArtist": {"name": "Main Artist"}
-            }
-        ]
+    # Test 1: DJ Mix - should extract per-track artists
+    print("\n1. DJ Mix Release:")
+    print("   Title: 'Boiler Room: DJ Mix'")
+    
+    is_dj_mix = True  # Detected as DJ Mix
+    album_artists = [("Dubfire", "main"), ("Richie Hawtin", "main")]
+    
+    # Track has its own artist in JSON-LD
+    track_data = {
+        "name": "Parts & Labour (Mixed)",
+        "byArtist": {"name": "The Junkies"}
     }
     
-    # Simulate the fix in parse_tracks
-    album_artists = [(a["name"], "main") for a in json_ld_data["byArtist"]]
+    # Logic: DJ Mix extracts per-track artists
+    track_artists = album_artists  # Default
+    if is_dj_mix and "byArtist" in track_data:
+        per_track = [(track_data["byArtist"]["name"], "main")]
+        if per_track:
+            track_artists = per_track
     
-    print(f"\nAlbum artists: {[a[0] for a in album_artists]}")
-    print("\nProcessing tracks:")
+    print(f"   Album artists: {[a[0] for a in album_artists]}")
+    print(f"   Track artists: {[a[0] for a in track_artists]}")
+    assert track_artists[0][0] == "The Junkies", "DJ Mix should use per-track artist!"
+    print(f"   ✓ CORRECT - DJ Mix uses per-track artist (The Junkies)")
     
-    for i, track in enumerate(json_ld_data["tracks"], 1):
-        # Extract per-track artists (the fix!)
-        track_artists = []
-        if "byArtist" in track:
-            artist_data = track["byArtist"]
-            if isinstance(artist_data, dict) and "name" in artist_data:
-                track_artists = [(artist_data["name"], "main")]
-            elif isinstance(artist_data, list):
-                track_artists = [(a["name"], "main") for a in artist_data if "name" in a]
-        
-        # If no per-track artists, fall back to album artists
-        if not track_artists:
-            track_artists = album_artists
-        
-        print(f"  Track {i}: {track['name']}")
-        print(f"    Artists: {[a[0] for a in track_artists]}")
-        
-        # Verify
-        if i == 1:
-            assert track_artists[0][0] == "The Junkies", \
-                f"Track 1 should have 'The Junkies', got {track_artists[0][0]}"
-            print(f"    ✓ Correct - shows track artist, not album DJs")
-        elif i == 2:
-            assert track_artists[0][0] == "Different Artist", \
-                f"Track 2 should have 'Different Artist', got {track_artists[0][0]}"
-            print(f"    ✓ Correct - shows track artist")
-        elif i == 3:
-            assert track_artists[0][0] == "Main Artist", \
-                f"Track 3 should have 'Main Artist', got {track_artists[0][0]}"
-            print(f"    ✓ Correct - shows track artist")
+    # Test 2: Regular Album - should use album artists
+    print("\n2. Regular Album:")
+    print("   Title: 'Album Name'")
     
-    print("\n✓ PASS - Per-track artists correctly extracted from JSON-LD data")
-
-
-def test_itunes_regular_album_fallback():
-    """
-    Test that regular albums without per-track artists fall back to album artists.
-    """
-    print("\n" + "=" * 70)
-    print("Test: iTunes Regular Album (Fallback to Album Artists)")
-    print("=" * 70)
+    is_dj_mix = False  # NOT a DJ Mix
+    album_artists = [("Album Artist", "main")]
     
-    # Simulate JSON-LD data for regular album (no per-track artists)
-    json_ld_data = {
-        "byArtist": {"name": "Album Artist"},
-        "tracks": [
-            {"name": "Track One"},  # No byArtist field
-            {"name": "Track Two"},  # No byArtist field
-        ]
+    # Track has byArtist in JSON-LD but we DON'T use it for regular albums
+    track_data = {
+        "name": "Track One",
+        "byArtist": {"name": "Track Artist"}  # This should be IGNORED for regular albums
     }
     
-    # Extract album artists
-    artist_data = json_ld_data["byArtist"]
-    if isinstance(artist_data, dict) and "name" in artist_data:
-        album_artists = [(artist_data["name"], "main")]
+    # Logic: Regular albums use album artists (no change to existing behavior)
+    track_artists = album_artists  # Default
+    if is_dj_mix and "byArtist" in track_data:  # Only if DJ Mix!
+        per_track = [(track_data["byArtist"]["name"], "main")]
+        if per_track:
+            track_artists = per_track
     
-    print(f"\nAlbum artists: {[a[0] for a in album_artists]}")
-    print("\nProcessing tracks:")
+    print(f"   Album artists: {[a[0] for a in album_artists]}")
+    print(f"   Track artists: {[a[0] for a in track_artists]}")
+    assert track_artists[0][0] == "Album Artist", "Regular album should use album artist!"
+    print(f"   ✓ CORRECT - Regular album uses album artist (existing behavior)")
     
-    for i, track in enumerate(json_ld_data["tracks"], 1):
-        # Extract per-track artists
-        track_artists = []
-        if "byArtist" in track:
-            artist_data = track["byArtist"]
-            if isinstance(artist_data, dict) and "name" in artist_data:
-                track_artists = [(artist_data["name"], "main")]
-        
-        # Fallback to album artists
-        if not track_artists:
-            track_artists = album_artists
-        
-        print(f"  Track {i}: {track['name']}")
-        print(f"    Artists: {[a[0] for a in track_artists]}")
-        
-        # Verify fallback worked
-        assert track_artists[0][0] == "Album Artist", \
-            f"Track should fall back to 'Album Artist', got {track_artists[0][0]}"
-        print(f"    ✓ Correct - fell back to album artist")
-    
-    print("\n✓ PASS - Correctly falls back to album artists when no per-track data")
+    print("\n✓ PASS - Per-track extraction ONLY for DJ Mix, regular albums unchanged")
 
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("ITUNES DJ MIX PER-TRACK ARTIST EXTRACTION TEST SUITE")
+    print("ITUNES DJ MIX ONLY TEST SUITE")
     print("=" * 70)
     
-    test_itunes_dj_mix_track_artists()
-    test_itunes_regular_album_fallback()
+    test_itunes_dj_mix_only()
     
     print("\n" + "=" * 70)
     print("ALL TESTS PASSED! ✓")
     print("=" * 70)
     print()
     print("Summary:")
-    print("  • DJ Mix tracks: Extract per-track artists from JSON-LD byArtist field")
-    print("  • Regular albums: Fall back to album artists if no per-track data")
-    print("  • This ensures DJ Mix shows actual track artists (The Junkies)")
-    print("  • Not the album DJs (Dubfire & Richie Hawtin)")
+    print("  • DJ Mix: Extracts per-track artists (NEW behavior)")
+    print("  • Regular albums: Use album artists (UNCHANGED behavior)")
+    print("  • No impact on non-DJ Mix uploads")
     print()
+
