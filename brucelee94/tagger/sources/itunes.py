@@ -159,11 +159,32 @@ class Scraper(iTunesBase, MetadataMixin):
                 # if int(num) == 1 and num in tracks[str(cur_disc)]:
                 #    cur_disc += 1
 
+                # Extract per-track artists from JSON-LD data (important for DJ Mix releases)
+                track_artists = []
+                if "byArtist" in track:
+                    artist_data = track["byArtist"]
+                    if isinstance(artist_data, dict) and "name" in artist_data:
+                        track_artists = [(artist_data["name"], "main")]
+                    elif isinstance(artist_data, list):
+                        track_artists = [(a["name"], "main") for a in artist_data if "name" in a]
+                
+                # Extract guest artists from title (feat. ...)
+                feat_match = RE_FEAT.search(raw_title)
+                if feat_match:
+                    feat_str = feat_match.group(1)
+                    # Parse featured artists
+                    guest_artists = _parse_artists_commas(feat_str)
+                    for guest in guest_artists:
+                        track_artists.append((guest, "guest"))
+                
+                # If no per-track artists found, fall back to album-level artists
+                if not track_artists:
+                    track_artists = artists_tuples
+
                 tracks[str(cur_disc)][num] = self.generate_track(
                     trackno=num,
                     discno=cur_disc,
-                    artists=artists_tuples,
-                    # artists=parse_artists(soup, track, raw_title),
+                    artists=track_artists,
                     title=title,
                     # explicit=explicit,
                 )
