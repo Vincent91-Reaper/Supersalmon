@@ -254,18 +254,6 @@ def generate_torrent(gazelle_site, path):
     return tpath, t
 
 
-def get_disc_number_for_lookup(track_tag):
-    """
-    Extract disc number from track tag for metadata lookup.
-    Returns string representation of disc number (defaults to "1" if not set).
-    """
-    disc_num = track_tag.discnumber
-    if disc_num:
-        # Extract just the disc number (e.g., "2" from "2/3")
-        return disc_num.split("/")[0]
-    return "1"
-
-
 def format_track_artists(track_metadata):
     """
     Format track artists by separating main artists from guest/featured artists.
@@ -320,12 +308,10 @@ def generate_description(track_data, metadata):
                 description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
             # DJ Mixes should show all performers, so mark as Various Artists
             is_various_artists = True
-            # DJ Mix is an exception - it uses is_various_artists, not show_track_main_artist
         else:
             # Fallback if no DJ/Compiler found (shouldn't happen for DJ Mix)
             main_artists = [a for a, i in metadata["artists"] if i == "main"]
             is_various_artists = len(main_artists) >= 3
-            show_track_main_artist = len(main_artists) >= 2
             if is_various_artists:
                 description = f"[b]Various Artists - {metadata['title']}[/b]\n"
             else:
@@ -341,8 +327,6 @@ def generate_description(track_data, metadata):
         main_artists = [a for a, i in metadata["artists"] if i == "main"]
         # Use "Various Artists" for albums with 3+ main artists
         is_various_artists = len(main_artists) >= 3
-        # Show per-track main artist for albums with 2+ main artists (may vary per track)
-        show_track_main_artist = len(main_artists) >= 2
         if is_various_artists:
             description = f"[b]Various Artists - {metadata['title']}[/b]\n"
         else:
@@ -422,27 +406,33 @@ def generate_description(track_data, metadata):
                 description += f"[b]{track_num}.[/b] "
                 
                 # Get track metadata for artist info (if available)
-                disc_for_lookup = get_disc_number_for_lookup(track['t'])
+                # Extract disc number for lookup
+                disc_for_lookup = track['t'].discnumber
+                if disc_for_lookup:
+                    disc_for_lookup = disc_for_lookup.split("/")[0]
+                else:
+                    disc_for_lookup = "1"
+                
                 track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
                 
-                # Format artists: main before title (Various Artists or 2+ main artists), guest/featured after in (feat. ...)
-                if track_metadata:
+                # Format artists: main before title, guest/featured after in (feat. ...)
+                if is_various_artists and track_metadata:
                     main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                     
-                    # For Various Artists (DJ Mix exception) or albums with 2+ main artists, show main artists before title
-                    if (is_various_artists or show_track_main_artist) and main_artists_str:
+                    # Add main artists before the title
+                    if main_artists_str:
                         description += f"{main_artists_str} - "
                     
                     # Add title
                     description += track['t'].title
                     
-                    # Add guest/featured artists after title in (feat. ...) for ALL albums
+                    # Add guest/featured artists after title in (feat. ...)
                     if guest_artists_str:
                         description += f" (feat. {guest_artists_str})"
                     
                     description += f" [i]({length})[/i]\n"
                 else:
-                    # No metadata available - just show title
+                    # No artist separation for non-various albums
                     description += f"{track['t'].title} [i]({length})[/i]\n"
             
             # Add blank line after each disc (except the last one)
@@ -463,27 +453,27 @@ def generate_description(track_data, metadata):
             description += f"[b]{track_num}.[/b] "
             
             # Get track metadata for artist info (if available)
-            disc_for_lookup = get_disc_number_for_lookup(track['t'])
-            track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
+            # For single disc, use disc "1"
+            track_metadata = metadata_tracks_map.get(("1", track_num_raw))
             
-            # Format artists: main before title (Various Artists or 2+ main artists), guest/featured after in (feat. ...)
-            if track_metadata:
+            # Format artists: main before title, guest/featured after in (feat. ...)
+            if is_various_artists and track_metadata:
                 main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                 
-                # For Various Artists (DJ Mix exception) or albums with 2+ main artists, show main artists before title
-                if (is_various_artists or show_track_main_artist) and main_artists_str:
+                # Add main artists before the title
+                if main_artists_str:
                     description += f"{main_artists_str} - "
                 
                 # Add title
                 description += track['t'].title
                 
-                # Add guest/featured artists after title in (feat. ...) for ALL albums
+                # Add guest/featured artists after title in (feat. ...)
                 if guest_artists_str:
                     description += f" (feat. {guest_artists_str})"
                 
                 description += f" [i]({length})[/i]\n"
             else:
-                # No metadata available - just show title
+                # No artist separation for non-various albums
                 description += f"{track['t'].title} [i]({length})[/i]\n"
 
     # Format total length
