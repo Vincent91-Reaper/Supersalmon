@@ -421,24 +421,24 @@ def generate_description(track_data, metadata):
                 disc_for_lookup = get_disc_number_for_lookup(track['t'])
                 track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
                 
-                # Format artists: main before title, guest/featured after in (feat. ...)
-                if is_various_artists and track_metadata:
+                # Format artists: main before title (Various Artists only), guest/featured after in (feat. ...)
+                if track_metadata:
                     main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                     
-                    # Add main artists before the title
-                    if main_artists_str:
+                    # For Various Artists albums, show main artists before title
+                    if is_various_artists and main_artists_str:
                         description += f"{main_artists_str} - "
                     
                     # Add title
                     description += track['t'].title
                     
-                    # Add guest/featured artists after title in (feat. ...)
+                    # Add guest/featured artists after title in (feat. ...) for ALL albums
                     if guest_artists_str:
                         description += f" (feat. {guest_artists_str})"
                     
                     description += f" [i]({length})[/i]\n"
                 else:
-                    # No artist separation for non-various albums
+                    # No metadata available - just show title
                     description += f"{track['t'].title} [i]({length})[/i]\n"
             
             # Add blank line after each disc (except the last one)
@@ -462,24 +462,24 @@ def generate_description(track_data, metadata):
             disc_for_lookup = get_disc_number_for_lookup(track['t'])
             track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
             
-            # Format artists: main before title, guest/featured after in (feat. ...)
-            if is_various_artists and track_metadata:
+            # Format artists: main before title (Various Artists only), guest/featured after in (feat. ...)
+            if track_metadata:
                 main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                 
-                # Add main artists before the title
-                if main_artists_str:
+                # For Various Artists albums, show main artists before title
+                if is_various_artists and main_artists_str:
                     description += f"{main_artists_str} - "
                 
                 # Add title
                 description += track['t'].title
                 
-                # Add guest/featured artists after title in (feat. ...)
+                # Add guest/featured artists after title in (feat. ...) for ALL albums
                 if guest_artists_str:
                     description += f" (feat. {guest_artists_str})"
                 
                 description += f" [i]({length})[/i]\n"
             else:
-                # No artist separation for non-various albums
+                # No metadata available - just show title
                 description += f"{track['t'].title} [i]({length})[/i]\n"
 
     # Format total length
