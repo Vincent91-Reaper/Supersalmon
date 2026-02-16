@@ -90,10 +90,10 @@ def test_regular_album_with_guests():
     print()
     
     print("Expected track listing:")
-    print("[b]01.[/b] Love (feat. [artist]Mary Doufle[/artist]) [i](03:45)[/i]")
-    print("[b]02.[/b] Hate (feat. [artist]Barbara Lamon[/artist]) [i](04:20)[/i]")
-    print("[b]03.[/b] Rage [i](03:30)[/i]")
-    print("[b]04.[/b] Jealousy [i](02:55)[/i]")
+    print("[b]01.[/b] Love (feat. [artist]Mary Doufle[/artist]) [i](XX:XX)[/i]")
+    print("[b]02.[/b] Hate (feat. [artist]Barbara Lamon[/artist]) [i](XX:XX)[/i]")
+    print("[b]03.[/b] Rage [i](XX:XX)[/i]")
+    print("[b]04.[/b] Jealousy [i](XX:XX)[/i]")
     print()
     
     print("Actual output with new logic:")
@@ -158,8 +158,8 @@ def test_various_artists_album():
     print()
     
     print("Expected track listing:")
-    print("[b]01.[/b] [artist]Jon Hansen[/artist] - My love is forever (feat. [artist]Mary Doufle[/artist])")
-    print("[b]02.[/b] [artist]Artist A[/artist], [artist]Artist B[/artist] - Another Track")
+    print("[b]01.[/b] [artist]Jon Hansen[/artist] - My love is forever (feat. [artist]Mary Doufle[/artist]) [i](XX:XX)[/i]")
+    print("[b]02.[/b] [artist]Artist A[/artist], [artist]Artist B[/artist] - Another Track [i](XX:XX)[/i]")
     print()
     
     print("Actual output with new logic:")

@@ -2,11 +2,24 @@
                         EXACT CHANGE REQUESTED
 ═══════════════════════════════════════════════════════════════════════
 
-REQUIREMENT FROM ISSUE:
+ORIGINAL REQUIREMENT:
 ───────────────────────────────────────────────────────────────────────
-For track 01. My love is forever:
+For Various Artists albums, track 01. My love is forever:
   - Main artist: Jon Hansen
   - Featured/guest artist: Mary Doufle (based on scraped metadata)
+
+EXTENDED REQUIREMENT:
+───────────────────────────────────────────────────────────────────────
+For Regular albums (1-2 main artists), album "Jon Hansen - His Love for Paris":
+  - Main artist: Jon Hansen (shown in album header, not per-track)
+  - Track 01: Love - with guest Mary Doufle
+  - Track 02: Hate - with guest Barbara Lamon
+  - Track 03: Rage - no guests
+  - Track 04: Jealousy - no guests
+
+═══════════════════════════════════════════════════════════════════════
+                      VARIOUS ARTISTS ALBUM FORMAT
+═══════════════════════════════════════════════════════════════════════
 
 BEFORE (What it was):
 ───────────────────────────────────────────────────────────────────────
@@ -20,24 +33,51 @@ AFTER (What it is now):
            └─────────────────────────┘   └──────────────────┘        └────────────────────────────┘
            Main artist before title      Title in middle              Featured in (feat. ...) after
 
+═══════════════════════════════════════════════════════════════════════
+                        REGULAR ALBUM FORMAT
+═══════════════════════════════════════════════════════════════════════
+
+Album header shows main artist:
+───────────────────────────────────────────────────────────────────────
+[b][artist]Jon Hansen[/artist] - His Love for Paris[/b]
+
+Track listing format:
+───────────────────────────────────────────────────────────────────────
+[b]01.[/b] Love (feat. [artist]Mary Doufle[/artist]) [i](03:45)[/i]
+           └──┘        └────────────────────────────┘
+           Title       Featured guest artist
+
+[b]02.[/b] Hate (feat. [artist]Barbara Lamon[/artist]) [i](04:20)[/i]
+[b]03.[/b] Rage [i](03:30)[/i]
+[b]04.[/b] Jealousy [i](02:55)[/i]
+
+Note: Main artist (Jon Hansen) is NOT repeated on each track since it's 
+already in the album header. Only guest/featured artists are shown.
+
 VISUAL COMPARISON:
 ───────────────────────────────────────────────────────────────────────
 
-BEFORE:  [Main], [Guest] - Title
-           ↓
-AFTER:   [Main] - Title (feat. [Guest])
+Various Artists:  [Main] - Title (feat. [Guest])
+Regular Album:    Title (feat. [Guest])
 
 ═══════════════════════════════════════════════════════════════════════
-                            ✓ REQUIREMENT MET
+                      ✓ BOTH REQUIREMENTS MET
 ═══════════════════════════════════════════════════════════════════════
 
-The implementation exactly matches the requested format:
-  • Main artist (Jon Hansen) appears before the title
-  • Featured/guest artist (Mary Doufle) appears after title in (feat. ...)
+The implementation now handles BOTH album types correctly:
+
+✓ Various Artists (3+ main artists):
+  • Main artist appears before title
+  • Featured/guest artist appears after title in (feat. ...)
   • Each artist has proper [artist]...[/artist] BBCode tags
-  • Duration remains at the end in italics
 
-This format is now applied to ALL tracks in Various Artists albums
-where the metadata contains artist importance information.
+✓ Regular Albums (1-2 main artists):
+  • Title only (main artist already in album header)
+  • Featured/guest artist appears after title in (feat. ...)
+  • No redundant display of main artist on each track
+  • Each artist has proper [artist]...[/artist] BBCode tags
+
+This format is now applied to ALL albums where metadata contains 
+artist importance information.
 
 ═══════════════════════════════════════════════════════════════════════
