@@ -320,7 +320,7 @@ def generate_description(track_data, metadata):
                 description = f"[b]{artist_display} - {metadata['title']}[/b]\n"
             # DJ Mixes should show all performers, so mark as Various Artists
             is_various_artists = True
-            show_track_main_artist = True  # Always show per-track artists for DJ Mix
+            # DJ Mix is an exception - it uses is_various_artists, not show_track_main_artist
         else:
             # Fallback if no DJ/Compiler found (shouldn't happen for DJ Mix)
             main_artists = [a for a, i in metadata["artists"] if i == "main"]
@@ -425,12 +425,12 @@ def generate_description(track_data, metadata):
                 disc_for_lookup = get_disc_number_for_lookup(track['t'])
                 track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
                 
-                # Format artists: main before title (2+ main artists), guest/featured after in (feat. ...)
+                # Format artists: main before title (Various Artists or 2+ main artists), guest/featured after in (feat. ...)
                 if track_metadata:
                     main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                     
-                    # For albums with 2+ main artists, show main artists before title (they may vary per track)
-                    if show_track_main_artist and main_artists_str:
+                    # For Various Artists (DJ Mix exception) or albums with 2+ main artists, show main artists before title
+                    if (is_various_artists or show_track_main_artist) and main_artists_str:
                         description += f"{main_artists_str} - "
                     
                     # Add title
@@ -466,12 +466,12 @@ def generate_description(track_data, metadata):
             disc_for_lookup = get_disc_number_for_lookup(track['t'])
             track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
             
-            # Format artists: main before title (2+ main artists), guest/featured after in (feat. ...)
+            # Format artists: main before title (Various Artists or 2+ main artists), guest/featured after in (feat. ...)
             if track_metadata:
                 main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                 
-                # For albums with 2+ main artists, show main artists before title (they may vary per track)
-                if show_track_main_artist and main_artists_str:
+                # For Various Artists (DJ Mix exception) or albums with 2+ main artists, show main artists before title
+                if (is_various_artists or show_track_main_artist) and main_artists_str:
                     description += f"{main_artists_str} - "
                 
                 # Add title
