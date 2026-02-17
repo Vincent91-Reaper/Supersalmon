@@ -80,6 +80,12 @@ class Scraper(DeezerBase, MetadataMixin):
         return {g["name"] for g in soup["genres"]["data"]}
 
     def parse_release_type(self, soup):
+        # Check title for DJ Mix first (matches "DJ Mix", "DJ-Mix", "DJMix", etc.)
+        title = soup.get("title", "")
+        if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+            return "DJ Mix"
+        
+        # Try to get from Deezer's type mapping
         try:
             return RECORD_TYPES[soup["record_type"]]
         except KeyError:

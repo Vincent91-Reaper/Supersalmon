@@ -92,6 +92,18 @@ class Scraper(BeatportBase, MetadataMixin):
         except (KeyError, IndexError) as e:
             raise ScrapeError("Could not parse catalog number") from e
 
+    def parse_release_type(self, soup):
+        """Parse release type, checking for DJ Mix in title."""
+        try:
+            title = soup["state"]["data"]["results"][0]["release"]["name"]
+            # Check for DJ Mix (matches "DJ Mix", "DJ-Mix", "DJMix", etc.)
+            if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+                return "DJ Mix"
+            # Beatport doesn't provide explicit type, default to EP for most releases
+            return "EP"
+        except (KeyError, IndexError):
+            return "EP"
+
     def parse_comment(self, soup):
         return None
 
