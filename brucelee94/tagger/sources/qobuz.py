@@ -357,13 +357,6 @@ class Scraper(QobuzBase, MetadataMixin):
         Parse the release type from the API response.
         Returns a standardized release type based on Qobuz data.
         """
-        # Check the title for explicit indicators first
-        title = soup.get("title", "")
-        
-        # Check for DJ Mix (matches "DJ Mix", "DJ-Mix", "DJMix", etc.)
-        if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
-            return "DJ Mix"
-        
         # Try to get directly from Qobuz's mapping
         qobuz_type = soup.get("release_type", "").lower()
         if qobuz_type in RECORD_TYPES:
