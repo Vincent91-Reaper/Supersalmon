@@ -150,6 +150,12 @@ class Scraper(iTunesBase, MetadataMixin):
         # Use "main" importance for album-level artists
         artists_tuples = [(artist, "main") for artist in header_artists]
 
+        # For DJ Mix: Parse HTML track elements to extract per-track artists
+        html_tracks = []
+        if is_dj_mix:
+            # Find HTML track rows - they should match JSON-LD tracks by index
+            html_tracks = soup.select(".songs-list-row")
+
         for index, track in enumerate(data["tracks"], start=1):
             try:
                 num = index
@@ -163,19 +169,21 @@ class Scraper(iTunesBase, MetadataMixin):
                 # if int(num) == 1 and num in tracks[str(cur_disc)]:
                 #    cur_disc += 1
 
-                # For DJ Mix ONLY: Extract per-track artists from JSON-LD data
+                # For DJ Mix ONLY: Extract per-track artists from HTML data
                 # For regular albums: Use album-level artists (existing behavior)
                 track_artists = artists_tuples  # Default to album artists
                 
                 if is_dj_mix:
-                    # Extract per-track artists for DJ Mix releases
+                    # Extract per-track artists for DJ Mix releases from HTML
                     per_track_artists = []
-                    if "byArtist" in track:
-                        artist_data = track["byArtist"]
-                        if isinstance(artist_data, dict) and "name" in artist_data:
-                            per_track_artists = [(artist_data["name"], "main")]
-                        elif isinstance(artist_data, list):
-                            per_track_artists = [(a["name"], "main") for a in artist_data if "name" in a]
+                    
+                    # Get corresponding HTML track element (0-indexed)
+                    if index - 1 < len(html_tracks):
+                        html_track = html_tracks[index - 1]
+                        # Extract main artists from HTML by-line
+                        track_artist_names = parse_artists_track(html_track)
+                        for artist_name in track_artist_names:
+                            per_track_artists.append((artist_name, "main"))
                     
                     # Extract guest artists from title (feat. ...)
                     feat_match = RE_FEAT.search(raw_title)
