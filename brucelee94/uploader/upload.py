@@ -123,6 +123,12 @@ def compile_data_new_group(
         click.secho(f"WARNING: Release type '{metadata['rls_type']}' not found in tracker release types. Defaulting to Album.", fg="red")
         rls_type_id = gazelle_site.release_types.get("Album", 1)
     
+    # For DJ Mix releases, use empty label (Apple Music doesn't provide proper label info)
+    if metadata.get("rls_type") == "DJ Mix":
+        record_label = ""
+    else:
+        record_label = metadata.get("label", "")
+    
     data = {
         "submit": True,
         "type": 0,
@@ -130,7 +136,7 @@ def compile_data_new_group(
         "artists[]": [a[0] for a in metadata["artists"]],
         "importance[]": [ARTIST_IMPORTANCES[a[1]] for a in metadata["artists"]],
         "year": metadata["group_year"],
-        "record_label": metadata.get("label", ""),
+        "record_label": record_label,  # Group-level label (empty for DJ Mix)
         "catalogue_number": generate_catno(metadata),  # Group-level catalog
         "releasetype": rls_type_id,
         "remaster": True,
@@ -416,11 +422,22 @@ def generate_description(track_data, metadata):
                     if is_various_artists:
                         track_artist = track['t'].artist
                         if isinstance(track_artist, list):
-                            # Format each artist with [artist] tags, joined by ", "
-                            artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
+                            # Split each artist on both ", " and " & " and create separate [artist] tags
+                            all_artists = []
+                            for artist in track_artist:
+                                # Split on both ", " and " & " to separate combined artists
+                                # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                                for comma_part in artist.split(', '):
+                                    all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                            artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
                             description += f"{', '.join(artist_tags)} - "
                         elif track_artist:
-                            description += f"[artist]{track_artist}[/artist] - "
+                            # Split single artist string on both ", " and " & "
+                            artists = []
+                            for comma_part in track_artist.split(', '):
+                                artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                            artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
+                            description += f"{', '.join(artist_tags)} - "
                     
                     description += f"{track['t'].title} [i]({length})[/i]\n"
                 else:
@@ -478,11 +495,22 @@ def generate_description(track_data, metadata):
                 if is_various_artists:
                     track_artist = track['t'].artist
                     if isinstance(track_artist, list):
-                        # Format each artist with [artist] tags, joined by ", "
-                        artist_tags = [f"[artist]{artist}[/artist]" for artist in track_artist]
+                        # Split each artist on both ", " and " & " and create separate [artist] tags
+                        all_artists = []
+                        for artist in track_artist:
+                            # Split on both ", " and " & " to separate combined artists
+                            # e.g., "Alix Perez, Shades & Eprom" -> ["Alix Perez", "Shades", "Eprom"]
+                            for comma_part in artist.split(', '):
+                                all_artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                        artist_tags = [f"[artist]{artist}[/artist]" for artist in all_artists]
                         description += f"{', '.join(artist_tags)} - "
                     elif track_artist:
-                        description += f"[artist]{track_artist}[/artist] - "
+                        # Split single artist string on both ", " and " & "
+                        artists = []
+                        for comma_part in track_artist.split(', '):
+                            artists.extend([a.strip() for a in comma_part.split(' & ') if a.strip()])
+                        artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
+                        description += f"{', '.join(artist_tags)} - "
                 
                 description += f"{track['t'].title} [i]({length})[/i]\n"
             else:
