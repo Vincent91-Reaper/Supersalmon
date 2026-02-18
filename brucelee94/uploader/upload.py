@@ -254,42 +254,6 @@ def generate_torrent(gazelle_site, path):
     return tpath, t
 
 
-def format_track_artists(track_metadata):
-    """
-    Format track artists by separating main artists from guest/featured artists.
-    Returns tuple: (main_artists_str, guest_artists_str)
-    
-    Example:
-        If track has Jon Hansen (main) and Mary Doufle (guest):
-        Returns: ("[artist]Jon Hansen[/artist]", "[artist]Mary Doufle[/artist]")
-    """
-    if not track_metadata or "artists" not in track_metadata:
-        return "", ""
-    
-    main_artists = []
-    guest_artists = []
-    
-    for artist_name, importance in track_metadata["artists"]:
-        if importance == "main":
-            main_artists.append(artist_name)
-        elif importance == "guest":
-            guest_artists.append(artist_name)
-    
-    # Format main artists with [artist] tags
-    main_str = ""
-    if main_artists:
-        artist_tags = [f"[artist]{artist}[/artist]" for artist in main_artists]
-        main_str = ", ".join(artist_tags)
-    
-    # Format guest artists with [artist] tags
-    guest_str = ""
-    if guest_artists:
-        artist_tags = [f"[artist]{artist}[/artist]" for artist in guest_artists]
-        guest_str = ", ".join(artist_tags)
-    
-    return main_str, guest_str
-
-
 def generate_description(track_data, metadata):
     """Generate the group description with tracklist including per-track artists only for Various Artists albums."""
     # Generate header with artist and album title
@@ -355,16 +319,6 @@ def generate_description(track_data, metadata):
         )
         for t in track_data.values()
     )
-    
-    # Create a mapping from (disc, track) to metadata track for artist info
-    # metadata["tracks"] structure: {disc_num: {track_num: track_metadata}}
-    # Note: Keys are stored as strings for consistent lookup with track numbers extracted from tags
-    metadata_tracks_map = {}
-    if metadata.get("tracks"):
-        for disc_num, disc_tracks in metadata["tracks"].items():
-            for track_num, track_meta in disc_tracks.items():
-                # Store using string keys for consistent lookup
-                metadata_tracks_map[(str(disc_num), str(track_num))] = track_meta
     
     total_duration = 0
     
