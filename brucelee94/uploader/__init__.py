@@ -830,6 +830,23 @@ def _build_metadata_from_files(path, tags, rls_data):
     genres = []
     upcs = []
     
+    # First pass: Extract album artists to distinguish main artists from guest artists
+    # Album artists are artists who appear at the album level (albumartist field)
+    # Track artists who also appear as album artists are "main" artists
+    # Track artists who don't appear as album artists are "guest" artists
+    album_artists_set = set()
+    for filename, tagset in tags.items():
+        if hasattr(tagset, 'albumartist') and tagset.albumartist:
+            aa_list = tagset.albumartist if isinstance(tagset.albumartist, list) else [tagset.albumartist]
+            for aa in aa_list:
+                if aa and aa.strip():
+                    # Split by comma to handle cases like "Ismail Candide, Eddy Woogy"
+                    individual_artists = [a.strip() for a in str(aa).split(',') if a.strip()]
+                    for individual_artist in individual_artists:
+                        # Store in lowercase for case-insensitive comparison
+                        album_artists_set.add(individual_artist.lower())
+    
+    # Second pass: Extract track data and classify artists
     for filename, tagset in tags.items():
         try:
             # Extract disc number (default to 1)
@@ -860,8 +877,16 @@ def _build_metadata_from_files(path, tags, rls_data):
                         # Split by comma to handle cases like "Gayga, Din" -> ["Gayga", "Din"]
                         individual_artists = [a.strip() for a in str(artist).split(',') if a.strip()]
                         for individual_artist in individual_artists:
-                            track_artists.append((individual_artist, "main"))
-                            all_artists.append((individual_artist, "main"))
+                            # Determine if this artist is a main artist or guest artist
+                            # Main artist: appears at both album level (albumartist) and track level
+                            # Guest artist: appears only at track level (not in albumartist)
+                            if individual_artist.lower() in album_artists_set:
+                                importance = "main"
+                            else:
+                                importance = "guest"
+                            
+                            track_artists.append((individual_artist, importance))
+                            all_artists.append((individual_artist, importance))
             
             # Extract album title
             if hasattr(tagset, 'album') and tagset.album:
@@ -993,12 +1018,24 @@ def _build_metadata_from_files(path, tags, rls_data):
             continue
     
     # Deduplicate and assign artists
-    seen_artists = set()
-    unique_artists = []
+    # Prioritize "main" importance over "guest" for the same artist
+    seen_artists = {}  # dict to track artist name (lowercase) -> (original_name, importance)
     for artist, importance in all_artists:
-        if artist.lower() not in seen_artists:
-            seen_artists.add(artist.lower())
-            unique_artists.append((artist, importance))
+        artist_lower = artist.lower()
+        if artist_lower not in seen_artists:
+            # First time seeing this artist
+            seen_artists[artist_lower] = (artist, importance)
+        else:
+            # Artist already seen - prioritize "main" over "guest"
+            existing_name, existing_importance = seen_artists[artist_lower]
+            if existing_importance == "guest" and importance == "main":
+                # Upgrade guest to main
+                seen_artists[artist_lower] = (artist, importance)
+            # If existing is "main" and new is "guest", keep existing (main)
+            # If both are same importance, keep existing
+    
+    # Convert dict values to list
+    unique_artists = list(seen_artists.values())
     
     metadata["artists"] = unique_artists
     
