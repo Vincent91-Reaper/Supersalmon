@@ -295,6 +295,53 @@ def all_tracks_have_same_artists(tracks, main_artists):
     return True
 
 
+def add_artist_bbcode_to_feat(title):
+    """
+    Add [artist] BBCode tags to guest artists in (feat. ...) mentions within track title.
+    
+    Detects patterns like:
+    - (feat. Name)
+    - (ft. Name)
+    - (featuring Name)
+    
+    And transforms them to:
+    - (feat. [artist]Name[/artist])
+    
+    Handles multiple guests separated by ", " and " & "
+    """
+    import re
+    
+    # Pattern to match (feat. ...), (ft. ...), or (featuring ...)
+    pattern = r'\((feat\.|ft\.|featuring)\s+([^)]+)\)'
+    
+    def add_bbcode_to_match(match):
+        feat_keyword = match.group(1)  # "feat.", "ft.", or "featuring"
+        guests_text = match.group(2)  # The guest names
+        
+        # Split guests on ", " and then on " & "
+        guest_list = []
+        for comma_part in guests_text.split(', '):
+            for guest in comma_part.split(' & '):
+                guest = guest.strip()
+                if guest:
+                    guest_list.append(guest)
+        
+        # Create BBCode version
+        if len(guest_list) == 1:
+            bbcode_guests = f"[artist]{guest_list[0]}[/artist]"
+        elif len(guest_list) == 2:
+            bbcode_guests = f"[artist]{guest_list[0]}[/artist] & [artist]{guest_list[1]}[/artist]"
+        else:
+            # Multiple guests: use ", " for all but last, " & " for last
+            bbcode_guests = ', '.join([f"[artist]{g}[/artist]" for g in guest_list[:-1]])
+            bbcode_guests += f" & [artist]{guest_list[-1]}[/artist]"
+        
+        return f"({feat_keyword} {bbcode_guests})"
+    
+    # Replace all feat. mentions with BBCode version
+    return re.sub(pattern, add_bbcode_to_match, title, flags=re.IGNORECASE)
+
+
 def format_track_artists(track_metadata):
     """
     Format track artists by separating main artists from guest/featured artists.
@@ -484,7 +531,9 @@ def generate_description(track_data, metadata):
                             artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
                             description += f"{', '.join(artist_tags)} - "
                     
-                    description += f"{track['t'].title} [i]({length})[/i]\n"
+                    # Add inline BBCode to guest artists in title (if present)
+                    title_with_bbcode = add_artist_bbcode_to_feat(track['t'].title)
+                    description += f"{title_with_bbcode} [i]({length})[/i]\n"
                 else:
                     # Non-DJ Mix: Use metadata-based artists with guest separation
                     # Get track metadata for artist info (if available)
@@ -505,11 +554,21 @@ def generate_description(track_data, metadata):
                             description += f"{main_artists_str} - "
                         
                         # Add title
-                        description += track['t'].title
+                        title = track['t'].title
                         
-                        # Add guest/featured artists after title in (feat. ...)
-                        if guest_artists_str:
-                            description += f" (feat. {guest_artists_str})"
+                        # Check if title already has inline guest artists
+                        import re
+                        title_has_inline_guests = re.search(r'\((feat\.|ft\.|featuring)', title, re.IGNORECASE)
+                        
+                        if title_has_inline_guests:
+                            # Add BBCode to inline guests, don't append separate guest suffix
+                            description += add_artist_bbcode_to_feat(title)
+                        else:
+                            # No inline guests in title
+                            description += title
+                            # Add guest/featured artists after title in (feat. ...)
+                            if guest_artists_str:
+                                description += f" (feat. {guest_artists_str})"
                         
                         description += f" [i]({length})[/i]\n"
                     else:
@@ -557,7 +616,9 @@ def generate_description(track_data, metadata):
                         artist_tags = [f"[artist]{artist}[/artist]" for artist in artists]
                         description += f"{', '.join(artist_tags)} - "
                 
-                description += f"{track['t'].title} [i]({length})[/i]\n"
+                # Add inline BBCode to guest artists in title (if present)
+                title_with_bbcode = add_artist_bbcode_to_feat(track['t'].title)
+                description += f"{title_with_bbcode} [i]({length})[/i]\n"
             else:
                 # Non-DJ Mix: Use metadata-based artists with guest separation
                 # Get track metadata for artist info (if available)
@@ -573,11 +634,21 @@ def generate_description(track_data, metadata):
                         description += f"{main_artists_str} - "
                     
                     # Add title
-                    description += track['t'].title
+                    title = track['t'].title
                     
-                    # Add guest/featured artists after title in (feat. ...)
-                    if guest_artists_str:
-                        description += f" (feat. {guest_artists_str})"
+                    # Check if title already has inline guest artists
+                    import re
+                    title_has_inline_guests = re.search(r'\((feat\.|ft\.|featuring)', title, re.IGNORECASE)
+                    
+                    if title_has_inline_guests:
+                        # Add BBCode to inline guests, don't append separate guest suffix
+                        description += add_artist_bbcode_to_feat(title)
+                    else:
+                        # No inline guests in title
+                        description += title
+                        # Add guest/featured artists after title in (feat. ...)
+                        if guest_artists_str:
+                            description += f" (feat. {guest_artists_str})"
                     
                     description += f" [i]({length})[/i]\n"
                 else:
