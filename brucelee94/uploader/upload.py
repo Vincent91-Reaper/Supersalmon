@@ -283,10 +283,19 @@ def all_tracks_have_same_artists(tracks, main_artists):
             
         # Split and normalize track artists
         track_artists = set()
-        for part in track_artist.split(', '):
-            for artist in part.split(' & '):
-                if artist.strip():
+        
+        # Handle both list and string formats
+        if isinstance(track_artist, list):
+            # Artist is already a list (e.g., from Beatport)
+            for artist in track_artist:
+                if artist and artist.strip():
                     track_artists.add(artist.strip().lower())
+        else:
+            # Artist is a string, needs splitting (e.g., from iTunes)
+            for part in track_artist.split(', '):
+                for artist in part.split(' & '):
+                    if artist.strip():
+                        track_artists.add(artist.strip().lower())
         
         # If this track's artists differ from main artists, tracks vary
         if track_artists != main_artists_normalized:
