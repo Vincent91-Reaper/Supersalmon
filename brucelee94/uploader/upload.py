@@ -260,6 +260,41 @@ def generate_torrent(gazelle_site, path):
     return tpath, t
 
 
+def all_tracks_have_same_artists(tracks, main_artists):
+    """
+    Check if all tracks have the same artist set as the album's main artists.
+    Returns True only if every track has exactly the same artists.
+    
+    Used to determine if per-track artists should be shown:
+    - If all tracks have same artists → Don't show (redundant)
+    - If tracks have different artists → Show (needed for clarity)
+    """
+    if not tracks or not main_artists:
+        return True
+    
+    # Normalize main artists for comparison (lowercase, strip whitespace)
+    main_artists_normalized = {artist.lower().strip() for artist in main_artists}
+    
+    for track in tracks:
+        # Get track artists from file tags
+        track_artist = track['t'].artist if hasattr(track['t'], 'artist') else None
+        if not track_artist:
+            continue
+            
+        # Split and normalize track artists
+        track_artists = set()
+        for part in track_artist.split(', '):
+            for artist in part.split(' & '):
+                if artist.strip():
+                    track_artists.add(artist.strip().lower())
+        
+        # If this track's artists differ from main artists, tracks vary
+        if track_artists != main_artists_normalized:
+            return False
+    
+    return True
+
+
 def format_track_artists(track_metadata):
     """
     Format track artists by separating main artists from guest/featured artists.
@@ -376,6 +411,16 @@ def generate_description(track_data, metadata):
                 # Store using string keys for consistent lookup
                 metadata_tracks_map[(str(disc_num), str(track_num))] = track_meta
     
+    # Smart artist display logic for non-DJ Mix albums
+    # DJ Mix always shows per-track artists (excluded from this logic)
+    # For non-DJ Mix: Check if all tracks have the same artists
+    show_track_artists = False
+    if not is_dj_mix and len(main_artists) >= 2:
+        # Check if all tracks have same artist set as album main artists
+        tracks_have_same_artists = all_tracks_have_same_artists(list(track_data.values()), main_artists)
+        # Show per-track artists only if they vary across tracks
+        show_track_artists = not tracks_have_same_artists
+    
     total_duration = 0
     
     if multi_disc:
@@ -452,7 +497,7 @@ def generate_description(track_data, metadata):
                     track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
                     
                     # Format artists: main before title, guest/featured after in (feat. ...)
-                    if is_various_artists and track_metadata:
+                    if show_track_artists and track_metadata:
                         main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                         
                         # Add main artists before the title
@@ -520,7 +565,7 @@ def generate_description(track_data, metadata):
                 track_metadata = metadata_tracks_map.get(("1", track_num_raw))
                 
                 # Format artists: main before title, guest/featured after in (feat. ...)
-                if is_various_artists and track_metadata:
+                if show_track_artists and track_metadata:
                     main_artists_str, guest_artists_str = format_track_artists(track_metadata)
                     
                     # Add main artists before the title
