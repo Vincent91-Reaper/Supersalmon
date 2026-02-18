@@ -581,8 +581,27 @@ def generate_description(track_data, metadata):
                         
                         description += f" [i]({length})[/i]\n"
                     else:
-                        # No artist separation for non-various albums
-                        description += f"{track['t'].title} [i]({length})[/i]\n"
+                        # Main artists don't vary, so don't show them per-track
+                        # But still check for guest artists to display
+                        title = track['t'].title
+                        
+                        # Check if title already has inline guest artists
+                        import re
+                        title_has_inline_guests = re.search(r'\((feat\.|ft\.|featuring)', title, re.IGNORECASE)
+                        
+                        if title_has_inline_guests:
+                            # Add BBCode to inline guests
+                            description += add_artist_bbcode_to_feat(title)
+                        else:
+                            # No inline guests in title
+                            description += title
+                            # Check metadata for guest artists and append if present
+                            if track_metadata:
+                                _, guest_artists_str = format_track_artists(track_metadata)
+                                if guest_artists_str:
+                                    description += f" (feat. {guest_artists_str})"
+                        
+                        description += f" [i]({length})[/i]\n"
             
             # Add blank line after each disc (except the last one)
             if disc_num != sorted_discs[-1]:
@@ -661,8 +680,27 @@ def generate_description(track_data, metadata):
                     
                     description += f" [i]({length})[/i]\n"
                 else:
-                    # No artist separation for non-various albums
-                    description += f"{track['t'].title} [i]({length})[/i]\n"
+                    # Main artists don't vary, so don't show them per-track
+                    # But still check for guest artists to display
+                    title = track['t'].title
+                    
+                    # Check if title already has inline guest artists
+                    import re
+                    title_has_inline_guests = re.search(r'\((feat\.|ft\.|featuring)', title, re.IGNORECASE)
+                    
+                    if title_has_inline_guests:
+                        # Add BBCode to inline guests
+                        description += add_artist_bbcode_to_feat(title)
+                    else:
+                        # No inline guests in title
+                        description += title
+                        # Check metadata for guest artists and append if present
+                        if track_metadata:
+                            _, guest_artists_str = format_track_artists(track_metadata)
+                            if guest_artists_str:
+                                description += f" (feat. {guest_artists_str})"
+                    
+                    description += f" [i]({length})[/i]\n"
 
     # Format total length
     if len(track_data.values()) > 1:
