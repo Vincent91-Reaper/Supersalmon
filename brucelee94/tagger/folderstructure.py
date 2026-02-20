@@ -106,14 +106,30 @@ def _check_path_lengths(path, scene):
     """Verify that all path lengths are <=180 characters."""
     offending_files = []
     root_len = len(cfg.directory.download_directory) + 1
+    
+    # DEBUG: Print root_len calculation
+    print(f"[DEBUG] download_directory: '{cfg.directory.download_directory}'")
+    print(f"[DEBUG] root_len = {root_len}\n")
+    
     for root, _, files in os.walk(path):
         if len(os.path.abspath(root)) - root_len > 180:
             click.secho("A subfolder has a path length >180 characters.", fg="red")
             raise NoncompliantFolderStructure
         for f in files:
             filepath = os.path.abspath(os.path.join(root, f))
-            if len(filepath) - root_len > 180:
+            rel_len = len(filepath) - root_len
+            
+            # DEBUG: Print each file's info
+            print(f"[DEBUG] File: {os.path.basename(filepath)}")
+            print(f"[DEBUG]   Absolute path length: {len(filepath)}")
+            print(f"[DEBUG]   Relative path length: {rel_len}")
+            print(f"[DEBUG]   Exceeds 180? {rel_len > 180}")
+            
+            if rel_len > 180:
                 offending_files.append(filepath)
+                print(f"[DEBUG]   -> ADDED to offending_files\n")
+            else:
+                print(f"[DEBUG]   -> NOT added (under limit)\n")
 
     if scene and offending_files:
         click.secho("The following files exceed 180 characters in length.", fg="red", bold=True)
@@ -122,8 +138,10 @@ def _check_path_lengths(path, scene):
         raise NoncompliantFolderStructure
 
     if not offending_files:
+        print(f"[DEBUG] No files in offending_files - returning early\n")
         return click.secho("No paths exceed 180 characters in length.", fg="green")
 
+    print(f"[DEBUG] Total files in offending_files: {len(offending_files)}\n")
     click.secho("The following exceed 180 characters in length, truncating...", fg="red")
     for filepath in sorted(offending_files):
         # Calculate how much we need to truncate
