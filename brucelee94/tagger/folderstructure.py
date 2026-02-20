@@ -111,6 +111,14 @@ def _check_path_lengths(path, scene):
     parent_dir = os.path.dirname(os.path.abspath(path))
     root_len = len(parent_dir) + 1
     
+    # DEBUG: Show the setup
+    click.secho(f"\n[DEBUG] Path length check setup:", fg="yellow")
+    click.secho(f"[DEBUG]   Album folder: {path}", fg="yellow")
+    click.secho(f"[DEBUG]   Parent dir: {parent_dir}", fg="yellow")
+    click.secho(f"[DEBUG]   Root length: {root_len}", fg="yellow")
+    click.secho(f"[DEBUG]   Album folder name: {os.path.basename(path)}", fg="yellow")
+    click.secho(f"[DEBUG]   Album folder name length: {len(os.path.basename(path))}\n", fg="yellow")
+    
     for root, _, files in os.walk(path):
         for f in files:
             filepath = os.path.abspath(os.path.join(root, f))
@@ -121,16 +129,17 @@ def _check_path_lengths(path, scene):
             relative_len = len(relative_path)
             
             # DEBUG: Print each file's info
-            print(f"[DEBUG] File: {f}")
-            print(f"[DEBUG]   Relative path: {relative_path}")
-            print(f"[DEBUG]   Relative path length: {relative_len}")
-            print(f"[DEBUG]   Exceeds 180? {relative_len > 180}")
+            click.secho(f"[DEBUG] File: {f}", fg="cyan")
+            click.secho(f"[DEBUG]   Filename length: {len(f)}", fg="cyan")
+            click.secho(f"[DEBUG]   Relative path: {relative_path}", fg="cyan")
+            click.secho(f"[DEBUG]   Relative path length: {relative_len}", fg="cyan")
+            click.secho(f"[DEBUG]   Exceeds 180? {relative_len > 180}", fg="cyan")
             
             if relative_len > 180:
                 offending_files.append(filepath)
-                print(f"[DEBUG]   -> ADDED to offending_files\n")
+                click.secho(f"[DEBUG]   -> ADDED to offending_files (will truncate)\n", fg="red")
             else:
-                print(f"[DEBUG]   -> NOT added (under limit)\n")
+                click.secho(f"[DEBUG]   -> NOT added (under limit, won't truncate)\n", fg="green")
 
     if scene and offending_files:
         click.secho("The following files exceed 180 characters in length.", fg="red", bold=True)
