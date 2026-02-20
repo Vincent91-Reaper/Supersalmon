@@ -127,8 +127,9 @@ def _check_path_lengths(path, scene):
     click.secho("The following exceed 180 characters in length, truncating...", fg="red")
     for filepath in sorted(offending_files):
         # Calculate how much we need to truncate
-        # Target: relative path length <= 178 (leaving 2 chars for "..")
-        target_relative_len = 178
+        # Target: relative path length = 180 (the maximum allowed)
+        # Note: ".." replaces chars in filename, doesn't add to path length
+        target_relative_len = 180
         current_relative_len = len(filepath) - root_len
         excess = current_relative_len - target_relative_len
         
