@@ -103,21 +103,27 @@ def _check_illegal_folders(path):
 
 
 def _check_path_lengths(path, scene):
-    """Verify that all filename lengths are <=180 characters."""
+    """Verify that all relative path lengths are <=180 characters."""
     offending_files = []
+    
+    # Calculate the root directory length to get relative paths
+    root_len = len(os.path.abspath(path)) + 1
     
     for root, _, files in os.walk(path):
         for f in files:
             filepath = os.path.abspath(os.path.join(root, f))
-            filename = os.path.basename(filepath)
-            filename_len = len(filename)
+            
+            # Calculate relative path from the download directory
+            relative_path = filepath[root_len:]
+            relative_len = len(relative_path)
             
             # DEBUG: Print each file's info
-            print(f"[DEBUG] File: {filename}")
-            print(f"[DEBUG]   Filename length: {filename_len}")
-            print(f"[DEBUG]   Exceeds 180? {filename_len > 180}")
+            print(f"[DEBUG] File: {f}")
+            print(f"[DEBUG]   Relative path: {relative_path}")
+            print(f"[DEBUG]   Relative path length: {relative_len}")
+            print(f"[DEBUG]   Exceeds 180? {relative_len > 180}")
             
-            if filename_len > 180:
+            if relative_len > 180:
                 offending_files.append(filepath)
                 print(f"[DEBUG]   -> ADDED to offending_files\n")
             else:
@@ -134,15 +140,13 @@ def _check_path_lengths(path, scene):
         return click.secho("No paths exceed 180 characters in length.", fg="green")
 
     print(f"[DEBUG] Total files in offending_files: {len(offending_files)}\n")
-    click.secho("The following filenames exceed 180 characters in length, truncating...", fg="red")
+    click.secho("The following paths exceed 180 characters in length, truncating...", fg="red")
     for filepath in sorted(offending_files):
-        # Get filename and calculate how much to truncate
-        # Target: filename length = 180 (the maximum allowed)
-        # Note: ".." replaces chars in filename, doesn't add to filename length
-        filename = os.path.basename(filepath)
-        target_len = 180
-        current_len = len(filename)
-        excess = current_len - target_len
+        # Calculate how much to truncate
+        # Target: relative path length = 180 (the maximum allowed)
+        target_relative_len = 180
+        current_relative_len = len(filepath) - root_len
+        excess = current_relative_len - target_relative_len
         
         # Get directory and filename components
         dir_part = os.path.dirname(filepath)
