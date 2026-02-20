@@ -893,6 +893,9 @@ def _build_metadata_from_files(path, tags, rls_data):
     # Album artists are artists who appear at the album level (albumartist field)
     # Track artists who also appear as album artists are "main" artists
     # Track artists who don't appear as album artists are "guest" artists
+    # 
+    # IMPORTANT: Exclude "Various Artists" from the set because it's a placeholder, not a real artist
+    # When album artist is only "Various Artists", all track artists should be treated as "main"
     album_artists_set = set()
     for filename, tagset in tags.items():
         if hasattr(tagset, 'albumartist') and tagset.albumartist:
@@ -902,8 +905,10 @@ def _build_metadata_from_files(path, tags, rls_data):
                     # Split by comma to handle cases like "Ismail Candide, Eddy Woogy"
                     individual_artists = [a.strip() for a in str(aa).split(',') if a.strip()]
                     for individual_artist in individual_artists:
-                        # Store in lowercase for case-insensitive comparison
-                        album_artists_set.add(individual_artist.lower())
+                        # Skip "Various Artists" - it's a placeholder, not a real artist
+                        if individual_artist.lower() != "various artists":
+                            # Store in lowercase for case-insensitive comparison
+                            album_artists_set.add(individual_artist.lower())
     
     # Second pass: Extract track data and classify artists
     for filename, tagset in tags.items():
@@ -939,7 +944,14 @@ def _build_metadata_from_files(path, tags, rls_data):
                             # Determine if this artist is a main artist or guest artist
                             # Main artist: appears at both album level (albumartist) and track level
                             # Guest artist: appears only at track level (not in albumartist)
-                            if individual_artist.lower() in album_artists_set:
+                            # 
+                            # SPECIAL CASE: If album_artists_set is empty (e.g., album artist was "Various Artists"),
+                            # treat all track artists as "main" by default
+                            if not album_artists_set:
+                                # No real album artists found (only "Various Artists" or empty)
+                                # All track artists are main artists
+                                importance = "main"
+                            elif individual_artist.lower() in album_artists_set:
                                 importance = "main"
                             else:
                                 importance = "guest"
