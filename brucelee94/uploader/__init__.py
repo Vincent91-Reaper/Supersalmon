@@ -693,9 +693,7 @@ def edit_metadata(
         
         # Apply Various Artists replacement logic
         # This will replace "Various Artists" with track artists if it's the only album artist
-        print(f"[DEBUG] Various Artists check for scraped metadata - Before: {metadata['artists']}")
         metadata["artists"] = replace_various_artists_with_track_artists(metadata["artists"], metadata)
-        print(f"[DEBUG] Various Artists check for scraped metadata - After: {metadata['artists']}")
         
         if not metadata["artists"]:
             click.secho("ERROR: No artist information found in track metadata!", fg="red", bold=True)
@@ -808,13 +806,8 @@ def replace_various_artists_with_track_artists(artists, metadata):
     Returns:
         List of (artist_name, importance) tuples with "Various Artists" replaced if needed
     """
-    print(f"[DEBUG] VA Replacement - Before: {artists}")
-    
     # Check if "Various Artists" is the only album artist
     if len(artists) == 1 and artists[0][0].lower() == "various artists":
-        print("[DEBUG] Various Artists detected as only album artist")
-        print("[DEBUG] Collecting track artists from metadata...")
-        
         # Extract all unique track artists (main importance only)
         track_artists = set()
         
@@ -826,24 +819,17 @@ def replace_various_artists_with_track_artists(artists, metadata):
                             if importance == "main":
                                 track_artists.add(artist_name)
         
-        print(f"[DEBUG] Found track artists: {sorted(track_artists)}")
-        
         # Replace "Various Artists" with track artists if we found any
         if track_artists:
             result = [(artist, "main") for artist in sorted(track_artists)]
-            print(f"[DEBUG] VA Replacement - After: {result}")
             return result
         else:
-            print("[DEBUG] No track artists found - keeping Various Artists")
-            print(f"[DEBUG] VA Replacement - After: {artists}")
             return artists
     
     # Keep original artists if:
     # - Not "Various Artists"
     # - "Various Artists" plus other artists (intentional)
     # - No track artists found (fallback)
-    print(f"[DEBUG] Not replacing - Various Artists is not the only artist (count: {len(artists)})")
-    print(f"[DEBUG] VA Replacement - After: {artists}")
     return artists
 
 
@@ -1111,10 +1097,7 @@ def _build_metadata_from_files(path, tags, rls_data):
     metadata["artists"] = unique_artists
     
     # Replace "Various Artists" with track artists if it's the only album artist
-    print(f"[DEBUG] Various Artists check for file-based metadata - Before: {metadata['artists']}")
     metadata["artists"] = replace_various_artists_with_track_artists(metadata["artists"], metadata)
-    print(f"[DEBUG] Various Artists check for file-based metadata - After: {metadata['artists']}")
-    print(f"[DEBUG] Final artist list being passed to upload: {metadata['artists']}")
     
     # Assign most common values
     if album_titles:
