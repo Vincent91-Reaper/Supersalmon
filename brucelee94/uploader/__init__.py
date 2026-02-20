@@ -691,7 +691,11 @@ def edit_metadata(
         unique_artists = main_artists if main_artists else guest_artists
         metadata["artists"] = unique_artists
         
-        if not unique_artists:
+        # Apply Various Artists replacement logic
+        # This will replace "Various Artists" with track artists if it's the only album artist
+        metadata["artists"] = replace_various_artists_with_track_artists(metadata["artists"], metadata)
+        
+        if not metadata["artists"]:
             click.secho("ERROR: No artist information found in track metadata!", fg="red", bold=True)
             click.secho("Track metadata structure:", fg="yellow")
             # Debug output - show first track to help diagnose
@@ -786,6 +790,44 @@ def edit_metadata(
     tags = gather_tags(path)
     audio_info = gather_audio_info(path)
     return path, metadata, tags, audio_info
+
+
+def replace_various_artists_with_track_artists(artists, metadata):
+    """
+    Replace "Various Artists" with actual track artists when it's the only album artist.
+    
+    This handles special cases where files from Tidal (or scraped from Qobuz/Deezer/Apple)
+    have "Various Artists" as the album artist, which causes upload failures.
+    
+    Args:
+        artists: List of (artist_name, importance) tuples
+        metadata: Metadata dict containing tracks information
+    
+    Returns:
+        List of (artist_name, importance) tuples with "Various Artists" replaced if needed
+    """
+    # Check if "Various Artists" is the only album artist
+    if len(artists) == 1 and artists[0][0].lower() == "various artists":
+        # Extract all unique track artists (main importance only)
+        track_artists = set()
+        
+        if "tracks" in metadata and metadata["tracks"]:
+            for disc_tracks in metadata["tracks"].values():
+                for track_info in disc_tracks.values():
+                    if "artists" in track_info:
+                        for artist_name, importance in track_info["artists"]:
+                            if importance == "main":
+                                track_artists.add(artist_name)
+        
+        # Replace "Various Artists" with track artists if we found any
+        if track_artists:
+            return [(artist, "main") for artist in sorted(track_artists)]
+    
+    # Keep original artists if:
+    # - Not "Various Artists"
+    # - "Various Artists" plus other artists (intentional)
+    # - No track artists found (fallback)
+    return artists
 
 
 def _build_metadata_from_files(path, tags, rls_data):
@@ -1038,6 +1080,9 @@ def _build_metadata_from_files(path, tags, rls_data):
     unique_artists = list(seen_artists.values())
     
     metadata["artists"] = unique_artists
+    
+    # Replace "Various Artists" with track artists if it's the only album artist
+    metadata["artists"] = replace_various_artists_with_track_artists(metadata["artists"], metadata)
     
     # Assign most common values
     if album_titles:
