@@ -104,7 +104,7 @@ def _check_illegal_folders(path):
 
 def _check_path_lengths(path, scene):
     """Verify that all path lengths are <=180 characters."""
-    offending_files, really_offending_files = [], []
+    offending_files = []
     root_len = len(cfg.directory.download_directory) + 1
     for root, _, files in os.walk(path):
         if len(os.path.abspath(root)) - root_len > 180:
@@ -112,27 +112,12 @@ def _check_path_lengths(path, scene):
             raise NoncompliantFolderStructure
         for f in files:
             filepath = os.path.abspath(os.path.join(root, f))
-            filepathlen = len(filepath) - root_len
-            if filepathlen > 180:
-                if filepathlen < 250:
-                    offending_files.append(filepath)
-                else:
-                    really_offending_files.append(filepath)
+            if len(filepath) - root_len > 180:
+                offending_files.append(filepath)
 
-    if scene and (offending_files or really_offending_files):
+    if scene and offending_files:
         click.secho("The following files exceed 180 characters in length.", fg="red", bold=True)
-        for f in offending_files + really_offending_files:
-            click.echo(f" >> {f}")
-        raise NoncompliantFolderStructure
-
-    if really_offending_files:
-        click.secho(
-            "The following files exceed 180 characters in length, but cannot "
-            "be safely truncated (more than 70 characters above the limit):",
-            fg="red",
-            bold=True,
-        )
-        for f in really_offending_files:
+        for f in offending_files:
             click.echo(f" >> {f}")
         raise NoncompliantFolderStructure
 
@@ -151,6 +136,14 @@ def _check_path_lengths(path, scene):
         dir_part = os.path.dirname(filepath)
         file_basename = os.path.basename(filepath)
         filename_no_ext, ext = os.path.splitext(file_basename)
+        
+        # Safety check: ensure filename is long enough to truncate
+        if len(filename_no_ext) < excess + 2:
+            click.secho(
+                f"Cannot truncate (filename too short): {filepath}",
+                fg="red"
+            )
+            continue
         
         # Truncate the filename (not including extension) and add ".."
         truncated_filename = filename_no_ext[:len(filename_no_ext) - excess - 2]
