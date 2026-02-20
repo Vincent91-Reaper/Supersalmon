@@ -141,8 +141,22 @@ def _check_path_lengths(path, scene):
 
     click.secho("The following exceed 180 characters in length, truncating...", fg="red")
     for filepath in sorted(offending_files):
-        filename, ext = os.path.splitext(filepath)
-        newpath = filepath[: 178 - len(filename) - len(ext) * 2 + root_len] + ".." + ext
+        # Calculate how much we need to truncate
+        # Target: relative path length <= 178 (leaving 2 chars for "..")
+        target_relative_len = 178
+        current_relative_len = len(filepath) - root_len
+        excess = current_relative_len - target_relative_len
+        
+        # Get directory and filename components
+        dir_part = os.path.dirname(filepath)
+        file_basename = os.path.basename(filepath)
+        filename_no_ext, ext = os.path.splitext(file_basename)
+        
+        # Truncate the filename (not including extension) and add ".."
+        truncated_filename = filename_no_ext[:len(filename_no_ext) - excess - 2]
+        new_filename = truncated_filename + ".." + ext
+        newpath = os.path.join(dir_part, new_filename)
+        
         os.rename(filepath, newpath)
         click.echo(f" >> {newpath}")
 
