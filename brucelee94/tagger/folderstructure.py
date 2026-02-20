@@ -106,14 +106,17 @@ def _check_path_lengths(path, scene):
     """Verify that all relative path lengths are <=180 characters."""
     offending_files = []
     
-    # Calculate the root directory length to get relative paths
-    root_len = len(os.path.abspath(path)) + 1
+    # Get the parent directory (download directory) to calculate relative paths correctly
+    # path parameter is the album folder, we need its parent
+    parent_dir = os.path.dirname(os.path.abspath(path))
+    root_len = len(parent_dir) + 1
     
     for root, _, files in os.walk(path):
         for f in files:
             filepath = os.path.abspath(os.path.join(root, f))
             
-            # Calculate relative path from the download directory
+            # Calculate relative path from the parent directory
+            # This includes: album_folder + "/" + filename
             relative_path = filepath[root_len:]
             relative_len = len(relative_path)
             
