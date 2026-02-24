@@ -471,7 +471,7 @@ def generate_description(track_data, metadata):
     # DJ Mix always shows per-track artists (excluded from this logic)
     # For non-DJ Mix: Check if all tracks have the same artists
     show_track_artists = False
-    if not is_dj_mix and len(main_artists) >= 2:
+    if not is_dj_mix:
         # Check if all tracks have same artist set as album main artists
         tracks_have_same_artists = all_tracks_have_same_artists(list(track_data.values()), main_artists)
         # Show per-track artists only if they vary across tracks
