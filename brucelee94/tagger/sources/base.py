@@ -57,10 +57,15 @@ class MetadataMixin(ABC):
         """
         soup = await self.create_soup(url)
         
-        # Debug logging for soup content
+        # Debug logging for soup content with error handling
         import click
-        click.secho(f"[DEBUG] scrape_release: soup keys = {list(soup.keys())}", fg="cyan")
-        click.secho(f"[DEBUG] scrape_release: soup['label'] = {repr(soup.get('label'))}", fg="cyan")
+        try:
+            click.secho(f"[DEBUG] scrape_release: soup keys = {list(soup.keys())}", fg="cyan", err=True)
+            label_value = soup.get('label', 'N/A')
+            click.secho(f"[DEBUG] scrape_release: soup['label'] = {str(label_value)[:100]}", fg="cyan", err=True)
+            click.secho(f"[DEBUG] scrape_release: soup['label'] type = {type(label_value).__name__}", fg="cyan", err=True)
+        except Exception as e:
+            click.secho(f"[DEBUG] scrape_release: Error in debug logging: {e}", fg="red", err=True)
         
         # Parse title first
         raw_title = self.parse_release_title(soup)
