@@ -75,8 +75,14 @@ class Scraper(DeezerBase, MetadataMixin):
             label = label.get("name", "")
         elif isinstance(label, (tuple, list)):
             # If tuple/list, take first element (usually the name)
-            label = label[0] if label else ""
+            # Handle nested structures: extract until we get a string
+            while label and isinstance(label, (tuple, list)):
+                label = label[0] if label else ""
         elif not isinstance(label, str):
+            label = str(label) if label else ""
+        
+        # Ensure label is a string
+        if not isinstance(label, str):
             label = str(label) if label else ""
         
         # Debug logging after conversion
@@ -128,19 +134,30 @@ class Scraper(DeezerBase, MetadataMixin):
             label = label.get("name", "")
         elif isinstance(label, (tuple, list)):
             # If tuple/list, take first element (usually the name)
-            label = label[0] if label else ""
+            # Handle nested structures: extract until we get a string
+            while label and isinstance(label, (tuple, list)):
+                label = label[0] if label else ""
         elif not isinstance(label, str):
+            label = str(label) if label else ""
+        
+        # Ensure label is a string
+        if not isinstance(label, str):
             label = str(label) if label else ""
         
         # Debug logging after conversion
         click.secho(f"[DEBUG] process_label: converted label type = {type(label)}, value = {repr(label)}", fg="yellow")
         
         # Check for self-released albums
-        if label and any(
-            label.lower().startswith(artist_name.lower()) and role == "main" 
-            for artist_name, role in data["artists"]
-        ):
-            return "Self-Released"
+        if label and data.get("artists"):
+            try:
+                if any(
+                    label.lower().startswith(artist_name.lower()) and role == "main" 
+                    for artist_name, role in data["artists"]
+                ):
+                    return "Self-Released"
+            except (TypeError, AttributeError) as e:
+                click.secho(f"[DEBUG] process_label: Error in self-released check: {e}", fg="red")
+                # Continue with original label if check fails
         
         return label
 
