@@ -81,6 +81,7 @@ def create_track_changes(tags, metadata, preserve_artists=False):
     Compare the track data in the metadata to the track data in the tags
     and auto-tag with correct artists from scraped metadata.
     Only retags main artists (and composers for classical albums).
+    Also corrects track numbers if they differ from scraped metadata.
     
     Only retags if main artists are missing from the file tags.
     If main artists are present (even with additional featured artists), files are not retagged.
@@ -96,6 +97,17 @@ def create_track_changes(tags, metadata, preserve_artists=False):
     
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
+        
+        # Check and fix track number if it differs from scraped metadata
+        try:
+            old_tracknumber = str(tagset.tracknumber).split("/")[0] if tagset.tracknumber else None
+            new_tracknumber = trackmeta.get("track#")
+            
+            # Update track number if it's different and new_tracknumber is valid
+            if new_tracknumber and old_tracknumber != new_tracknumber:
+                changes[filename].append(Change("tracknumber", old_tracknumber, new_tracknumber))
+        except (TypeError, AttributeError):
+            pass
         
         # Auto-tag artists from scraped metadata (unless preserve_artists is True for Apple Music)
         if not preserve_artists:

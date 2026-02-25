@@ -154,8 +154,9 @@ def parse_encoding(format_, audio_info, supplied_encoding, prompt_encoding, hybr
 def create_track_list(tags, overwrite):
     """Generate the track data from each track tag."""
     tracks = defaultdict(dict)
-    for trackindex, (_, track) in enumerate(sorted(tags.items(), key=lambda k: _tracknumber_sort_key(k[0])), 1):
-        discnumber = track.discnumber or "1"
+    # First pass: collect track numbers to detect duplicates
+    track_numbers = []
+    for _, track in sorted(tags.items(), key=lambda k: _tracknumber_sort_key(k[0])):
         tracknumber = (
             str(track.tracknumber).split("/")[0]
             if (
@@ -163,8 +164,30 @@ def create_track_list(tags, overwrite):
                 and str(track.tracknumber).split("/")[0].isdigit()
                 and int(str(track.tracknumber).split("/")[0]) > 0
             )
-            else str(trackindex)
+            else None
         )
+        track_numbers.append(tracknumber)
+    
+    # Check if track numbers are duplicated (e.g., all files have "01")
+    # If duplicates exist, use sequential numbering instead
+    has_duplicates = len(track_numbers) != len(set(track_numbers))
+    
+    for trackindex, (_, track) in enumerate(sorted(tags.items(), key=lambda k: _tracknumber_sort_key(k[0])), 1):
+        discnumber = track.discnumber or "1"
+        # Use file-based track number unless duplicates detected
+        if has_duplicates:
+            # Use sequential position when duplicates exist
+            tracknumber = str(trackindex)
+        else:
+            tracknumber = (
+                str(track.tracknumber).split("/")[0]
+                if (
+                    track.tracknumber
+                    and str(track.tracknumber).split("/")[0].isdigit()
+                    and int(str(track.tracknumber).split("/")[0]) > 0
+                )
+                else str(trackindex)
+            )
         tracks[discnumber][tracknumber] = {
             "track#": tracknumber,
             "disc#": discnumber,
