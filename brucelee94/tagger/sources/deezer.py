@@ -64,49 +64,12 @@ class Scraper(DeezerBase, MetadataMixin):
             return None
 
     def parse_release_label(self, soup):
-        import click
-        
-        # Get label with safe debugging
-        try:
-            label = soup.get("label")
-            click.secho(f"[DEBUG] parse_release_label: raw label type = {type(label).__name__}", fg="yellow", err=True)
-            click.secho(f"[DEBUG] parse_release_label: raw label value = {str(label)[:100]}", fg="yellow", err=True)
-        except Exception as e:
-            click.secho(f"[DEBUG] parse_release_label: Error getting label: {e}", fg="red", err=True)
-            label = ""
-        
-        # Handle different label formats from Deezer API
-        # Label can be a string, dict with "name" field, tuple/list, or other types
-        try:
-            if isinstance(label, dict):
-                label = label.get("name", "")
-            elif isinstance(label, (tuple, list)):
-                # If tuple/list, take first element (usually the name)
-                # Handle nested structures: extract until we get a string
-                while label and isinstance(label, (tuple, list)):
-                    label = label[0] if label else ""
-            elif not isinstance(label, str):
-                label = str(label) if label else ""
-            
-            # Ensure label is a string
-            if not isinstance(label, str):
-                label = str(label) if label else ""
-            
-            # Debug logging after conversion
-            click.secho(f"[DEBUG] parse_release_label: final label type = {type(label).__name__}", fg="cyan", err=True)
-            click.secho(f"[DEBUG] parse_release_label: final label value = {str(label)[:100]}", fg="cyan", err=True)
-        except Exception as e:
-            click.secho(f"[DEBUG] parse_release_label: Error processing label: {e}", fg="red", err=True)
-            label = str(label) if label else ""
-        
-        # Call parse_copyright with error handling
-        try:
-            result = parse_copyright(label)
-            click.secho(f"[DEBUG] parse_release_label: parse_copyright returned = {str(result)[:100]}", fg="green", err=True)
-            return result
-        except Exception as e:
-            click.secho(f"[DEBUG] parse_release_label: Error in parse_copyright: {e}", fg="red", err=True)
-            return label
+        label = soup.get("label")
+        if isinstance(label, dict):
+            label = label.get("name", "")
+        elif isinstance(label, (tuple, list)):
+            label = label[0] if label else ""
+        return parse_copyright(label)
 
     def parse_genres(self, soup):
         return {g["name"] for g in soup["genres"]["data"]}
@@ -140,66 +103,16 @@ class Scraper(DeezerBase, MetadataMixin):
         return dict(tracks)
 
     def process_label(self, data):
-        import click
-        
-        # Get label with safe debugging
-        try:
-            label = data.get("label", "")
-            click.secho(f"[DEBUG] process_label: raw label type = {type(label).__name__}", fg="magenta", err=True)
-            click.secho(f"[DEBUG] process_label: raw label value = {str(label)[:100]}", fg="magenta", err=True)
-        except Exception as e:
-            click.secho(f"[DEBUG] process_label: Error getting label: {e}", fg="red", err=True)
-            label = ""
-        
-        # Handle different label formats from Deezer API
-        # Label can be a string, dict with "name" field, tuple/list, or other types
-        try:
-            if isinstance(label, dict):
-                label = label.get("name", "")
-            elif isinstance(label, (tuple, list)):
-                # If tuple/list, take first element (usually the name)
-                # Handle nested structures: extract until we get a string
-                while label and isinstance(label, (tuple, list)):
-                    label = label[0] if label else ""
-            elif not isinstance(label, str):
-                label = str(label) if label else ""
-            
-            # Ensure label is a string
-            if not isinstance(label, str):
-                label = str(label) if label else ""
-            
-            click.secho(f"[DEBUG] process_label: final label type = {type(label).__name__}", fg="magenta", err=True)
-            click.secho(f"[DEBUG] process_label: final label value = {str(label)[:100]}", fg="magenta", err=True)
-        except Exception as e:
-            click.secho(f"[DEBUG] process_label: Error processing label: {e}", fg="red", err=True)
-            label = str(label) if label else ""
-        
+        label = data.get("label", "")
+        if isinstance(label, dict):
+            label = label.get("name", "")
+        elif isinstance(label, (tuple, list)):
+            label = label[0] if label else ""
         # Check for self-released albums
         if label and data.get("artists"):
-            try:
-                artists = data.get("artists", [])
-                click.secho(f"[DEBUG] process_label: Checking {len(artists)} artists for self-released", fg="magenta", err=True)
-                
-                for artist_item in artists:
-                    try:
-                        # Safely unpack artist tuple
-                        if isinstance(artist_item, (tuple, list)) and len(artist_item) >= 2:
-                            artist_name, role = artist_item[0], artist_item[1]
-                            # Ensure artist_name is string
-                            if not isinstance(artist_name, str):
-                                artist_name = str(artist_name)
-                            click.secho(f"[DEBUG] process_label: Checking artist '{artist_name}' with role '{role}'", fg="magenta", err=True)
-                            if label.lower().startswith(artist_name.lower()) and role == "main":
-                                click.secho(f"[DEBUG] process_label: Self-released detected! Artist '{artist_name}' matches label", fg="green", err=True)
-                                return "Self-Released"
-                    except Exception as e:
-                        click.secho(f"[DEBUG] process_label: Error checking artist {artist_item}: {e}", fg="red", err=True)
-                        continue
-            except Exception as e:
-                click.secho(f"[DEBUG] process_label: Error in self-released check: {e}", fg="red", err=True)
-                # Continue with original label if check fails
-        
-        click.secho(f"[DEBUG] process_label: Returning label = {str(label)[:100]}", fg="green", err=True)
+            for artist_name, role in data["artists"]:
+                if label.lower().startswith(artist_name.lower()) and role == "main":
+                    return "Self-Released"
         return label
 
     def parse_artists(self, artists, default_artists, title):
