@@ -57,6 +57,11 @@ class MetadataMixin(ABC):
         """
         soup = await self.create_soup(url)
         
+        # Debug logging for soup content
+        import click
+        click.secho(f"[DEBUG] scrape_release: soup keys = {list(soup.keys())}", fg="cyan")
+        click.secho(f"[DEBUG] scrape_release: soup['label'] = {repr(soup.get('label'))}", fg="cyan")
+        
         # Parse title first
         raw_title = self.parse_release_title(soup)
         

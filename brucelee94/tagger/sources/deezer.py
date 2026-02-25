@@ -65,6 +65,10 @@ class Scraper(DeezerBase, MetadataMixin):
 
     def parse_release_label(self, soup):
         label = soup.get("label")
+        # Debug logging
+        import click
+        click.secho(f"[DEBUG] parse_release_label: label type = {type(label)}, value = {repr(label)}", fg="yellow")
+        
         # Handle different label formats from Deezer API
         # Label can be a string, dict with "name" field, tuple/list, or other types
         if isinstance(label, dict):
@@ -74,6 +78,9 @@ class Scraper(DeezerBase, MetadataMixin):
             label = label[0] if label else ""
         elif not isinstance(label, str):
             label = str(label) if label else ""
+        
+        # Debug logging after conversion
+        click.secho(f"[DEBUG] parse_release_label: converted label type = {type(label)}, value = {repr(label)}", fg="yellow")
         return parse_copyright(label)
 
     def parse_genres(self, soup):
@@ -110,6 +117,11 @@ class Scraper(DeezerBase, MetadataMixin):
     def process_label(self, data):
         label = data["label"]
         
+        # Debug logging
+        import click
+        click.secho(f"[DEBUG] process_label: label type = {type(label)}, value = {repr(label)}", fg="yellow")
+        click.secho(f"[DEBUG] process_label: artists = {repr(data.get('artists', []))}", fg="yellow")
+        
         # Handle different label formats from Deezer API
         # Label can be a string, dict with "name" field, tuple/list, or other types
         if isinstance(label, dict):
@@ -119,6 +131,9 @@ class Scraper(DeezerBase, MetadataMixin):
             label = label[0] if label else ""
         elif not isinstance(label, str):
             label = str(label) if label else ""
+        
+        # Debug logging after conversion
+        click.secho(f"[DEBUG] process_label: converted label type = {type(label)}, value = {repr(label)}", fg="yellow")
         
         # Check for self-released albums
         if label and any(
