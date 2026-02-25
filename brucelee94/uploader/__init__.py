@@ -356,22 +356,26 @@ def upload(
             if new_source_url is not None:
                 source_url = new_source_url
             
-            # Special case: Tidal URLs - extract metadata from file tags instead of scraping
+            # Special case: Tidal/Deezer URLs - extract metadata from file tags instead of scraping
             if metadata.get("_extract_from_files"):
                 click.secho("Extracting metadata from file tags...", fg="cyan")
                 source_url = metadata.get("_source_url")
+                is_tidal = metadata.get("_is_tidal", False)
+                is_deezer = metadata.get("_is_deezer", False)
                 
                 # Build metadata from file tags
                 metadata = _build_metadata_from_files(path, tags, rls_data)
                 
-                # Skip retagging for Tidal - files are already correct
-                # Skip the edit_metadata workflow entirely for Tidal
+                # Skip retagging for Tidal/Deezer - files are already correct
+                # Skip the edit_metadata workflow entirely
                 # Just check tags and folder structure
                 tags = check_tags(path)
                 if recompress:
                     recompress_path(path)
-                # Always run folder structure check for Tidal (since files don't have genre tags)
-                check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=True, from_url=True)
+                # Run folder structure check
+                # For Tidal: Always check (files don't have genre tags, so is_tidal=True)
+                # For Deezer: Use genre info (files have genre tags, so is_tidal=False)
+                check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=is_tidal, from_url=True)
                 
                 # Refresh tags and audio info
                 tags = gather_tags(path)
@@ -796,7 +800,7 @@ def replace_various_artists_with_track_artists(artists, metadata):
     """
     Replace "Various Artists" with actual track artists when it's the only album artist.
     
-    This handles special cases where files from Tidal (or scraped from Qobuz/Deezer/Apple)
+    This handles special cases where files from Tidal/Deezer (or scraped from Qobuz/Apple Music)
     have "Various Artists" as the album artist, which causes upload failures.
     
     Args:
@@ -835,7 +839,7 @@ def replace_various_artists_with_track_artists(artists, metadata):
 
 def _build_metadata_from_files(path, tags, rls_data):
     """
-    Build metadata structure from file tags for Tidal URLs.
+    Build metadata structure from file tags for Tidal and Deezer URLs.
     Extracts all necessary information from the existing file metadata.
     """
     # Initialize metadata structure (matching EMPTY_METADATA from pre_data.py)
