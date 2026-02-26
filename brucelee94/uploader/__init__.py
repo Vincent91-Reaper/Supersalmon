@@ -547,8 +547,16 @@ def upload(
     label_to_add = metadata.get("label", "")
     catalog_to_add = generate_catno(metadata)
     
+    # Debug output
+    click.secho(f"[DEBUG] Label to add: '{label_to_add}'", fg="yellow", err=True)
+    click.secho(f"[DEBUG] Catalog to add: '{catalog_to_add}'", fg="yellow", err=True)
+    click.secho(f"[DEBUG] metadata['catno']: '{metadata.get('catno', 'NOT SET')}'", fg="yellow", err=True)
+    click.secho(f"[DEBUG] metadata['upc']: '{metadata.get('upc', 'NOT SET')}'", fg="yellow", err=True)
+    
     if label_to_add or catalog_to_add:
         click.secho("Adding label and catalog to torrent...", fg="cyan")
+        click.secho(f"  Label: {label_to_add}", fg="cyan")
+        click.secho(f"  Catalog: {catalog_to_add}", fg="cyan")
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
             gazelle_site.update_torrent_metadata(
@@ -558,6 +566,8 @@ def upload(
             )
         )
         click.secho("Label and catalog added successfully!", fg="green")
+    else:
+        click.secho("[DEBUG] Skipping label/catalog update - both empty", fg="yellow", err=True)
 
     # Update group with cover and description after torrent is uploaded (new groups only)
     album_desc_to_add = None
