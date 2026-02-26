@@ -1082,7 +1082,17 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                 else:
                     # Try to access tags as a dictionary (works for FLAC Vorbis comments)
                     tag_dict = None
-                    if hasattr(tagset, 'tags'):
+                    
+                    # TagFile wraps mutagen objects - access the underlying mutagen object
+                    if hasattr(tagset, 'mut'):
+                        mut_obj = tagset.mut
+                        # For FLAC files, tags is the Vorbis comment dict
+                        if hasattr(mut_obj, 'tags') and mut_obj.tags:
+                            tag_dict = mut_obj.tags
+                        # For direct mutagen objects (fallback)
+                        elif hasattr(mut_obj, '__getitem__'):
+                            tag_dict = mut_obj
+                    elif hasattr(tagset, 'tags'):
                         tag_dict = tagset.tags
                     elif hasattr(tagset, '__dict__'):
                         # Some tag formats expose tags as attributes
@@ -1113,11 +1123,16 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                     # Debug: Show available tag keys when BARCODE not found
                     click.secho(f"[DEBUG] BARCODE not found in file: {filename}", fg="yellow", err=True)
                     try:
-                        if hasattr(tagset, 'tags') and tagset.tags:
-                            # Try to get keys if dict-like
-                            if hasattr(tagset.tags, 'keys'):
-                                tag_keys = list(tagset.tags.keys())[:20]  # Show first 20 keys
-                                click.secho(f"[DEBUG] Available tags: {tag_keys}", fg="yellow", err=True)
+                        # Try to show available tags from the mutagen object
+                        tag_dict_debug = None
+                        if hasattr(tagset, 'mut') and hasattr(tagset.mut, 'tags') and tagset.mut.tags:
+                            tag_dict_debug = tagset.mut.tags
+                        elif hasattr(tagset, 'tags') and tagset.tags:
+                            tag_dict_debug = tagset.tags
+                        
+                        if tag_dict_debug and hasattr(tag_dict_debug, 'keys'):
+                            tag_keys = list(tag_dict_debug.keys())[:20]  # Show first 20 keys
+                            click.secho(f"[DEBUG] Available tags: {tag_keys}", fg="yellow", err=True)
                     except Exception as e:
                         # Don't crash on debug output
                         click.secho(f"[DEBUG] Could not list tags: {e}", fg="yellow", err=True)
