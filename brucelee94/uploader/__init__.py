@@ -547,16 +547,8 @@ def upload(
     label_to_add = metadata.get("label", "")
     catalog_to_add = generate_catno(metadata)
     
-    # Debug output
-    click.secho(f"[DEBUG] Label to add: '{label_to_add}'", fg="yellow", err=True)
-    click.secho(f"[DEBUG] Catalog to add: '{catalog_to_add}'", fg="yellow", err=True)
-    click.secho(f"[DEBUG] metadata['catno']: '{metadata.get('catno', 'NOT SET')}'", fg="yellow", err=True)
-    click.secho(f"[DEBUG] metadata['upc']: '{metadata.get('upc', 'NOT SET')}'", fg="yellow", err=True)
-    
     if label_to_add or catalog_to_add:
         click.secho("Adding label and catalog to torrent...", fg="cyan")
-        click.secho(f"  Label: {label_to_add}", fg="cyan")
-        click.secho(f"  Catalog: {catalog_to_add}", fg="cyan")
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
             gazelle_site.update_torrent_metadata(
@@ -566,8 +558,6 @@ def upload(
             )
         )
         click.secho("Label and catalog added successfully!", fg="green")
-    else:
-        click.secho("[DEBUG] Skipping label/catalog update - both empty", fg="yellow", err=True)
 
     # Update group with cover and description after torrent is uploaded (new groups only)
     album_desc_to_add = None
@@ -1118,28 +1108,9 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                     # Add to catnos so it's used as the catalogue number
                     if is_deezer:
                         catnos.append(barcode_value)
-                        click.secho(f"[DEBUG] Extracted BARCODE from file: {barcode_value}", fg="green", err=True)
-                elif is_deezer:
-                    # Debug: Show available tag keys when BARCODE not found
-                    click.secho(f"[DEBUG] BARCODE not found in file: {filename}", fg="yellow", err=True)
-                    try:
-                        # Try to show available tags from the mutagen object
-                        tag_dict_debug = None
-                        if hasattr(tagset, 'mut') and hasattr(tagset.mut, 'tags') and tagset.mut.tags:
-                            tag_dict_debug = tagset.mut.tags
-                        elif hasattr(tagset, 'tags') and tagset.tags:
-                            tag_dict_debug = tagset.tags
-                        
-                        if tag_dict_debug and hasattr(tag_dict_debug, 'keys'):
-                            tag_keys = list(tag_dict_debug.keys())[:20]  # Show first 20 keys
-                            click.secho(f"[DEBUG] Available tags: {tag_keys}", fg="yellow", err=True)
-                    except Exception as e:
-                        # Don't crash on debug output
-                        click.secho(f"[DEBUG] Could not list tags: {e}", fg="yellow", err=True)
             except Exception as e:
-                # If BARCODE extraction fails, log it but continue
-                if is_deezer:
-                    click.secho(f"[DEBUG] Error extracting BARCODE: {e}", fg="red", err=True)
+                # If BARCODE extraction fails, silently continue
+                pass
             
             # Extract genre
             if hasattr(tagset, 'genre') and tagset.genre:
