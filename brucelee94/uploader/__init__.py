@@ -1069,15 +1069,51 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                 catnos.append(tagset.catalognumber)
             
             # Extract UPC/Barcode (try both 'upc' and 'barcode' fields)
+            barcode_value = None
+            
+            # Try UPC field first
             if hasattr(tagset, 'upc') and tagset.upc:
-                upcs.append(str(tagset.upc))
+                barcode_value = str(tagset.upc)
+            # Try barcode field with hasattr
             elif hasattr(tagset, 'barcode') and tagset.barcode:
                 barcode_value = str(tagset.barcode)
+            # For FLAC/Vorbis tags, try accessing via dictionary with various case variations
+            else:
+                # Try to access tags as a dictionary (works for FLAC Vorbis comments)
+                tag_dict = None
+                if hasattr(tagset, 'tags'):
+                    tag_dict = tagset.tags
+                elif hasattr(tagset, '__dict__'):
+                    # Some tag formats expose tags as attributes
+                    tag_dict = tagset.__dict__
+                
+                if tag_dict:
+                    # Try various case variations of barcode
+                    for barcode_key in ['BARCODE', 'barcode', 'Barcode', 'CATALOGUENUMBER', 'CatalogueNumber']:
+                        if barcode_key in tag_dict:
+                            value = tag_dict[barcode_key]
+                            # Handle list values (common in Vorbis comments)
+                            if isinstance(value, list) and len(value) > 0:
+                                barcode_value = str(value[0])
+                            elif value:
+                                barcode_value = str(value)
+                            if barcode_value:
+                                break
+            
+            # If we found a barcode value, add it to appropriate lists
+            if barcode_value:
                 upcs.append(barcode_value)
                 # For Deezer files, BARCODE = UPC = Catalogue number
                 # Add to catnos so it's used as the catalogue number
                 if is_deezer:
                     catnos.append(barcode_value)
+                    click.secho(f"[DEBUG] Extracted BARCODE from file: {barcode_value}", fg="green", err=True)
+            elif is_deezer:
+                # Debug: Show available tag keys when BARCODE not found
+                click.secho(f"[DEBUG] BARCODE not found in file: {filepath}", fg="yellow", err=True)
+                if hasattr(tagset, 'tags') and tagset.tags:
+                    tag_keys = list(tagset.tags.keys())[:20]  # Show first 20 keys
+                    click.secho(f"[DEBUG] Available tags: {tag_keys}", fg="yellow", err=True)
             
             # Extract genre
             if hasattr(tagset, 'genre') and tagset.genre:
