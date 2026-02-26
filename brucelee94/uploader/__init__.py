@@ -363,8 +363,8 @@ def upload(
                 is_tidal = metadata.get("_is_tidal", False)
                 is_deezer = metadata.get("_is_deezer", False)
                 
-                # Build metadata from file tags
-                metadata = _build_metadata_from_files(path, tags, rls_data)
+                # Build metadata from file tags (pass is_deezer for BARCODE handling)
+                metadata = _build_metadata_from_files(path, tags, rls_data, is_deezer=is_deezer)
                 
                 # Skip retagging for Tidal/Deezer - files are already correct
                 # Skip the edit_metadata workflow entirely
@@ -837,10 +837,16 @@ def replace_various_artists_with_track_artists(artists, metadata):
     return artists
 
 
-def _build_metadata_from_files(path, tags, rls_data):
+def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
     """
     Build metadata structure from file tags for Tidal and Deezer URLs.
     Extracts all necessary information from the existing file metadata.
+    
+    Args:
+        path: Path to the album folder
+        tags: Dictionary of file tags
+        rls_data: Release data dictionary
+        is_deezer: Boolean indicating if this is a Deezer upload (for BARCODE handling)
     """
     # Initialize metadata structure (matching EMPTY_METADATA from pre_data.py)
     metadata = {
@@ -1056,7 +1062,12 @@ def _build_metadata_from_files(path, tags, rls_data):
             if hasattr(tagset, 'upc') and tagset.upc:
                 upcs.append(str(tagset.upc))
             elif hasattr(tagset, 'barcode') and tagset.barcode:
-                upcs.append(str(tagset.barcode))
+                barcode_value = str(tagset.barcode)
+                upcs.append(barcode_value)
+                # For Deezer files, BARCODE = UPC = Catalogue number
+                # Add to catnos so it's used as the catalogue number
+                if is_deezer:
+                    catnos.append(barcode_value)
             
             # Extract genre
             if hasattr(tagset, 'genre') and tagset.genre:
