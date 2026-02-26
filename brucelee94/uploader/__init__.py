@@ -1111,7 +1111,7 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                         click.secho(f"[DEBUG] Extracted BARCODE from file: {barcode_value}", fg="green", err=True)
                 elif is_deezer:
                     # Debug: Show available tag keys when BARCODE not found
-                    click.secho(f"[DEBUG] BARCODE not found in file: {filepath}", fg="yellow", err=True)
+                    click.secho(f"[DEBUG] BARCODE not found in file: {filename}", fg="yellow", err=True)
                     try:
                         if hasattr(tagset, 'tags') and tagset.tags:
                             # Try to get keys if dict-like
