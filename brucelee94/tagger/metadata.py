@@ -179,11 +179,32 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
                 
                 return metadata, source_url
             else:
+                # Scraping failed - offer fallback option
                 click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
+                
+                # If URL was provided programmatically, don't prompt - just fail
                 if provided_source_url:
-                    # If we were given a URL and it failed, raise an error
                     raise click.Abort("Failed to scrape from provided URL")
-                break
+                
+                # Ask user if they want to extract metadata from files instead
+                click.echo()
+                click.secho("Would you like to extract metadata from the audio files instead?", fg="yellow")
+                click.secho("This works similar to Tidal/Deezer uploads.", fg="yellow")
+                fallback_choice = click.prompt(
+                    click.style("Extract from files? ([y]es, [n]o, [a]bort)", fg="magenta"),
+                    type=str,
+                    default="y"
+                ).lower()
+                
+                if fallback_choice.startswith('y'):
+                    click.secho("Extracting metadata from file tags...", fg="cyan")
+                    # Return the extract_from_files flag like Tidal/Deezer
+                    return {"_extract_from_files": True, "_source_url": url_input}, url_input
+                elif fallback_choice.startswith('a'):
+                    raise click.Abort()
+                else:
+                    # User chose 'no' - prompt for URL again
+                    break
     
     if not metadata:
         if provided_source_url:
