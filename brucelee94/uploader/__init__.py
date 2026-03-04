@@ -837,10 +837,119 @@ def replace_various_artists_with_track_artists(artists, metadata):
     return artists
 
 
+def _is_record_label_album(albumartist, track_artists_list):
+    """
+    Detect if the album artist is a record label (not a real artist) for a various artists album.
+    
+    Criteria for detection:
+    1. Album artist name contains keywords like "Records", "Music", "Entertainment", "Label"
+    2. Album has multiple different track artists
+    3. None of the track artists closely match the album artist name
+    
+    Args:
+        albumartist: The album artist name from file tags
+        track_artists_list: List of unique track artist names
+    
+    Returns:
+        Boolean indicating if this appears to be a record label album
+    """
+    if not albumartist or not track_artists_list:
+        return False
+    
+    albumartist_lower = albumartist.lower().strip()
+    
+    # Skip if already Various Artists
+    if albumartist_lower == "various artists":
+        return False
+    
+    # Check if album artist contains record label keywords
+    label_keywords = ['records', 'music', 'entertainment', 'label', 'recordings', 'productions']
+    has_label_keyword = any(keyword in albumartist_lower for keyword in label_keywords)
+    
+    if not has_label_keyword:
+        return False
+    
+    # Check if album has multiple different track artists (at least 3 for various artists)
+    if len(track_artists_list) < 3:
+        return False
+    
+    # Check if any track artist closely matches the album artist name
+    # (If an artist name appears in tracks, it's probably a real artist, not a label)
+    for track_artist in track_artists_list:
+        track_artist_lower = track_artist.lower().strip()
+        # Check for partial match (at least 50% of shorter name)
+        if albumartist_lower in track_artist_lower or track_artist_lower in albumartist_lower:
+            # Found a track artist that matches album artist - probably not a label
+            return False
+    
+    # All criteria met: likely a record label album
+    return True
+
+
+def _retag_albumartist_to_various_artists(tags):
+    """
+    Retag all files' albumartist field to "Various Artists".
+    
+    Args:
+        tags: Dictionary of file tags
+    """
+    for filename, tagset in tags.items():
+        try:
+            # Set albumartist to "Various Artists"
+            tagset.albumartist = "Various Artists"
+            # Save the changes to the file
+            tagset.save()
+        except Exception as e:
+            click.secho(f"Warning: Could not retag {filename}: {e}", fg="yellow")
+
+
+def _rename_folder_with_various_artists(path):
+    """
+    Rename folder from "Record Label - Album..." to "Various Artists - Album..."
+    
+    Args:
+        path: Current folder path
+    
+    Returns:
+        New folder path after renaming
+    """
+    import os
+    import re
+    
+    basename = os.path.basename(path)
+    parent_dir = os.path.dirname(path)
+    
+    # Pattern to extract artist from folder name
+    # Format: "Artist - Album (Year) [Source Format] [Bit-Sample]"
+    # We want to replace everything before " - " with "Various Artists"
+    pattern = r"^(.+?)\s+-\s+(.+)$"
+    match = re.match(pattern, basename)
+    
+    if match:
+        # Replace artist with "Various Artists"
+        new_basename = f"Various Artists - {match.group(2)}"
+        new_path = os.path.join(parent_dir, new_basename)
+        
+        # Rename the folder
+        try:
+            os.rename(path, new_path)
+            click.secho(f"\nRenamed folder:", fg="cyan")
+            click.secho(f"  From: {basename}", fg="white")
+            click.secho(f"  To:   {new_basename}", fg="green")
+            return new_path
+        except Exception as e:
+            click.secho(f"Warning: Could not rename folder: {e}", fg="yellow")
+            return path
+    
+    return path
+
+
 def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
     """
     Build metadata structure from file tags for Tidal and Deezer URLs.
     Extracts all necessary information from the existing file metadata.
+    
+    Also detects and handles record label albums (where label is tagged as album artist).
     
     Args:
         path: Path to the album folder
@@ -893,11 +1002,16 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
     # IMPORTANT: Exclude "Various Artists" from the set because it's a placeholder, not a real artist
     # When album artist is only "Various Artists", all track artists should be treated as "main"
     album_artists_set = set()
+    original_albumartist = None  # Store the original album artist for record label detection
     for filename, tagset in tags.items():
         if hasattr(tagset, 'albumartist') and tagset.albumartist:
             aa_list = tagset.albumartist if isinstance(tagset.albumartist, list) else [tagset.albumartist]
             for aa in aa_list:
                 if aa and aa.strip():
+                    # Store the first album artist we find for record label detection
+                    if original_albumartist is None:
+                        original_albumartist = str(aa).strip()
+                    
                     # Split by comma to handle cases like "Ismail Candide, Eddy Woogy"
                     individual_artists = [a.strip() for a in str(aa).split(',') if a.strip()]
                     for individual_artist in individual_artists:
@@ -905,6 +1019,40 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                         if individual_artist.lower() != "various artists":
                             # Store in lowercase for case-insensitive comparison
                             album_artists_set.add(individual_artist.lower())
+    
+    # Pre-scan: Collect all unique track artists for record label detection
+    track_artists_for_detection = set()
+    for filename, tagset in tags.items():
+        if hasattr(tagset, 'artist') and tagset.artist:
+            artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+            for artist in artist_list:
+                if artist and artist.strip():
+                    individual_artists = [a.strip() for a in str(artist).split(',') if a.strip()]
+                    for individual_artist in individual_artists:
+                        track_artists_for_detection.add(individual_artist)
+    
+    # Detect if album artist is a record label (not a real artist)
+    is_record_label_album = False
+    if original_albumartist:
+        is_record_label_album = _is_record_label_album(original_albumartist, list(track_artists_for_detection))
+    
+    if is_record_label_album:
+        click.echo()
+        click.secho(f"Detected record label as album artist: {original_albumartist}", fg="yellow")
+        click.secho("This appears to be a various artists compilation.", fg="yellow")
+        click.secho("Retagging album artist to 'Various Artists'...", fg="cyan")
+        
+        # Retag all files' albumartist to "Various Artists"
+        _retag_albumartist_to_various_artists(tags)
+        
+        # Rename folder from "Record Label - ..." to "Various Artists - ..."
+        path = _rename_folder_with_various_artists(path)
+        
+        # Clear album_artists_set since we're treating this as Various Artists
+        album_artists_set = set()
+        
+        click.secho("Album will be treated as Various Artists compilation.", fg="green")
+        click.echo()
     
     # Second pass: Extract track data and classify artists
     for filename, tagset in tags.items():
