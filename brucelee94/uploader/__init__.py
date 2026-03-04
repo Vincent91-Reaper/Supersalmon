@@ -837,36 +837,52 @@ def replace_various_artists_with_track_artists(artists, metadata):
     return artists
 
 
-def _is_record_label_album(albumartist, track_artists_list):
+def _is_record_label_album(albumartist, label, track_artists_list):
     """
     Detect if the album artist is a record label (not a real artist) for a various artists album.
     
+    NEW detection logic: Compare album artist to record label.
+    If they match (or are very similar), and the album has multiple different track artists,
+    then the album artist is the label and should be changed to "Various Artists".
+    
     Criteria for detection:
-    1. Album artist name contains keywords like "Records", "Music", "Entertainment", "Label"
-    2. Album has multiple different track artists
+    1. Album artist matches (or is very similar to) the record label
+    2. Album has multiple different track artists (3+)
     3. None of the track artists closely match the album artist name
     
     Args:
         albumartist: The album artist name from file tags
+        label: The record label extracted from file metadata
         track_artists_list: List of unique track artist names
     
     Returns:
         Boolean indicating if this appears to be a record label album
     """
-    if not albumartist or not track_artists_list:
+    if not albumartist or not label or not track_artists_list:
         return False
     
     albumartist_lower = albumartist.lower().strip()
+    label_lower = label.lower().strip()
     
     # Skip if already Various Artists
     if albumartist_lower == "various artists":
         return False
     
-    # Check if album artist contains record label keywords
-    label_keywords = ['records', 'music', 'entertainment', 'label', 'recordings', 'productions']
-    has_label_keyword = any(keyword in albumartist_lower for keyword in label_keywords)
+    # Main detection: Check if album artist matches or is very similar to the label
+    match_found = False
     
-    if not has_label_keyword:
+    # Exact match
+    if albumartist_lower == label_lower:
+        match_found = True
+    # Check if one contains the other (e.g., "Ed Banger Records" contains "Ed Banger")
+    elif albumartist_lower in label_lower or label_lower in albumartist_lower:
+        # Require substantial overlap (at least 60% of shorter string)
+        shorter = min(len(albumartist_lower), len(label_lower))
+        overlap = len(albumartist_lower) if albumartist_lower in label_lower else len(label_lower)
+        if overlap / shorter >= 0.6:
+            match_found = True
+    
+    if not match_found:
         return False
     
     # Check if album has multiple different track artists (at least 3 for various artists)
@@ -877,7 +893,9 @@ def _is_record_label_album(albumartist, track_artists_list):
     # (If an artist name appears in tracks, it's probably a real artist, not a label)
     for track_artist in track_artists_list:
         track_artist_lower = track_artist.lower().strip()
-        # Check for partial match (at least 50% of shorter name)
+        # Check for exact or partial match
+        if track_artist_lower == albumartist_lower:
+            return False
         if albumartist_lower in track_artist_lower or track_artist_lower in albumartist_lower:
             # Found a track artist that matches album artist - probably not a label
             return False
@@ -1031,10 +1049,56 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                     for individual_artist in individual_artists:
                         track_artists_for_detection.add(individual_artist)
     
+    # Pre-scan: Extract label for record label detection
+    # We need to extract the label before checking if album artist is a label
+    extracted_label = None
+    for filename, tagset in tags.items():
+        # Try to get copyright field from the underlying mutagen object
+        copyright_text = None
+        try:
+            if hasattr(tagset, 'mut'):
+                # For FLAC files, the tags are in a dictionary-like object
+                if isinstance(tagset.mut, mutagen.flac.FLAC):
+                    # Try different case variations
+                    for key in ['copyright', 'COPYRIGHT', 'Copyright']:
+                        if key in tagset.mut:
+                            copyright_val = tagset.mut.get(key)
+                            if copyright_val:
+                                copyright_text = copyright_val[0] if isinstance(copyright_val, list) else copyright_val
+                                break
+        except (AttributeError, KeyError, IndexError, TypeError):
+            pass
+        
+        if copyright_text:
+            copyright_text = str(copyright_text).strip()
+            
+            # Clean up copyright text by removing common distribution phrases
+            copyright_text = re.sub(r'\s*under exclusive license to\s*', ' ', copyright_text, flags=re.IGNORECASE)
+            copyright_text = re.sub(r',?\s*a division of [^,]+', '', copyright_text, flags=re.IGNORECASE)
+            copyright_text = re.sub(r'\s+', ' ', copyright_text).strip()
+            
+            # Parse copyright: first try to extract label after year
+            match = re.search(r'\d{4}\s+(.+)', copyright_text)
+            if match:
+                extracted_label = match.group(1).strip()
+            else:
+                # If no year pattern, use the entire copyright text as label
+                extracted_label = copyright_text
+            
+            # If we found a label, we can stop looking
+            if extracted_label:
+                break
+        
+        # Try label field if copyright didn't work
+        if not extracted_label and hasattr(tagset, 'label') and tagset.label:
+            extracted_label = str(tagset.label).strip()
+            if extracted_label:
+                break
+    
     # Detect if album artist is a record label (not a real artist)
     is_record_label_album = False
-    if original_albumartist:
-        is_record_label_album = _is_record_label_album(original_albumartist, list(track_artists_for_detection))
+    if original_albumartist and extracted_label:
+        is_record_label_album = _is_record_label_album(original_albumartist, extracted_label, list(track_artists_for_detection))
     
     if is_record_label_album:
         click.echo()
