@@ -420,6 +420,101 @@ def upload(
             # Dupe recheck removed - directly proceed
             click.echo()
         track_data = concat_track_data(tags, audio_info)
+        
+        # Check for record label album (after all metadata finalization)
+        # This works for ALL sources (Qobuz, Beatport, Bandcamp, etc.), not just Tidal/Deezer
+        # We do this here because we need the finalized tags and metadata
+        try:
+            # Get current album artist from tags
+            current_albumartist = None
+            for filename, tagset in tags.items():
+                if hasattr(tagset, 'albumartist') and tagset.albumartist:
+                    current_albumartist = tagset.albumartist
+                    break
+            
+            if current_albumartist:
+                # Extract label from metadata or tags
+                extracted_label = metadata.get("label")
+                
+                # If label not in metadata, try to extract from tags (copyright field)
+                if not extracted_label:
+                    for filename, tagset in tags.items():
+                        copyright_text = None
+                        try:
+                            if hasattr(tagset, 'mut'):
+                                if isinstance(tagset.mut, mutagen.flac.FLAC):
+                                    for key in ['copyright', 'COPYRIGHT', 'Copyright']:
+                                        if key in tagset.mut:
+                                            copyright_val = tagset.mut.get(key)
+                                            if copyright_val:
+                                                copyright_text = copyright_val[0] if isinstance(copyright_val, list) else copyright_val
+                                                break
+                        except (AttributeError, KeyError, IndexError, TypeError):
+                            pass
+                        
+                        if copyright_text:
+                            copyright_text = str(copyright_text).strip()
+                            # Parse copyright: extract label after year
+                            match = re.search(r'\d{4}\s+(.+)', copyright_text)
+                            if match:
+                                extracted_label = match.group(1).strip()
+                            else:
+                                extracted_label = copyright_text
+                            
+                            if extracted_label:
+                                break
+                
+                # Collect all unique track artists
+                track_artists_for_detection = set()
+                for filename, tagset in tags.items():
+                    if hasattr(tagset, 'artist') and tagset.artist:
+                        artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+                        for artist in artist_list:
+                            if artist and artist.strip():
+                                individual_artists = [a.strip() for a in str(artist).split(',') if a.strip()]
+                                for individual_artist in individual_artists:
+                                    track_artists_for_detection.add(individual_artist)
+                
+                # Check if this is a record label album
+                if extracted_label and len(track_artists_for_detection) >= 3:
+                    is_label_album = _is_record_label_album(
+                        current_albumartist, 
+                        extracted_label, 
+                        list(track_artists_for_detection)
+                    )
+                    
+                    if is_label_album:
+                        click.echo()
+                        click.secho(f"Detected record label as album artist: {current_albumartist}", fg="yellow")
+                        click.secho("This appears to be a various artists compilation.", fg="yellow")
+                        click.secho("Retagging album artist to 'Various Artists'...", fg="cyan")
+                        
+                        # Retag all files' albumartist to "Various Artists"
+                        _retag_albumartist_to_various_artists(tags)
+                        
+                        # Rename folder from "Record Label - ..." to "Various Artists - ..."
+                        path = _rename_folder_with_various_artists(path)
+                        
+                        # Update metadata to reflect Various Artists
+                        # This is important for upload description
+                        if "artists" in metadata:
+                            # Collect all track artists and treat as main artists
+                            all_track_artists = []
+                            for artist_set in track_artists_for_detection:
+                                all_track_artists.append(artist_set)
+                            metadata["artists"] = all_track_artists
+                        
+                        # Refresh tags and track_data to reflect changes
+                        tags = gather_tags(path)
+                        audio_info = gather_audio_info(path)
+                        track_data = concat_track_data(tags, audio_info)
+                        
+                        click.secho("Album will be treated as Various Artists compilation.", fg="green")
+                        click.echo()
+        except Exception as e:
+            # Don't let detection errors break the upload
+            click.secho(f"Warning: Error during record label detection: {e}", fg="yellow", err=True)
+    
     except click.Abort:
         return click.secho("\nAborting upload...", fg="red")
     except AbortAndDeleteFolder:
