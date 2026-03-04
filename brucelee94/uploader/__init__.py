@@ -955,14 +955,16 @@ def _is_record_label_album(albumartist, label, track_artists_list):
     """
     Detect if the album artist is a record label (not a real artist) for a various artists album.
     
-    NEW detection logic: Compare album artist to record label.
-    If they match (or are very similar), and the album has multiple different track artists,
-    then the album artist is the label and should be changed to "Various Artists".
+    Detection logic: Compare album artist to record label, check for multiple track artists,
+    verify no track artist matches album artist, and check for label keywords.
+    If all criteria are met, the album artist is the label and should be changed to "Various Artists".
     
     Criteria for detection:
     1. Album artist matches (or is very similar to) the record label
     2. Album has multiple different track artists (3+)
     3. None of the track artists closely match the album artist name
+    4. Album artist name contains keywords that imply it's a record label
+       (e.g., "Records", "Music", "Productions", etc.)
     
     Args:
         albumartist: The album artist name from file tags
@@ -982,7 +984,7 @@ def _is_record_label_album(albumartist, label, track_artists_list):
     if albumartist_lower == "various artists":
         return False
     
-    # Main detection: Check if album artist matches or is very similar to the label
+    # Condition 1: Check if album artist matches or is very similar to the label
     match_found = False
     
     # Exact match
@@ -999,11 +1001,11 @@ def _is_record_label_album(albumartist, label, track_artists_list):
     if not match_found:
         return False
     
-    # Check if album has multiple different track artists (at least 3 for various artists)
+    # Condition 2: Check if album has multiple different track artists (at least 3 for various artists)
     if len(track_artists_list) < 3:
         return False
     
-    # Check if any track artist closely matches the album artist name
+    # Condition 3: Check if any track artist closely matches the album artist name
     # (If an artist name appears in tracks, it's probably a real artist, not a label)
     for track_artist in track_artists_list:
         track_artist_lower = track_artist.lower().strip()
@@ -1014,7 +1016,23 @@ def _is_record_label_album(albumartist, label, track_artists_list):
             # Found a track artist that matches album artist - probably not a label
             return False
     
-    # All criteria met: likely a record label album
+    # Condition 4: Check if album artist name contains label keywords
+    # This helps distinguish actual labels from self-released albums where artist = label
+    label_keywords = [
+        "records", "music", "entertainment", "label", "recordings",
+        "productions", "media", "group", "collective", "imprint"
+    ]
+    
+    contains_keyword = False
+    for keyword in label_keywords:
+        if keyword in albumartist_lower:
+            contains_keyword = True
+            break
+    
+    if not contains_keyword:
+        return False
+    
+    # All 4 criteria met: likely a record label album
     return True
 
 
