@@ -97,6 +97,10 @@ class MetadataMixin(ABC):
             "url": url,
         }
 
+        # Extract original label if it was saved (for record label detection)
+        if "_original_label" in soup:
+            data["_original_label"] = soup["_original_label"]
+
         # Extract edition from title if not already set by specific scraper
         if not data["edition_title"] and data["title"]:
             cleaned_title, extracted_edition = extract_edition_from_title(data["title"])

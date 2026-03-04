@@ -439,7 +439,9 @@ def upload(
             
             if current_albumartist:
                 # Extract label from metadata or tags
-                extracted_label = metadata.get("label")
+                # Use _original_label if available (before "Self-Released" transformation)
+                # This is important for record label detection when label == artist name
+                extracted_label = metadata.get("_original_label") or metadata.get("label")
                 click.secho(f"[DEBUG] Label from metadata: {extracted_label}", fg="magenta", err=True)
                 
                 # If label not in metadata, try to extract from tags (copyright field)
