@@ -519,6 +519,12 @@ def upload(
                                 all_track_artists.append((artist_name, "main"))
                             metadata["artists"] = all_track_artists
                         
+                        # Update label to use original label (not "Self-Released")
+                        # This ensures the upload shows the actual record label
+                        if extracted_label and metadata.get("label") != extracted_label:
+                            metadata["label"] = extracted_label
+                            click.secho(f"Label updated for upload: {extracted_label}", fg="cyan")
+                        
                         # Refresh tags and track_data to reflect changes
                         tags = gather_tags(path)
                         audio_info = gather_audio_info(path)
