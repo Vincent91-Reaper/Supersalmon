@@ -4,7 +4,7 @@
 
 Streaming services (Tidal, Deezer, Qobuz, Apple Music) sometimes incorrectly tag a record label name as the album artist for various artists compilations, instead of using "Various Artists".
 
-### Example: Qobuz War Child Records Album
+### Example 1: Qobuz War Child Records Album
 
 **URL:** https://www.qobuz.com/us-en/album/help2-war-child-records/naszhk00bfnly
 
@@ -13,9 +13,19 @@ Streaming services (Tidal, Deezer, Qobuz, Apple Music) sometimes incorrectly tag
 - Track artists: Arctic Monkeys, Damon Albarn, Coldplay, etc. (various different artists)
 - Should be: Album artist "Various Artists"
 
+### Example 2: Qobuz Ed Banger Records Album
+
+**URL:** https://www.qobuz.com/us-en/album/ed-rec-volx-mr-oizo-krazy-baldhead-breakbot-busy-p-mr-flash-justice-cassius-boston-bun/5060281613875
+
+**Issue:**
+- Album artist: "Ed Banger Records" (record label)
+- Label in metadata: "Ed Banger Records"
+- Track artists: Mr Oizo, Krazy Baldhead, Breakbot, Busy P, etc. (various different artists)
+- Should be: Album artist "Various Artists"
+
 **Consequences:**
 1. Wrong album artist in file metadata
-2. Wrong folder name ("War Child Records - ..." instead of "Various Artists - ...")
+2. Wrong folder name ("Ed Banger Records - ..." instead of "Various Artists - ...")
 3. Upload doesn't properly treat it as a Various Artists compilation
 4. All track artists shown redundantly on every track
 
@@ -38,30 +48,78 @@ All **completely automatic** - no user action needed!
 
 ### Detection Criteria (All Three Must Be Met)
 
-**1. Label Keyword Check**
-- Album artist name contains keywords indicating a record label:
-  - "Records"
-  - "Music"
-  - "Entertainment"
-  - "Label"
-  - "Recordings"
-  - "Productions"
+**NEW DETECTION LOGIC (Updated):** Now compares album artist to the actual record label extracted from metadata, instead of using keyword matching.
+
+**1. Album Artist Matches Record Label**
+
+The main detection compares the album artist to the record label extracted from file metadata (copyright field or label field).
+
+**Matching criteria:**
+- **Exact match:** Album artist and label are identical
+  - Example: `"Ed Banger Records" == "Ed Banger Records"` ✓
+  
+- **Substantial overlap:** One contains the other with 60%+ overlap
+  - Example: `"Ed Banger" in "Ed Banger Records"` (100% overlap) ✓
+  - Example: `"Atlantic" in "Atlantic Records Corp"` (71% overlap) ✓
+
+**Why this is better than keyword matching:**
+- ✅ More accurate - compares to actual label, not generic keywords
+- ✅ More reliable - works for labels without "Records" in the name
+- ✅ More specific - requires close match, not just presence of keyword
+
+**Example:**
+```
+Album artist: "Ed Banger Records"
+Label (from copyright): "Ed Banger Records"
+→ Exact match ✓
+```
 
 **2. Multiple Artists Check**
 - Album has **3 or more** different track artists
 - Indicates a compilation, not a single artist album
 
+**Example:**
+```
+Track 1: Mr Oizo
+Track 2: Krazy Baldhead
+Track 3: Breakbot
+→ 3+ different artists ✓
+```
+
 **3. Name Mismatch Check**
 - **None** of the track artist names match the album artist name
 - If a track artist matches, it's probably a real artist, not a label
 
+**Example:**
+```
+Album artist: "Ed Banger Records"
+Track artists: Mr Oizo, Krazy Baldhead, Breakbot, etc.
+→ No matches ✓
+```
+
+**Counter-example (would NOT detect):**
+```
+Album artist: "Atlantic Records"
+Track artist: "Atlantic Records Band"
+→ Match found (probably a real artist, not just a label) ✗
+```
+
 ### Detection Logic
 
 ```python
-def _is_record_label_album(albumartist, track_artists_list):
-    # Check 1: Contains label keywords?
-    if not any(keyword in albumartist.lower() for keyword in label_keywords):
-        return False  # Not a label
+def _is_record_label_album(albumartist, label, track_artists_list):
+    # Check 1: Does album artist match the record label?
+    if albumartist.lower() == label.lower():
+        match_found = True  # Exact match
+    elif albumartist.lower() in label.lower() or label.lower() in albumartist.lower():
+        # Check for substantial overlap (60%+)
+        shorter = min(len(albumartist.lower()), len(label.lower()))
+        overlap = ...  # Calculate overlap
+        if overlap / shorter >= 0.6:
+            match_found = True
+    
+    if not match_found:
+        return False  # Not a match
     
     # Check 2: Has 3+ different track artists?
     if len(track_artists_list) < 3:
