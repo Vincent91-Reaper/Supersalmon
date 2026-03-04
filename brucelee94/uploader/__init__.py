@@ -425,6 +425,9 @@ def upload(
         # This works for ALL sources (Qobuz, Beatport, Bandcamp, etc.), not just Tidal/Deezer
         # We do this here because we need the finalized tags and metadata
         try:
+            # DEBUG: Show what we're checking
+            click.secho("[DEBUG] Starting record label detection...", fg="magenta", err=True)
+            
             # Get current album artist from tags
             current_albumartist = None
             for filename, tagset in tags.items():
@@ -432,9 +435,12 @@ def upload(
                     current_albumartist = tagset.albumartist
                     break
             
+            click.secho(f"[DEBUG] Album artist from tags: {current_albumartist}", fg="magenta", err=True)
+            
             if current_albumartist:
                 # Extract label from metadata or tags
                 extracted_label = metadata.get("label")
+                click.secho(f"[DEBUG] Label from metadata: {extracted_label}", fg="magenta", err=True)
                 
                 # If label not in metadata, try to extract from tags (copyright field)
                 if not extracted_label:
@@ -464,6 +470,8 @@ def upload(
                             if extracted_label:
                                 break
                 
+                click.secho(f"[DEBUG] Final extracted label: {extracted_label}", fg="magenta", err=True)
+                
                 # Collect all unique track artists
                 track_artists_for_detection = set()
                 for filename, tagset in tags.items():
@@ -475,13 +483,17 @@ def upload(
                                 for individual_artist in individual_artists:
                                     track_artists_for_detection.add(individual_artist)
                 
+                click.secho(f"[DEBUG] Track artists found: {len(track_artists_for_detection)} - {list(track_artists_for_detection)[:5]}", fg="magenta", err=True)
+                
                 # Check if this is a record label album
                 if extracted_label and len(track_artists_for_detection) >= 3:
+                    click.secho(f"[DEBUG] Calling detection function...", fg="magenta", err=True)
                     is_label_album = _is_record_label_album(
                         current_albumartist, 
                         extracted_label, 
                         list(track_artists_for_detection)
                     )
+                    click.secho(f"[DEBUG] Detection result: {is_label_album}", fg="magenta", err=True)
                     
                     if is_label_album:
                         click.echo()
@@ -511,6 +523,10 @@ def upload(
                         
                         click.secho("Album will be treated as Various Artists compilation.", fg="green")
                         click.echo()
+                else:
+                    click.secho(f"[DEBUG] Detection skipped - label: {bool(extracted_label)}, artists: {len(track_artists_for_detection)}", fg="magenta", err=True)
+            else:
+                click.secho(f"[DEBUG] No album artist found in tags", fg="magenta", err=True)
         except Exception as e:
             # Don't let detection errors break the upload
             click.secho(f"Warning: Error during record label detection: {e}", fg="yellow", err=True)
