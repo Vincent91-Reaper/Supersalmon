@@ -513,9 +513,10 @@ def upload(
                         # This is important for upload description
                         if "artists" in metadata:
                             # Collect all track artists and treat as main artists
+                            # Format: [(artist_name, "main"), ...]
                             all_track_artists = []
-                            for artist_set in track_artists_for_detection:
-                                all_track_artists.append(artist_set)
+                            for artist_name in track_artists_for_detection:
+                                all_track_artists.append((artist_name, "main"))
                             metadata["artists"] = all_track_artists
                         
                         # Refresh tags and track_data to reflect changes
