@@ -1514,16 +1514,22 @@ def _is_record_label_album(albumartist, label, track_artists_list):
     if len(track_artists_list) < 3:
         return False
     
-    # Condition 3: Check if any track artist closely matches the album artist name
-    # (If an artist name appears in tracks, it's probably a real artist, not a label)
+    # Condition 3: Check if MOST track artists are different from the album artist name
+    # (If most tracks have different artists, it's likely a Various Artists compilation)
+    # Allow the label to appear in some tracks (e.g., label sampler, intro/outro tracks)
+    matching_artists = 0
     for track_artist in track_artists_list:
         track_artist_lower = track_artist.lower().strip()
         # Check for exact or partial match
         if track_artist_lower == albumartist_lower:
-            return False
-        if albumartist_lower in track_artist_lower or track_artist_lower in albumartist_lower:
-            # Found a track artist that matches album artist - probably not a label
-            return False
+            matching_artists += 1
+        elif albumartist_lower in track_artist_lower or track_artist_lower in albumartist_lower:
+            matching_artists += 1
+    
+    # If more than 50% of track artists match the album artist, it's likely a solo artist album
+    # If less than 50% match, it's likely a Various Artists compilation with the label as album artist
+    if matching_artists >= len(track_artists_list) * 0.5:
+        return False
     
     # Condition 4: Check if album artist name contains label keywords
     # This helps distinguish actual labels from self-released albums where artist = label
