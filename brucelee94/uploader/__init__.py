@@ -364,7 +364,8 @@ def upload(
                 is_deezer = metadata.get("_is_deezer", False)
                 
                 # Build metadata from file tags (pass is_deezer for BARCODE handling)
-                metadata = _build_metadata_from_files(path, tags, rls_data, is_deezer=is_deezer)
+                # Also get updated path in case folder was renamed (e.g., Various Artists detection)
+                metadata, path = _build_metadata_from_files(path, tags, rls_data, is_deezer=is_deezer)
                 
                 # Skip retagging for Tidal/Deezer - files are already correct
                 # Skip the edit_metadata workflow entirely
@@ -2216,7 +2217,8 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
         click.secho("ERROR: No album title found in file tags!", fg="red", bold=True)
         raise click.Abort()
     
-    return metadata
+    # Return both metadata and path (path may have been updated if folder was renamed)
+    return metadata, path
 
 
 def metadata_validator(metadata):
