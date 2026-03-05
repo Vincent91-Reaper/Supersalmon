@@ -487,8 +487,76 @@ def upload(
                 
                 click.secho(f"[DEBUG] Track artists found: {len(track_artists_for_detection)} - {list(track_artists_for_detection)[:5]}", fg="magenta", err=True)
                 
-                # Check if this is a record label album
-                if extracted_label and len(track_artists_for_detection) >= 3:
+                # SPECIAL CASE 1: Check if album artist contains both artist name and label (e.g., "Swoze, Former City Records")
+                # This should be checked BEFORE the Various Artists case
+                label_to_remove = _detect_label_in_albumartist(
+                    current_albumartist,
+                    extracted_label,
+                    list(track_artists_for_detection)
+                )
+                
+                if label_to_remove:
+                    click.echo()
+                    click.secho(f"Detected label in album artist: {current_albumartist}", fg="yellow")
+                    click.secho(f"Removing label '{label_to_remove}' from album artist...", fg="cyan")
+                    
+                    # Calculate new album artist (without the label)
+                    artist_parts = [part.strip() for part in current_albumartist.split(',') if part.strip()]
+                    artist_parts_cleaned = [part for part in artist_parts if part != label_to_remove]
+                    new_albumartist = ', '.join(artist_parts_cleaned)
+                    
+                    click.secho(f"New album artist: {new_albumartist}", fg="cyan")
+                    
+                    # Retag all files with the cleaned album artist
+                    for filename, tagset in tags.items():
+                        if hasattr(tagset, 'mut') and tagset.mut:
+                            try:
+                                if isinstance(tagset.mut, mutagen.flac.FLAC):
+                                    tagset.mut['albumartist'] = new_albumartist
+                                elif isinstance(tagset.mut, mutagen.mp3.MP3):
+                                    from mutagen.id3 import TPE2
+                                    tagset.mut['TPE2'] = TPE2(encoding=3, text=new_albumartist)
+                                tagset.mut.save()
+                            except Exception as e:
+                                click.secho(f"Warning: Could not retag {filename}: {e}", fg="yellow", err=True)
+                    
+                    # Rename folder from "Artist, Label - Album" to "Artist - Album"
+                    folder_name = os.path.basename(path)
+                    # Parse folder name: "Artist, Label - Album (Year) [Format]"
+                    # We need to replace "Artist, Label" with just "Artist"
+                    if label_to_remove in folder_name:
+                        # Remove ", Label" or "Label, " from folder name
+                        new_folder_name = folder_name.replace(f', {label_to_remove}', '').replace(f'{label_to_remove}, ', '')
+                        
+                        if new_folder_name != folder_name:
+                            parent_dir = os.path.dirname(path)
+                            new_path = os.path.join(parent_dir, new_folder_name)
+                            
+                            try:
+                                os.rename(path, new_path)
+                                click.echo()
+                                click.secho("Renamed folder:", fg="cyan")
+                                click.secho(f"  From: {folder_name}", fg="white")
+                                click.secho(f"  To:   {new_folder_name}", fg="white")
+                                path = new_path
+                            except Exception as e:
+                                click.secho(f"Warning: Could not rename folder: {e}", fg="yellow", err=True)
+                    
+                    # Ensure label is set correctly for upload
+                    if extracted_label and metadata.get("label") != extracted_label:
+                        metadata["label"] = extracted_label
+                        click.secho(f"Label preserved for upload: {extracted_label}", fg="cyan")
+                    
+                    # Refresh tags and track_data to reflect changes
+                    tags = gather_tags(path)
+                    audio_info = gather_audio_info(path)
+                    track_data = concat_track_data(tags, audio_info)
+                    
+                    click.secho("Album artist cleaned successfully.", fg="green")
+                    click.echo()
+                
+                # SPECIAL CASE 2: Check if this is a record label album (Various Artists compilation)
+                elif extracted_label and len(track_artists_for_detection) >= 3:
                     click.secho(f"[DEBUG] Calling detection function...", fg="magenta", err=True)
                     is_label_album = _is_record_label_album(
                         current_albumartist, 
@@ -955,6 +1023,86 @@ def replace_various_artists_with_track_artists(artists, metadata):
     # - "Various Artists" plus other artists (intentional)
     # - No track artists found (fallback)
     return artists
+
+
+def _detect_label_in_albumartist(albumartist, label, track_artists_list):
+    """
+    Detect if album artist contains both artist name and label name (e.g., "Swoze, Former City Records").
+    
+    This is for the special case where the album artist tag contains BOTH the real artist 
+    and the record label, separated by commas. We want to remove the label and keep only 
+    the real artist name.
+    
+    Detection criteria:
+    1. Album artist contains multiple comma-separated parts
+    2. One part contains label keywords (Records, Music, etc.)
+    3. Album has ONE consistent track artist (not Various Artists)
+    4. The track artist matches one of the album artist parts (the real artist)
+    
+    Args:
+        albumartist: The album artist name from file tags (e.g., "Swoze, Former City Records")
+        label: The record label extracted from metadata
+        track_artists_list: List of unique track artist names
+    
+    Returns:
+        The label name to remove, or None if this case doesn't apply
+    """
+    if not albumartist or not track_artists_list:
+        return None
+    
+    # Check if album artist contains comma-separated parts
+    if ',' not in albumartist:
+        return None
+    
+    # Split album artist into parts
+    artist_parts = [part.strip() for part in albumartist.split(',') if part.strip()]
+    
+    # Need at least 2 parts
+    if len(artist_parts) < 2:
+        return None
+    
+    # Check if this is a Various Artists compilation (multiple different track artists)
+    # If so, this is NOT the case we're looking for - that's handled by _is_record_label_album
+    if len(track_artists_list) >= 3:
+        # This might be a Various Artists album, not a single artist + label
+        return None
+    
+    # Keywords that indicate a record label
+    label_keywords = [
+        "records", "music", "entertainment", "label", "recordings",
+        "productions", "media", "group", "collective", "imprint"
+    ]
+    
+    # Find which part contains label keywords
+    label_part = None
+    artist_part = None
+    
+    for part in artist_parts:
+        part_lower = part.lower()
+        # Check if this part has label keywords
+        has_keyword = any(keyword in part_lower for keyword in label_keywords)
+        
+        if has_keyword and not label_part:
+            label_part = part
+        elif not has_keyword and not artist_part:
+            # This might be the real artist
+            artist_part = part
+    
+    # If we found a label part, verify the artist part matches track artists
+    if label_part and artist_part:
+        artist_part_lower = artist_part.lower().strip()
+        
+        # Check if the artist part matches the track artists
+        for track_artist in track_artists_list:
+            track_artist_lower = track_artist.lower().strip()
+            if artist_part_lower == track_artist_lower or \
+               artist_part_lower in track_artist_lower or \
+               track_artist_lower in artist_part_lower:
+                # Found a match! This is the case we're looking for
+                # Return the label part to remove
+                return label_part
+    
+    return None
 
 
 def _is_record_label_album(albumartist, label, track_artists_list):
