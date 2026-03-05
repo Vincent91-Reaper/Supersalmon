@@ -529,14 +529,21 @@ def upload(
                                             cleaned_list = []
                                             for artist in current_artist:
                                                 artist_str = str(artist)
-                                                # Use helper function to handle comma/semicolon separators
+                                                # Use helper function to handle multiple separators
                                                 cleaned = _clean_artist_string_with_label(artist_str, label_to_remove)
                                                 if cleaned:
-                                                    # Artist was cleaned (label removed from comma/semicolon list)
-                                                    if ';' in artist_str or ',' in artist_str:
-                                                        # If it was a separated list, split the cleaned result
-                                                        sep = ';' if ';' in cleaned else ','
-                                                        cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                                    # Artist was cleaned (label removed from separated list)
+                                                    # Check if artist_str contains any separator
+                                                    separators = [';', ',', '/', '\\', '&', '+', '|']
+                                                    found_sep = None
+                                                    for sep in separators:
+                                                        if sep in artist_str:
+                                                            found_sep = sep
+                                                            break
+                                                    
+                                                    if found_sep:
+                                                        # Split the cleaned result by the detected separator
+                                                        cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                                     else:
                                                         cleaned_list.append(cleaned)
                                                 elif artist_str.lower() != label_to_remove.lower():
@@ -571,14 +578,21 @@ def upload(
                                             cleaned_list = []
                                             for artist in current_artist:
                                                 artist_str = str(artist)
-                                                # Use helper function to handle comma/semicolon separators
+                                                # Use helper function to handle multiple separators
                                                 cleaned = _clean_artist_string_with_label(artist_str, label_to_remove)
                                                 if cleaned:
-                                                    # Artist was cleaned (label removed from comma/semicolon list)
-                                                    if ';' in artist_str or ',' in artist_str:
-                                                        # If it was a separated list, split the cleaned result
-                                                        sep = ';' if ';' in cleaned else ','
-                                                        cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                                    # Artist was cleaned (label removed from separated list)
+                                                    # Check if artist_str contains any separator
+                                                    separators = [';', ',', '/', '\\', '&', '+', '|']
+                                                    found_sep = None
+                                                    for sep in separators:
+                                                        if sep in artist_str:
+                                                            found_sep = sep
+                                                            break
+                                                    
+                                                    if found_sep:
+                                                        # Split the cleaned result by the detected separator
+                                                        cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                                     else:
                                                         cleaned_list.append(cleaned)
                                                 elif artist_str.lower() != label_to_remove.lower():
@@ -747,18 +761,25 @@ def upload(
                                 cleaned_artist = None
                                 
                                 if isinstance(current_artist, list):
-                                    # Handle list - check each item for nested commas/semicolons and exact matches
+                                    # Handle list - check each item for nested separators and exact matches
                                     cleaned_list = []
                                     for artist in current_artist:
                                         artist_str = str(artist).strip()
-                                        # Use helper function to handle comma/semicolon separators
+                                        # Use helper function to handle multiple separators
                                         cleaned = _clean_artist_string_with_label(artist_str, label_in_folder_only)
                                         if cleaned:
-                                            # Artist was cleaned (label removed from comma/semicolon list)
-                                            if ';' in artist_str or ',' in artist_str:
-                                                # If it was a separated list, split the cleaned result
-                                                sep = ';' if ';' in cleaned else ','
-                                                cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                            # Artist was cleaned (label removed from separated list)
+                                            # Check if artist_str contains any separator
+                                            separators = [';', ',', '/', '\\', '&', '+', '|']
+                                            found_sep = None
+                                            for sep in separators:
+                                                if sep in artist_str:
+                                                    found_sep = sep
+                                                    break
+                                            
+                                            if found_sep:
+                                                # Split the cleaned result by the detected separator
+                                                cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                             else:
                                                 cleaned_list.append(cleaned)
                                         elif artist_str.lower() != label_in_folder_only.lower():
@@ -787,14 +808,21 @@ def upload(
                                     cleaned_list = []
                                     for artist in current_artist:
                                         artist_str = str(artist).strip()
-                                        # Use helper function to handle comma/semicolon separators
+                                        # Use helper function to handle multiple separators
                                         cleaned = _clean_artist_string_with_label(artist_str, label_in_folder_only)
                                         if cleaned:
-                                            # Artist was cleaned (label removed from comma/semicolon list)
-                                            if ';' in artist_str or ',' in artist_str:
-                                                # If it was a separated list, split the cleaned result
-                                                sep = ';' if ';' in cleaned else ','
-                                                cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                            # Artist was cleaned (label removed from separated list)
+                                            # Check if artist_str contains any separator
+                                            separators = [';', ',', '/', '\\', '&', '+', '|']
+                                            found_sep = None
+                                            for sep in separators:
+                                                if sep in artist_str:
+                                                    found_sep = sep
+                                                    break
+                                            
+                                            if found_sep:
+                                                # Split the cleaned result by the detected separator
+                                                cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                             else:
                                                 cleaned_list.append(cleaned)
                                         elif artist_str.lower() != label_in_folder_only.lower():
