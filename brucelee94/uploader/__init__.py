@@ -1318,7 +1318,8 @@ def replace_various_artists_with_track_artists(artists, metadata):
 def _clean_artist_string_with_label(artist_str, label_to_remove):
     """
     Helper function to clean an artist string by removing the label.
-    Handles both comma (,) and semicolon (;) separators.
+    Handles multiple separators: semicolon (;), comma (,), forward slash (/), 
+    backslash (\), ampersand (&), plus (+), and pipe (|).
     
     Args:
         artist_str: Artist string that may contain label (e.g., "War Child Records; Arctic Monkeys")
@@ -1331,24 +1332,43 @@ def _clean_artist_string_with_label(artist_str, label_to_remove):
         return None
     
     artist_str = str(artist_str).strip()
+    label_lower = label_to_remove.lower()
     
-    # Check for semicolon separator first
-    if ';' in artist_str:
-        parts = [p.strip() for p in artist_str.split(';') if p.strip()]
-        parts = [p for p in parts if p.lower() != label_to_remove.lower()]
-        if parts and len(parts) < len(artist_str.split(';')):
-            return '; '.join(parts) if len(parts) > 1 else parts[0]
+    # Common separators used in artist tags (in priority order)
+    # Semicolon and comma first as they're most common
+    separators = [';', ',', '/', '\\', '&', '+', '|']
     
-    # Check for comma separator
-    elif ',' in artist_str:
-        parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-        parts = [p for p in parts if p.lower() != label_to_remove.lower()]
-        if parts and len(parts) < len(artist_str.split(',')):
-            return ', '.join(parts) if len(parts) > 1 else parts[0]
+    # Try each separator
+    for sep in separators:
+        if sep in artist_str:
+            parts = [p.strip() for p in artist_str.split(sep) if p.strip()]
+            original_count = len(parts)
+            # Filter out the label (case-insensitive)
+            parts = [p for p in parts if p.lower() != label_lower]
+            
+            # Only return if we actually removed something
+            if parts and len(parts) < original_count:
+                # Preserve the separator style in output
+                if len(parts) > 1:
+                    # Use the same separator with proper spacing
+                    if sep in [';', ',']:
+                        return f'{sep} '.join(parts)
+                    else:
+                        return f' {sep} '.join(parts)
+                else:
+                    return parts[0]
     
-    # Check if label is a substring (fallback)
-    elif label_to_remove.lower() in artist_str.lower():
-        cleaned = artist_str.replace(label_to_remove, '').strip(', ;').strip()
+    # Fallback: Check if label is a substring and remove it
+    if label_lower in artist_str.lower():
+        # Try case-insensitive replacement
+        import re
+        pattern = re.compile(re.escape(label_to_remove), re.IGNORECASE)
+        cleaned = pattern.sub('', artist_str).strip()
+        # Clean up any leftover separators
+        cleaned = re.sub(r'^[;,/\\&+|]\s*', '', cleaned)
+        cleaned = re.sub(r'\s*[;,/\\&+|]$', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        
         if cleaned and cleaned != artist_str:
             return cleaned
     
