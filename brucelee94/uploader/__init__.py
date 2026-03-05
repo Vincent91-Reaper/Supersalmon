@@ -653,15 +653,17 @@ def upload(
                     
                     # Clean metadata["artists"] to remove the label from upload metadata
                     # This ensures the torrent description doesn't include the label as an artist
+                    # Use case-insensitive comparison to handle case mismatches between sources
+                    label_to_remove_lower = label_to_remove.lower().strip()
                     if "artists" in metadata and metadata["artists"]:
                         cleaned_metadata_artists = []
                         for artist, importance in metadata["artists"]:
-                            # Remove exact matches and comma-separated instances
-                            if artist != label_to_remove:
+                            # Remove exact matches (case-insensitive) and comma-separated instances
+                            if artist.lower().strip() != label_to_remove_lower:
                                 # Also check if artist is a comma-separated string containing the label
                                 if ',' in artist:
                                     parts = [p.strip() for p in artist.split(',') if p.strip()]
-                                    parts = [p for p in parts if p != label_to_remove]
+                                    parts = [p for p in parts if p.lower().strip() != label_to_remove_lower]
                                     if parts:
                                         # Keep the cleaned artist
                                         cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
@@ -671,6 +673,18 @@ def upload(
                         
                         metadata["artists"] = cleaned_metadata_artists
                         click.secho(f"Cleaned metadata artists (removed {label_to_remove} from upload)", fg="cyan")
+                    
+                    # Also clean metadata["tracks"] per-track artist lists to remove the label
+                    # This ensures the label doesn't appear in track descriptions in the torrent
+                    if metadata.get("tracks"):
+                        for disc_tracks in metadata["tracks"].values():
+                            for track_meta in disc_tracks.values():
+                                if "artists" in track_meta:
+                                    track_meta["artists"] = [
+                                        (artist, imp) for artist, imp in track_meta["artists"]
+                                        if artist.lower().strip() != label_to_remove_lower
+                                    ]
+                        click.secho(f"Cleaned track metadata artists (removed {label_to_remove} from track descriptions)", fg="cyan")
                     
                     click.secho("Album artist and track artists cleaned successfully.", fg="green")
                     click.echo()
@@ -722,6 +736,94 @@ def upload(
                         click.echo()
                 else:
                     click.secho(f"[DEBUG] Detection skipped - label: {bool(extracted_label)}, artists: {len(track_artists_for_detection)}", fg="magenta", err=True)
+                
+                # FALLBACK CLEANUP: Remove label from metadata["artists"] and metadata["tracks"]
+                # when neither SPECIAL CASE 1 nor SPECIAL CASE 2 cleaned it.
+                # This handles cases where the scraper (Qobuz, Beatport, etc.) included the
+                # record label as an artist in metadata but the albumartist tag was already clean.
+                if not label_to_remove and extracted_label and extracted_label.lower() != "self-released":
+                    fallback_label_keywords = [
+                        "records", "music", "entertainment", "label", "recordings",
+                        "productions", "media", "group", "collective", "imprint"
+                    ]
+                    label_has_keyword = any(kw in extracted_label.lower() for kw in fallback_label_keywords)
+                    
+                    if label_has_keyword:
+                        extracted_label_lower = extracted_label.lower().strip()
+                        
+                        # Check if label appears in metadata["artists"]
+                        label_in_artists = any(
+                            artist.lower().strip() == extracted_label_lower
+                            for artist, importance in metadata.get("artists", [])
+                        )
+                        
+                        if label_in_artists:
+                            # Clean metadata["artists"]
+                            metadata["artists"] = [
+                                (artist, imp) for artist, imp in metadata.get("artists", [])
+                                if artist.lower().strip() != extracted_label_lower
+                            ]
+                            click.secho(f"Removed label '{extracted_label}' from album-level metadata artists", fg="cyan")
+                            
+                            # Clean metadata["tracks"] per-track artist lists
+                            if metadata.get("tracks"):
+                                for disc_tracks in metadata["tracks"].values():
+                                    for track_meta in disc_tracks.values():
+                                        if "artists" in track_meta:
+                                            track_meta["artists"] = [
+                                                (artist, imp) for artist, imp in track_meta["artists"]
+                                                if artist.lower().strip() != extracted_label_lower
+                                            ]
+                                click.secho(f"Removed label '{extracted_label}' from track-level metadata artists", fg="cyan")
+                            
+                            # Clean track artist tags in files (remove label added by scraper/tag_files)
+                            for filename, tagset in tags.items():
+                                if hasattr(tagset, 'mut') and tagset.mut:
+                                    try:
+                                        if isinstance(tagset.mut, mutagen.flac.FLAC):
+                                            if 'artist' in tagset.mut:
+                                                current_artist = tagset.mut['artist']
+                                                if isinstance(current_artist, list):
+                                                    cleaned_list = [
+                                                        a for a in current_artist
+                                                        if a.lower().strip() != extracted_label_lower
+                                                    ]
+                                                    if cleaned_list != current_artist:
+                                                        tagset.mut['artist'] = cleaned_list
+                                                        tagset.mut.save()
+                                                else:
+                                                    artist_str = str(current_artist)
+                                                    parts = [p.strip() for p in artist_str.replace(' & ', ',').split(',') if p.strip()]
+                                                    parts_cleaned = [p for p in parts if p.lower().strip() != extracted_label_lower]
+                                                    if parts_cleaned and len(parts_cleaned) != len(parts):
+                                                        tagset.mut['artist'] = ', '.join(parts_cleaned) if len(parts_cleaned) > 1 else parts_cleaned[0]
+                                                        tagset.mut.save()
+                                        elif isinstance(tagset.mut, mutagen.mp3.MP3):
+                                            from mutagen.id3 import TPE1
+                                            if 'TPE1' in tagset.mut:
+                                                current_artist = tagset.mut['TPE1'].text
+                                                if isinstance(current_artist, list):
+                                                    cleaned_list = [
+                                                        a for a in current_artist
+                                                        if a.lower().strip() != extracted_label_lower
+                                                    ]
+                                                    if cleaned_list != current_artist:
+                                                        tagset.mut['TPE1'] = TPE1(encoding=3, text=cleaned_list)
+                                                        tagset.mut.save()
+                                                else:
+                                                    artist_str = str(current_artist)
+                                                    parts = [p.strip() for p in artist_str.replace(' & ', ',').split(',') if p.strip()]
+                                                    parts_cleaned = [p for p in parts if p.lower().strip() != extracted_label_lower]
+                                                    if parts_cleaned and len(parts_cleaned) != len(parts):
+                                                        tagset.mut['TPE1'] = TPE1(encoding=3, text=', '.join(parts_cleaned) if len(parts_cleaned) > 1 else parts_cleaned[0])
+                                                        tagset.mut.save()
+                                    except Exception as e:
+                                        click.secho(f"Warning: Could not clean track artist tag in {os.path.basename(filename)}: {e}", fg="yellow", err=True)
+                            
+                            # Refresh tags and track_data after cleaning
+                            tags = gather_tags(path)
+                            audio_info = gather_audio_info(path)
+                            track_data = concat_track_data(tags, audio_info)
             else:
                 click.secho(f"[DEBUG] No album artist found in tags", fg="magenta", err=True)
         except Exception as e:
