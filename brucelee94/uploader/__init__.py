@@ -647,6 +647,10 @@ def upload(
                     audio_info = gather_audio_info(path)
                     track_data = concat_track_data(tags, audio_info)
                     
+                    # Update metadata["tracks"] from refreshed track_data
+                    # This is CRITICAL - ensures later code rebuilding metadata["artists"] uses clean data
+                    metadata["tracks"] = track_data
+                    
                     # Clean metadata["artists"] to remove the label from upload metadata
                     # This ensures the torrent description doesn't include the label as an artist
                     if "artists" in metadata and metadata["artists"]:
