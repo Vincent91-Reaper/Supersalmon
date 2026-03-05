@@ -647,6 +647,27 @@ def upload(
                     audio_info = gather_audio_info(path)
                     track_data = concat_track_data(tags, audio_info)
                     
+                    # Clean metadata["artists"] to remove the label from upload metadata
+                    # This ensures the torrent description doesn't include the label as an artist
+                    if "artists" in metadata and metadata["artists"]:
+                        cleaned_metadata_artists = []
+                        for artist, importance in metadata["artists"]:
+                            # Remove exact matches and comma-separated instances
+                            if artist != label_to_remove:
+                                # Also check if artist is a comma-separated string containing the label
+                                if ',' in artist:
+                                    parts = [p.strip() for p in artist.split(',') if p.strip()]
+                                    parts = [p for p in parts if p != label_to_remove]
+                                    if parts:
+                                        # Keep the cleaned artist
+                                        cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                        cleaned_metadata_artists.append((cleaned_artist, importance))
+                                else:
+                                    cleaned_metadata_artists.append((artist, importance))
+                        
+                        metadata["artists"] = cleaned_metadata_artists
+                        click.secho(f"Cleaned metadata artists (removed {label_to_remove} from upload)", fg="cyan")
+                    
                     click.secho("Album artist and track artists cleaned successfully.", fg="green")
                     click.echo()
                 
