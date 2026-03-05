@@ -720,8 +720,182 @@ def upload(
                         
                         click.secho("Album will be treated as Various Artists compilation.", fg="green")
                         click.echo()
+                
+                # SPECIAL CASE 3: Label in folder/track artists but NOT in album artist (Qobuz case)
+                # This handles when Qobuz doesn't put label in album artist tag, but it's in folder name and track artists
                 else:
-                    click.secho(f"[DEBUG] Detection skipped - label: {bool(extracted_label)}, artists: {len(track_artists_for_detection)}", fg="magenta", err=True)
+                    label_in_folder_only = _detect_label_in_folder_only(path, current_albumartist, list(track_artists_for_detection))
+                    if label_in_folder_only:
+                        click.echo()
+                        click.secho(f"Detected label in folder/track artists but not in album artist: {label_in_folder_only}", fg="yellow")
+                        click.secho(f"Album artist tag is already clean: {current_albumartist}", fg="cyan")
+                        click.secho(f"Removing label from track artists only...", fg="cyan")
+                        
+                        # Remove label from track artist tags (album artist already clean)
+                        for filename, tagset in tags.items():
+                            modified = False
+                            
+                            # Clean track artist for FLAC
+                            if 'artist' in tagset.mut:
+                                current_artist = tagset.mut['artist']
+                                cleaned_artist = None
+                                
+                                if isinstance(current_artist, list):
+                                    # Handle list - check each item for nested commas and exact matches
+                                    cleaned_list = []
+                                    for artist in current_artist:
+                                        artist_str = str(artist).strip()
+                                        if ',' in artist_str:
+                                            # Split comma-separated and filter
+                                            parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                            parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
+                                            if parts:
+                                                cleaned_list.extend(parts)
+                                        elif artist_str.lower() != label_in_folder_only.lower():
+                                            cleaned_list.append(artist_str)
+                                    
+                                    if cleaned_list != [str(a).strip() for a in current_artist]:
+                                        cleaned_artist = cleaned_list
+                                        modified = True
+                                else:
+                                    # Handle string
+                                    artist_str = str(current_artist).strip()
+                                    if ',' in artist_str:
+                                        # Split comma-separated and filter
+                                        parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                        parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
+                                        if parts:
+                                            cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                            modified = True
+                                    elif label_in_folder_only.lower() in artist_str.lower():
+                                        cleaned_artist = artist_str.replace(label_in_folder_only, '').strip(', ')
+                                        if cleaned_artist:
+                                            modified = True
+                                
+                                if modified and cleaned_artist:
+                                    tagset.mut['artist'] = cleaned_artist
+                            
+                            # Clean track artist for MP3
+                            if 'TPE1' in tagset.mut:
+                                current_artist = tagset.mut['TPE1']
+                                cleaned_artist = None
+                                
+                                if isinstance(current_artist, list):
+                                    # Handle list
+                                    cleaned_list = []
+                                    for artist in current_artist:
+                                        artist_str = str(artist).strip()
+                                        if ',' in artist_str:
+                                            parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                            parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
+                                            if parts:
+                                                cleaned_list.extend(parts)
+                                        elif artist_str.lower() != label_in_folder_only.lower():
+                                            cleaned_list.append(artist_str)
+                                    
+                                    if cleaned_list != [str(a).strip() for a in current_artist]:
+                                        cleaned_artist = cleaned_list
+                                        modified = True
+                                else:
+                                    # Handle string
+                                    artist_str = str(current_artist).strip()
+                                    if ',' in artist_str:
+                                        parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                        parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
+                                        if parts:
+                                            cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                            modified = True
+                                    elif label_in_folder_only.lower() in artist_str.lower():
+                                        cleaned_artist = artist_str.replace(label_in_folder_only, '').strip(', ')
+                                        if cleaned_artist:
+                                            modified = True
+                                
+                                if modified and cleaned_artist:
+                                    tagset.mut['TPE1'] = cleaned_artist
+                            
+                            # Save file if modified
+                            if modified:
+                                tagset.save()
+                                click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                        
+                        # Set label in metadata for upload
+                        metadata["label"] = label_in_folder_only
+                        click.secho(f"Label set in metadata: {label_in_folder_only}", fg="cyan")
+                        
+                        # Rename folder to remove label from folder name
+                        old_folder_name = os.path.basename(path)
+                        # Remove label from folder artist part
+                        if ',' in old_folder_name and ' - ' in old_folder_name:
+                            folder_artist_part, album_part = old_folder_name.split(' - ', 1)
+                            folder_parts = [p.strip() for p in folder_artist_part.split(',') if p.strip()]
+                            folder_parts = [p for p in folder_parts if p.lower() != label_in_folder_only.lower()]
+                            if folder_parts:
+                                new_folder_artist = ', '.join(folder_parts) if len(folder_parts) > 1 else folder_parts[0]
+                                new_folder_name = f"{new_folder_artist} - {album_part}"
+                                new_path = os.path.join(os.path.dirname(path), new_folder_name)
+                                
+                                if new_path != path:
+                                    os.rename(path, new_path)
+                                    path = new_path
+                                    click.echo()
+                                    click.secho(f"Renamed folder:", fg="cyan")
+                                    click.secho(f"  From: {old_folder_name}", fg="yellow")
+                                    click.secho(f"  To:   {new_folder_name}", fg="green")
+                                    click.echo()
+                        
+                        # Refresh tags and track_data after cleaning
+                        tags = gather_tags(path)
+                        audio_info = gather_audio_info(path)
+                        track_data = concat_track_data(tags, audio_info)
+                        
+                        # Update metadata["tracks"] from refreshed track_data (CRITICAL!)
+                        metadata["tracks"] = track_data
+                        
+                        # Clean metadata["artists"] to remove the label from upload metadata
+                        if "artists" in metadata and metadata["artists"]:
+                            cleaned_metadata_artists = []
+                            for artist, importance in metadata["artists"]:
+                                # Remove exact matches and comma-separated instances
+                                if artist.lower() != label_in_folder_only.lower():
+                                    # Also check if artist is comma-separated containing label
+                                    if ',' in artist:
+                                        parts = [p.strip() for p in artist.split(',') if p.strip()]
+                                        parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
+                                        if parts:
+                                            cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                            cleaned_metadata_artists.append((cleaned_artist, importance))
+                                    else:
+                                        cleaned_metadata_artists.append((artist, importance))
+                            
+                            metadata["artists"] = cleaned_metadata_artists
+                            click.secho(f"Cleaned metadata artists (removed {label_in_folder_only} from upload)", fg="cyan")
+                        
+                        # Clean per-track artists in metadata["tracks"]
+                        if "tracks" in metadata and metadata["tracks"]:
+                            for disc_num, disc_tracks in metadata["tracks"].items():
+                                for track_num, track_info in disc_tracks.items():
+                                    if "artists" in track_info and track_info["artists"]:
+                                        cleaned_track_artists = []
+                                        for artist, importance in track_info["artists"]:
+                                            # Remove exact matches and comma-separated instances
+                                            if artist.lower() != label_in_folder_only.lower():
+                                                if ',' in artist:
+                                                    parts = [p.strip() for p in artist.split(',') if p.strip()]
+                                                    parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
+                                                    if parts:
+                                                        cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                                        cleaned_track_artists.append((cleaned_artist, importance))
+                                                else:
+                                                    cleaned_track_artists.append((artist, importance))
+                                        
+                                        track_info["artists"] = cleaned_track_artists
+                            
+                            click.secho(f"Cleaned per-track artists in metadata (removed {label_in_folder_only})", fg="cyan")
+                        
+                        click.secho("Track artists and folder cleaned successfully.", fg="green")
+                        click.echo()
+                    else:
+                        click.secho(f"[DEBUG] Detection skipped - label: {bool(extracted_label)}, artists: {len(track_artists_for_detection)}", fg="magenta", err=True)
             else:
                 click.secho(f"[DEBUG] No album artist found in tags", fg="magenta", err=True)
         except Exception as e:
@@ -1143,6 +1317,73 @@ def replace_various_artists_with_track_artists(artists, metadata):
     # - "Various Artists" plus other artists (intentional)
     # - No track artists found (fallback)
     return artists
+
+
+def _detect_label_in_folder_only(path, albumartist, track_artists_list):
+    """
+    Detect if folder name contains a label but the album artist tag is clean (SPECIAL CASE 3).
+    
+    This handles Qobuz downloads where:
+    - Album artist tag is clean (e.g., "Swoze")
+    - Folder name contains label (e.g., "Swoze, Former City Records - Album")
+    - Track artist tags contain the label
+    
+    Detection criteria:
+    1. Folder name contains comma-separated parts with label keywords
+    2. Album artist is clean (doesn't contain that label part)
+    3. The label part appears in track artists list
+    
+    Args:
+        path: Path to the album folder
+        albumartist: The album artist from tags (should be clean)
+        track_artists_list: List of unique track artist names
+    
+    Returns:
+        The label name to remove, or None if this case doesn't apply
+    """
+    if not albumartist or not track_artists_list or not path:
+        return None
+    
+    # Get folder name without path
+    folder_name = os.path.basename(path)
+    
+    # Check if folder name contains comma-separated parts before " - "
+    if ',' not in folder_name or ' - ' not in folder_name:
+        return None
+    
+    # Extract artist part from folder name (before " - ")
+    folder_artist_part = folder_name.split(' - ')[0]
+    
+    # Split into parts
+    folder_parts = [part.strip() for part in folder_artist_part.split(',') if part.strip()]
+    
+    # Need at least 2 parts
+    if len(folder_parts) < 2:
+        return None
+    
+    # Keywords that indicate a record label
+    label_keywords = [
+        "records", "music", "entertainment", "label", "recordings",
+        "productions", "media", "group", "collective", "imprint"
+    ]
+    
+    # Find label parts in folder name that are NOT in album artist
+    for part in folder_parts:
+        part_lower = part.lower()
+        
+        # Check if this part has label keywords
+        has_keyword = any(keyword in part_lower for keyword in label_keywords)
+        
+        if has_keyword:
+            # Check if album artist is clean (doesn't contain this label)
+            if part.lower().strip() not in albumartist.lower():
+                # Check if this label appears in track artists
+                for track_artist in track_artists_list:
+                    if part.lower().strip() == track_artist.lower().strip():
+                        # Found it! Label in folder/track artists but NOT in album artist
+                        return part
+    
+    return None
 
 
 def _detect_label_in_albumartist(albumartist, label, track_artists_list):
