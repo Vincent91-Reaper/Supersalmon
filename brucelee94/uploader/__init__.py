@@ -498,24 +498,61 @@ def upload(
                 if label_to_remove:
                     click.echo()
                     click.secho(f"Detected label in album artist: {current_albumartist}", fg="yellow")
-                    click.secho(f"Removing label '{label_to_remove}' from album artist...", fg="cyan")
+                    click.secho(f"Removing label '{label_to_remove}' from album artist and track artists...", fg="cyan")
                     
                     # Calculate new album artist (without the label)
                     artist_parts = [part.strip() for part in current_albumartist.split(',') if part.strip()]
                     artist_parts_cleaned = [part for part in artist_parts if part != label_to_remove]
                     new_albumartist = ', '.join(artist_parts_cleaned)
                     
-                    click.secho(f"New album artist: {new_albumartist}", fg="cyan")
+                    click.secho(f"Cleaned album artist: {new_albumartist}", fg="cyan")
                     
-                    # Retag all files with the cleaned album artist
+                    # Retag all files with the cleaned album artist and track artist
                     for filename, tagset in tags.items():
                         if hasattr(tagset, 'mut') and tagset.mut:
                             try:
+                                # Clean album artist
                                 if isinstance(tagset.mut, mutagen.flac.FLAC):
                                     tagset.mut['albumartist'] = new_albumartist
+                                    
+                                    # Clean track artist (remove label if present)
+                                    if 'artist' in tagset.mut:
+                                        current_artist = tagset.mut['artist']
+                                        if isinstance(current_artist, list):
+                                            # Filter out the label from list
+                                            cleaned_artists = [a for a in current_artist if a != label_to_remove]
+                                            if cleaned_artists != current_artist:
+                                                tagset.mut['artist'] = cleaned_artists
+                                                click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                        else:
+                                            # Single artist string - check if it contains label
+                                            if label_to_remove in str(current_artist):
+                                                cleaned = str(current_artist).replace(label_to_remove, '').strip(', ')
+                                                if cleaned:
+                                                    tagset.mut['artist'] = cleaned
+                                                    click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                
                                 elif isinstance(tagset.mut, mutagen.mp3.MP3):
-                                    from mutagen.id3 import TPE2
+                                    from mutagen.id3 import TPE2, TPE1
                                     tagset.mut['TPE2'] = TPE2(encoding=3, text=new_albumartist)
+                                    
+                                    # Clean track artist (remove label if present)
+                                    if 'TPE1' in tagset.mut:
+                                        current_artist = tagset.mut['TPE1'].text
+                                        if isinstance(current_artist, list):
+                                            # Filter out the label from list
+                                            cleaned_artists = [a for a in current_artist if a != label_to_remove]
+                                            if cleaned_artists != current_artist:
+                                                tagset.mut['TPE1'] = TPE1(encoding=3, text=cleaned_artists)
+                                                click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                        else:
+                                            # Single artist string
+                                            if label_to_remove in str(current_artist):
+                                                cleaned = str(current_artist).replace(label_to_remove, '').strip(', ')
+                                                if cleaned:
+                                                    tagset.mut['TPE1'] = TPE1(encoding=3, text=cleaned)
+                                                    click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                
                                 tagset.mut.save()
                             except Exception as e:
                                 click.secho(f"Warning: Could not retag {filename}: {e}", fg="yellow", err=True)
@@ -542,17 +579,16 @@ def upload(
                             except Exception as e:
                                 click.secho(f"Warning: Could not rename folder: {e}", fg="yellow", err=True)
                     
-                    # Ensure label is set correctly for upload
-                    if extracted_label and metadata.get("label") != extracted_label:
-                        metadata["label"] = extracted_label
-                        click.secho(f"Label preserved for upload: {extracted_label}", fg="cyan")
+                    # Set label in metadata to the detected label (not "Self-Released")
+                    metadata["label"] = label_to_remove
+                    click.secho(f"Label set in metadata: {label_to_remove}", fg="cyan")
                     
                     # Refresh tags and track_data to reflect changes
                     tags = gather_tags(path)
                     audio_info = gather_audio_info(path)
                     track_data = concat_track_data(tags, audio_info)
                     
-                    click.secho("Album artist cleaned successfully.", fg="green")
+                    click.secho("Album artist and track artists cleaned successfully.", fg="green")
                     click.echo()
                 
                 # SPECIAL CASE 2: Check if this is a record label album (Various Artists compilation)
@@ -1036,12 +1072,11 @@ def _detect_label_in_albumartist(albumartist, label, track_artists_list):
     Detection criteria:
     1. Album artist contains multiple comma-separated parts
     2. One part contains label keywords (Records, Music, etc.)
-    3. Album has ONE consistent track artist (not Various Artists)
-    4. The track artist matches one of the album artist parts (the real artist)
+    3. The label part also appears in track artists list (confirming it's incorrectly tagged)
     
     Args:
         albumartist: The album artist name from file tags (e.g., "Swoze, Former City Records")
-        label: The record label extracted from metadata
+        label: The record label extracted from metadata (not used in this new logic)
         track_artists_list: List of unique track artist names
     
     Returns:
@@ -1061,46 +1096,25 @@ def _detect_label_in_albumartist(albumartist, label, track_artists_list):
     if len(artist_parts) < 2:
         return None
     
-    # Check if this is a Various Artists compilation (multiple different track artists)
-    # If so, this is NOT the case we're looking for - that's handled by _is_record_label_album
-    if len(track_artists_list) >= 3:
-        # This might be a Various Artists album, not a single artist + label
-        return None
-    
     # Keywords that indicate a record label
     label_keywords = [
         "records", "music", "entertainment", "label", "recordings",
         "productions", "media", "group", "collective", "imprint"
     ]
     
-    # Find which part contains label keywords
-    label_part = None
-    artist_part = None
-    
+    # Find which parts contain label keywords
     for part in artist_parts:
         part_lower = part.lower()
         # Check if this part has label keywords
         has_keyword = any(keyword in part_lower for keyword in label_keywords)
         
-        if has_keyword and not label_part:
-            label_part = part
-        elif not has_keyword and not artist_part:
-            # This might be the real artist
-            artist_part = part
-    
-    # If we found a label part, verify the artist part matches track artists
-    if label_part and artist_part:
-        artist_part_lower = artist_part.lower().strip()
-        
-        # Check if the artist part matches the track artists
-        for track_artist in track_artists_list:
-            track_artist_lower = track_artist.lower().strip()
-            if artist_part_lower == track_artist_lower or \
-               artist_part_lower in track_artist_lower or \
-               track_artist_lower in artist_part_lower:
-                # Found a match! This is the case we're looking for
-                # Return the label part to remove
-                return label_part
+        if has_keyword:
+            # Check if this label part appears in track artists
+            # This confirms it's incorrectly tagged as a track artist too
+            for track_artist in track_artists_list:
+                if part.lower().strip() == track_artist.lower().strip():
+                    # Found it! This label is incorrectly in both album artist and track artists
+                    return part
     
     return None
 
