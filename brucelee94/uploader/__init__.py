@@ -647,10 +647,6 @@ def upload(
                     audio_info = gather_audio_info(path)
                     track_data = concat_track_data(tags, audio_info)
                     
-                    # Update metadata["tracks"] from refreshed track_data
-                    # This is CRITICAL - ensures later code rebuilding metadata["artists"] uses clean data
-                    metadata["tracks"] = track_data
-                    
                     # Clean metadata["artists"] to remove the label from upload metadata
                     # This ensures the torrent description doesn't include the label as an artist
                     if "artists" in metadata and metadata["artists"]:
@@ -671,6 +667,29 @@ def upload(
                         
                         metadata["artists"] = cleaned_metadata_artists
                         click.secho(f"Cleaned metadata artists (removed {label_to_remove} from upload)", fg="cyan")
+                    
+                    # Clean per-track artists in metadata["tracks"] to remove the label
+                    # This ensures per-track artist lists in torrent description don't include the label
+                    if "tracks" in metadata and metadata["tracks"]:
+                        for disc_num, disc_tracks in metadata["tracks"].items():
+                            for track_num, track_info in disc_tracks.items():
+                                if "artists" in track_info and track_info["artists"]:
+                                    cleaned_track_artists = []
+                                    for artist, importance in track_info["artists"]:
+                                        # Remove exact matches and comma-separated instances
+                                        if artist != label_to_remove:
+                                            if ',' in artist:
+                                                parts = [p.strip() for p in artist.split(',') if p.strip()]
+                                                parts = [p for p in parts if p != label_to_remove]
+                                                if parts:
+                                                    cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                                    cleaned_track_artists.append((cleaned_artist, importance))
+                                            else:
+                                                cleaned_track_artists.append((artist, importance))
+                                    
+                                    track_info["artists"] = cleaned_track_artists
+                        
+                        click.secho(f"Cleaned per-track artists in metadata (removed {label_to_remove})", fg="cyan")
                     
                     click.secho("Album artist and track artists cleaned successfully.", fg="green")
                     click.echo()
@@ -847,9 +866,6 @@ def upload(
                         tags = gather_tags(path)
                         audio_info = gather_audio_info(path)
                         track_data = concat_track_data(tags, audio_info)
-                        
-                        # Update metadata["tracks"] from refreshed track_data (CRITICAL!)
-                        metadata["tracks"] = track_data
                         
                         # Clean metadata["artists"] to remove the label from upload metadata
                         if "artists" in metadata and metadata["artists"]:
