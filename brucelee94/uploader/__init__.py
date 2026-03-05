@@ -528,15 +528,18 @@ def upload(
                                             cleaned_list = []
                                             for artist in current_artist:
                                                 artist_str = str(artist)
-                                                # Remove label from comma-separated string
-                                                if ',' in artist_str:
-                                                    # Split by comma and filter out label
-                                                    parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                                    parts = [p for p in parts if p != label_to_remove]
-                                                    if parts:
-                                                        cleaned_list.extend(parts)
-                                                elif artist_str != label_to_remove:
-                                                    # Not the label, keep it
+                                                # Use helper function to handle comma/semicolon separators
+                                                cleaned = _clean_artist_string_with_label(artist_str, label_to_remove)
+                                                if cleaned:
+                                                    # Artist was cleaned (label removed from comma/semicolon list)
+                                                    if ';' in artist_str or ',' in artist_str:
+                                                        # If it was a separated list, split the cleaned result
+                                                        sep = ';' if ';' in cleaned else ','
+                                                        cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                                    else:
+                                                        cleaned_list.append(cleaned)
+                                                elif artist_str.lower() != label_to_remove.lower():
+                                                    # Not the label and not a separated list, keep it
                                                     cleaned_list.append(artist_str)
                                             
                                             if cleaned_list and cleaned_list != list(current_artist):
@@ -544,18 +547,7 @@ def upload(
                                         else:
                                             # Single artist string or single value
                                             artist_str = str(current_artist)
-                                            if ',' in artist_str:
-                                                # Comma-separated string like "Artist1, Former City Records, Artist2"
-                                                parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                                parts = [p for p in parts if p != label_to_remove]
-                                                if parts and parts != [artist_str]:
-                                                    # Join back with proper separator
-                                                    cleaned_artists = ', '.join(parts) if len(parts) > 1 else parts[0]
-                                            elif label_to_remove in artist_str:
-                                                # Label is substring - remove it
-                                                cleaned = artist_str.replace(label_to_remove, '').strip(', ').strip()
-                                                if cleaned and cleaned != artist_str:
-                                                    cleaned_artists = cleaned
+                                            cleaned_artists = _clean_artist_string_with_label(artist_str, label_to_remove)
                                         
                                         # Apply cleaned artists if changed
                                         if cleaned_artists is not None:
@@ -578,13 +570,17 @@ def upload(
                                             cleaned_list = []
                                             for artist in current_artist:
                                                 artist_str = str(artist)
-                                                # Remove label from comma-separated string
-                                                if ',' in artist_str:
-                                                    parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                                    parts = [p for p in parts if p != label_to_remove]
-                                                    if parts:
-                                                        cleaned_list.extend(parts)
-                                                elif artist_str != label_to_remove:
+                                                # Use helper function to handle comma/semicolon separators
+                                                cleaned = _clean_artist_string_with_label(artist_str, label_to_remove)
+                                                if cleaned:
+                                                    # Artist was cleaned (label removed from comma/semicolon list)
+                                                    if ';' in artist_str or ',' in artist_str:
+                                                        # If it was a separated list, split the cleaned result
+                                                        sep = ';' if ';' in cleaned else ','
+                                                        cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                                    else:
+                                                        cleaned_list.append(cleaned)
+                                                elif artist_str.lower() != label_to_remove.lower():
                                                     cleaned_list.append(artist_str)
                                             
                                             if cleaned_list and cleaned_list != list(current_artist):
@@ -592,17 +588,7 @@ def upload(
                                         else:
                                             # Single artist string
                                             artist_str = str(current_artist)
-                                            if ',' in artist_str:
-                                                # Comma-separated string
-                                                parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                                parts = [p for p in parts if p != label_to_remove]
-                                                if parts and parts != [artist_str]:
-                                                    cleaned_artists = ', '.join(parts) if len(parts) > 1 else parts[0]
-                                            elif label_to_remove in artist_str:
-                                                # Label is substring
-                                                cleaned = artist_str.replace(label_to_remove, '').strip(', ').strip()
-                                                if cleaned and cleaned != artist_str:
-                                                    cleaned_artists = cleaned
+                                            cleaned_artists = _clean_artist_string_with_label(artist_str, label_to_remove)
                                         
                                         # Apply cleaned artists if changed
                                         if cleaned_artists is not None:
@@ -760,16 +746,20 @@ def upload(
                                 cleaned_artist = None
                                 
                                 if isinstance(current_artist, list):
-                                    # Handle list - check each item for nested commas and exact matches
+                                    # Handle list - check each item for nested commas/semicolons and exact matches
                                     cleaned_list = []
                                     for artist in current_artist:
                                         artist_str = str(artist).strip()
-                                        if ',' in artist_str:
-                                            # Split comma-separated and filter
-                                            parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                            parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
-                                            if parts:
-                                                cleaned_list.extend(parts)
+                                        # Use helper function to handle comma/semicolon separators
+                                        cleaned = _clean_artist_string_with_label(artist_str, label_in_folder_only)
+                                        if cleaned:
+                                            # Artist was cleaned (label removed from comma/semicolon list)
+                                            if ';' in artist_str or ',' in artist_str:
+                                                # If it was a separated list, split the cleaned result
+                                                sep = ';' if ';' in cleaned else ','
+                                                cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                            else:
+                                                cleaned_list.append(cleaned)
                                         elif artist_str.lower() != label_in_folder_only.lower():
                                             cleaned_list.append(artist_str)
                                     
@@ -779,17 +769,9 @@ def upload(
                                 else:
                                     # Handle string
                                     artist_str = str(current_artist).strip()
-                                    if ',' in artist_str:
-                                        # Split comma-separated and filter
-                                        parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                        parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
-                                        if parts:
-                                            cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
-                                            modified = True
-                                    elif label_in_folder_only.lower() in artist_str.lower():
-                                        cleaned_artist = artist_str.replace(label_in_folder_only, '').strip(', ')
-                                        if cleaned_artist:
-                                            modified = True
+                                    cleaned_artist = _clean_artist_string_with_label(artist_str, label_in_folder_only)
+                                    if cleaned_artist:
+                                        modified = True
                                 
                                 if modified and cleaned_artist:
                                     tagset.mut['artist'] = cleaned_artist
@@ -804,11 +786,16 @@ def upload(
                                     cleaned_list = []
                                     for artist in current_artist:
                                         artist_str = str(artist).strip()
-                                        if ',' in artist_str:
-                                            parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                            parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
-                                            if parts:
-                                                cleaned_list.extend(parts)
+                                        # Use helper function to handle comma/semicolon separators
+                                        cleaned = _clean_artist_string_with_label(artist_str, label_in_folder_only)
+                                        if cleaned:
+                                            # Artist was cleaned (label removed from comma/semicolon list)
+                                            if ';' in artist_str or ',' in artist_str:
+                                                # If it was a separated list, split the cleaned result
+                                                sep = ';' if ';' in cleaned else ','
+                                                cleaned_list.extend([p.strip() for p in cleaned.split(sep) if p.strip()])
+                                            else:
+                                                cleaned_list.append(cleaned)
                                         elif artist_str.lower() != label_in_folder_only.lower():
                                             cleaned_list.append(artist_str)
                                     
@@ -818,16 +805,9 @@ def upload(
                                 else:
                                     # Handle string
                                     artist_str = str(current_artist).strip()
-                                    if ',' in artist_str:
-                                        parts = [p.strip() for p in artist_str.split(',') if p.strip()]
-                                        parts = [p for p in parts if p.lower() != label_in_folder_only.lower()]
-                                        if parts:
-                                            cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
-                                            modified = True
-                                    elif label_in_folder_only.lower() in artist_str.lower():
-                                        cleaned_artist = artist_str.replace(label_in_folder_only, '').strip(', ')
-                                        if cleaned_artist:
-                                            modified = True
+                                    cleaned_artist = _clean_artist_string_with_label(artist_str, label_in_folder_only)
+                                    if cleaned_artist:
+                                        modified = True
                                 
                                 if modified and cleaned_artist:
                                     tagset.mut['TPE1'] = cleaned_artist
@@ -1333,6 +1313,46 @@ def replace_various_artists_with_track_artists(artists, metadata):
     # - "Various Artists" plus other artists (intentional)
     # - No track artists found (fallback)
     return artists
+
+
+def _clean_artist_string_with_label(artist_str, label_to_remove):
+    """
+    Helper function to clean an artist string by removing the label.
+    Handles both comma (,) and semicolon (;) separators.
+    
+    Args:
+        artist_str: Artist string that may contain label (e.g., "War Child Records; Arctic Monkeys")
+        label_to_remove: Label name to remove
+    
+    Returns:
+        Cleaned artist string with label removed, or None if no changes needed
+    """
+    if not artist_str or not label_to_remove:
+        return None
+    
+    artist_str = str(artist_str).strip()
+    
+    # Check for semicolon separator first
+    if ';' in artist_str:
+        parts = [p.strip() for p in artist_str.split(';') if p.strip()]
+        parts = [p for p in parts if p.lower() != label_to_remove.lower()]
+        if parts and len(parts) < len(artist_str.split(';')):
+            return '; '.join(parts) if len(parts) > 1 else parts[0]
+    
+    # Check for comma separator
+    elif ',' in artist_str:
+        parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+        parts = [p for p in parts if p.lower() != label_to_remove.lower()]
+        if parts and len(parts) < len(artist_str.split(',')):
+            return ', '.join(parts) if len(parts) > 1 else parts[0]
+    
+    # Check if label is a substring (fallback)
+    elif label_to_remove.lower() in artist_str.lower():
+        cleaned = artist_str.replace(label_to_remove, '').strip(', ;').strip()
+        if cleaned and cleaned != artist_str:
+            return cleaned
+    
+    return None
 
 
 def _detect_label_in_folder_only(path, albumartist, track_artists_list):
