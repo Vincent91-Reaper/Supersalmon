@@ -653,15 +653,16 @@ def upload(
                     
                     # Clean metadata["artists"] to remove the label from upload metadata
                     # This ensures the torrent description doesn't include the label as an artist
+                    label_to_remove_lower = label_to_remove.lower()
                     if "artists" in metadata and metadata["artists"]:
                         cleaned_metadata_artists = []
                         for artist, importance in metadata["artists"]:
-                            # Remove exact matches and comma-separated instances
-                            if artist != label_to_remove:
+                            # Remove exact matches (case-insensitive) and comma-separated instances
+                            if artist.lower() != label_to_remove_lower:
                                 # Also check if artist is a comma-separated string containing the label
                                 if ',' in artist:
                                     parts = [p.strip() for p in artist.split(',') if p.strip()]
-                                    parts = [p for p in parts if p != label_to_remove]
+                                    parts = [p for p in parts if p.lower() != label_to_remove_lower]
                                     if parts:
                                         # Keep the cleaned artist
                                         cleaned_artist = ', '.join(parts) if len(parts) > 1 else parts[0]
@@ -671,6 +672,32 @@ def upload(
                         
                         metadata["artists"] = cleaned_metadata_artists
                         click.secho(f"Cleaned metadata artists (removed {label_to_remove} from upload)", fg="cyan")
+                    
+                    # Clean metadata["tracks"] per-track artist lists to remove the label
+                    # This prevents the label from appearing as a track artist in the torrent description
+                    # (e.g., as "(feat. Former City Records)" or as a main track artist when show_track_artists=True)
+                    tracks_cleaned = False
+                    if "tracks" in metadata and metadata["tracks"]:
+                        for disc_tracks in metadata["tracks"].values():
+                            for track_meta in disc_tracks.values():
+                                if not track_meta.get("artists"):
+                                    continue
+                                cleaned_track_artists = []
+                                for artist_name, artist_importance in track_meta["artists"]:
+                                    if artist_name.lower() != label_to_remove_lower:
+                                        if ',' in artist_name:
+                                            parts = [p.strip() for p in artist_name.split(',') if p.strip()]
+                                            parts = [p for p in parts if p.lower() != label_to_remove_lower]
+                                            if parts:
+                                                cleaned_name = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                                cleaned_track_artists.append((cleaned_name, artist_importance))
+                                        else:
+                                            cleaned_track_artists.append((artist_name, artist_importance))
+                                if cleaned_track_artists != list(track_meta["artists"]):
+                                    track_meta["artists"] = cleaned_track_artists
+                                    tracks_cleaned = True
+                    if tracks_cleaned:
+                        click.secho(f"Cleaned per-track artists (removed {label_to_remove} from track metadata)", fg="cyan")
                     
                     click.secho("Album artist and track artists cleaned successfully.", fg="green")
                     click.echo()
