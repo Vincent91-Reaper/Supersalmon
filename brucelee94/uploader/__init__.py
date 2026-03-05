@@ -511,49 +511,108 @@ def upload(
                     for filename, tagset in tags.items():
                         if hasattr(tagset, 'mut') and tagset.mut:
                             try:
+                                file_modified = False
+                                
                                 # Clean album artist
                                 if isinstance(tagset.mut, mutagen.flac.FLAC):
                                     tagset.mut['albumartist'] = new_albumartist
+                                    file_modified = True
                                     
                                     # Clean track artist (remove label if present)
                                     if 'artist' in tagset.mut:
                                         current_artist = tagset.mut['artist']
+                                        cleaned_artists = None
+                                        
                                         if isinstance(current_artist, list):
-                                            # Filter out the label from list
-                                            cleaned_artists = [a for a in current_artist if a != label_to_remove]
-                                            if cleaned_artists != current_artist:
-                                                tagset.mut['artist'] = cleaned_artists
-                                                click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                            # List of artists - filter out the label and clean each item
+                                            cleaned_list = []
+                                            for artist in current_artist:
+                                                artist_str = str(artist)
+                                                # Remove label from comma-separated string
+                                                if ',' in artist_str:
+                                                    # Split by comma and filter out label
+                                                    parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                                    parts = [p for p in parts if p != label_to_remove]
+                                                    if parts:
+                                                        cleaned_list.extend(parts)
+                                                elif artist_str != label_to_remove:
+                                                    # Not the label, keep it
+                                                    cleaned_list.append(artist_str)
+                                            
+                                            if cleaned_list and cleaned_list != list(current_artist):
+                                                cleaned_artists = cleaned_list
                                         else:
-                                            # Single artist string - check if it contains label
-                                            if label_to_remove in str(current_artist):
-                                                cleaned = str(current_artist).replace(label_to_remove, '').strip(', ')
-                                                if cleaned:
-                                                    tagset.mut['artist'] = cleaned
-                                                    click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                            # Single artist string or single value
+                                            artist_str = str(current_artist)
+                                            if ',' in artist_str:
+                                                # Comma-separated string like "Artist1, Former City Records, Artist2"
+                                                parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                                parts = [p for p in parts if p != label_to_remove]
+                                                if parts and parts != [artist_str]:
+                                                    # Join back with proper separator
+                                                    cleaned_artists = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                            elif label_to_remove in artist_str:
+                                                # Label is substring - remove it
+                                                cleaned = artist_str.replace(label_to_remove, '').strip(', ').strip()
+                                                if cleaned and cleaned != artist_str:
+                                                    cleaned_artists = cleaned
+                                        
+                                        # Apply cleaned artists if changed
+                                        if cleaned_artists is not None:
+                                            tagset.mut['artist'] = cleaned_artists
+                                            click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                            file_modified = True
                                 
                                 elif isinstance(tagset.mut, mutagen.mp3.MP3):
                                     from mutagen.id3 import TPE2, TPE1
                                     tagset.mut['TPE2'] = TPE2(encoding=3, text=new_albumartist)
+                                    file_modified = True
                                     
                                     # Clean track artist (remove label if present)
                                     if 'TPE1' in tagset.mut:
                                         current_artist = tagset.mut['TPE1'].text
+                                        cleaned_artists = None
+                                        
                                         if isinstance(current_artist, list):
-                                            # Filter out the label from list
-                                            cleaned_artists = [a for a in current_artist if a != label_to_remove]
-                                            if cleaned_artists != current_artist:
-                                                tagset.mut['TPE1'] = TPE1(encoding=3, text=cleaned_artists)
-                                                click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                            # List of artists
+                                            cleaned_list = []
+                                            for artist in current_artist:
+                                                artist_str = str(artist)
+                                                # Remove label from comma-separated string
+                                                if ',' in artist_str:
+                                                    parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                                    parts = [p for p in parts if p != label_to_remove]
+                                                    if parts:
+                                                        cleaned_list.extend(parts)
+                                                elif artist_str != label_to_remove:
+                                                    cleaned_list.append(artist_str)
+                                            
+                                            if cleaned_list and cleaned_list != list(current_artist):
+                                                cleaned_artists = cleaned_list
                                         else:
                                             # Single artist string
-                                            if label_to_remove in str(current_artist):
-                                                cleaned = str(current_artist).replace(label_to_remove, '').strip(', ')
-                                                if cleaned:
-                                                    tagset.mut['TPE1'] = TPE1(encoding=3, text=cleaned)
-                                                    click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                            artist_str = str(current_artist)
+                                            if ',' in artist_str:
+                                                # Comma-separated string
+                                                parts = [p.strip() for p in artist_str.split(',') if p.strip()]
+                                                parts = [p for p in parts if p != label_to_remove]
+                                                if parts and parts != [artist_str]:
+                                                    cleaned_artists = ', '.join(parts) if len(parts) > 1 else parts[0]
+                                            elif label_to_remove in artist_str:
+                                                # Label is substring
+                                                cleaned = artist_str.replace(label_to_remove, '').strip(', ').strip()
+                                                if cleaned and cleaned != artist_str:
+                                                    cleaned_artists = cleaned
+                                        
+                                        # Apply cleaned artists if changed
+                                        if cleaned_artists is not None:
+                                            tagset.mut['TPE1'] = TPE1(encoding=3, text=cleaned_artists)
+                                            click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="cyan")
+                                            file_modified = True
                                 
-                                tagset.mut.save()
+                                # Save the file if we made changes
+                                if file_modified:
+                                    tagset.mut.save()
                             except Exception as e:
                                 click.secho(f"Warning: Could not retag {filename}: {e}", fg="yellow", err=True)
                     
