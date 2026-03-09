@@ -75,6 +75,13 @@ from brucelee94.uploader.upload import (
 
 loop = asyncio.get_event_loop()
 
+# Whitelist of known record labels that don't contain standard keywords
+# These labels will always trigger the label cleaning feature
+KNOWN_RECORD_LABELS = [
+    'Vile Immerse',
+    # Add more labels here as needed
+]
+
 
 @commandgroup.command()
 @click.argument("path", type=click.Path(exists=True, file_okay=False, resolve_path=True))
@@ -877,21 +884,32 @@ def replace_various_artists_with_track_artists(artists, metadata):
 
 def _has_label_keywords(label):
     """
-    Check if label contains label keywords that indicate it's a record label.
+    Check if label contains label keywords that indicate it's a record label,
+    or if it's in the whitelist of known record labels.
+    
     Prevents false positives for self-released albums where artist name == label.
     
     Keywords: Records, Production, Music, Entertainment, Label, Recordings,
               Productions, Media, Group, Collective, Imprint
     
+    Whitelist: Known labels without standard keywords (e.g., 'Vile Immerse')
+    
     Args:
         label: The record label string to check
     
     Returns:
-        bool: True if label contains any of the keywords, False otherwise
+        bool: True if label contains any of the keywords or is in whitelist, False otherwise
     """
     if not label:
         return False
     
+    # Check whitelist first (exact match, case-insensitive)
+    label_stripped = label.strip()
+    for known_label in KNOWN_RECORD_LABELS:
+        if label_stripped.lower() == known_label.lower():
+            return True
+    
+    # Then check keywords
     label_lower = label.lower()
     keywords = [
         'records', 'production', 'music', 'entertainment', 'label',
