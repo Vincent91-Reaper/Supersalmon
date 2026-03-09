@@ -1627,116 +1627,24 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
             if extracted_label:
                 break
     
-    # Detect if album artist is a record label (not a real artist)
-    is_record_label_album = False
+    # SIMPLE UNIFIED LABEL HANDLING for Tidal/Deezer
+    # Check if album artist == label with keywords
     if original_albumartist and extracted_label:
-        is_record_label_album = _is_record_label_album(original_albumartist, extracted_label, list(track_artists_for_detection))
+        if original_albumartist.lower().strip() == extracted_label.lower().strip():
+            if _has_label_keywords(extracted_label):
+                click.secho(f"\nDetected label '{extracted_label}' as album artist (has keywords)", fg="cyan")
+                click.secho("Processing as Various Artists compilation...", fg="cyan")
+                
+                # Process: Retag to Various Artists, clean tracks, rename folder
+                path = _process_label_as_various_artists(
+                    path, tags, extracted_label, metadata
+                )
+                
+                # Clear album_artists_set since we're treating this as Various Artists
+                album_artists_set = set()
+                
+                click.secho("Label handling complete.\n", fg="green")
     
-    if is_record_label_album:
-        click.echo()
-        click.secho(f"Detected record label as album artist: {original_albumartist}", fg="yellow")
-        click.secho("This appears to be a various artists compilation.", fg="yellow")
-        click.secho("Retagging album artist to 'Various Artists'...", fg="cyan")
-        
-        # Retag all files' albumartist to "Various Artists"
-        _retag_albumartist_to_various_artists(tags)
-        
-        # Clean track artist tags to remove the label
-        click.secho("Removing label from track artist tags...", fg="cyan")
-        label_to_remove = original_albumartist
-        
-        for filename, tagset in tags.items():
-            try:
-                # Handle FLAC files
-                if hasattr(tagset, 'artist') and tagset.artist:
-                    artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
-                    cleaned_list = []
-                    
-                    for artist_str in artist_list:
-                        if artist_str and artist_str.strip():
-                            artist_str = str(artist_str).strip()
-                            
-                            # Try to clean using helper function
-                            cleaned = _clean_artist_string_with_label(artist_str, label_to_remove)
-                            
-                            if cleaned:
-                                # Check if the original string contained any separator
-                                separators = [';', ',', '/', '\\', '&', '+', '|']
-                                found_sep = None
-                                for sep in separators:
-                                    if sep in artist_str:
-                                        found_sep = sep
-                                        break
-                                
-                                if found_sep:
-                                    # Split the cleaned result by the detected separator
-                                    cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
-                                else:
-                                    cleaned_list.append(cleaned)
-                            else:
-                                # Keep the original artist if it's already clean (no label to remove)
-                                cleaned_list.append(artist_str)
-                    
-                    # Update artist field with cleaned list
-                    if cleaned_list:
-                        tagset.artist = cleaned_list if len(cleaned_list) > 1 else cleaned_list[0]
-                        click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="white")
-                
-                # Handle MP3 files (TPE1 field)
-                if hasattr(tagset, 'mut') and hasattr(tagset.mut, 'tags'):
-                    if 'TPE1' in tagset.mut.tags:
-                        tpe1_val = tagset.mut.tags['TPE1']
-                        if hasattr(tpe1_val, 'text') and tpe1_val.text:
-                            artist_list = tpe1_val.text if isinstance(tpe1_val.text, list) else [tpe1_val.text]
-                            cleaned_list = []
-                            
-                            for artist_str in artist_list:
-                                if artist_str and str(artist_str).strip():
-                                    artist_str = str(artist_str).strip()
-                                    
-                                    # Try to clean using helper function
-                                    cleaned = _clean_artist_string_with_label(artist_str, label_to_remove)
-                                    
-                                    if cleaned:
-                                        # Check if the original string contained any separator
-                                        separators = [';', ',', '/', '\\', '&', '+', '|']
-                                        found_sep = None
-                                        for sep in separators:
-                                            if sep in artist_str:
-                                                found_sep = sep
-                                                break
-                                        
-                                        if found_sep:
-                                            # Split the cleaned result by the detected separator
-                                            cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
-                                        else:
-                                            cleaned_list.append(cleaned)
-                                    else:
-                                        # Keep the original artist if it's already clean (no label to remove)
-                                        cleaned_list.append(artist_str)
-                            
-                            # Update TPE1 field with cleaned list
-                            if cleaned_list:
-                                from mutagen.id3 import TPE1
-                                tagset.mut.tags['TPE1'] = TPE1(encoding=3, text=cleaned_list)
-                                click.secho(f"  Cleaned track artist in {os.path.basename(filename)}", fg="white")
-                
-                # Save the changes to the file
-                tagset.save()
-                
-            except Exception as e:
-                click.secho(f"Warning: Could not clean track artist in {filename}: {e}", fg="yellow")
-        
-        click.secho("Track artist tags cleaned successfully.", fg="green")
-        
-        # Rename folder from "Record Label - ..." to "Various Artists - ..."
-        path = _rename_folder_with_various_artists(path)
-        
-        # Clear album_artists_set since we're treating this as Various Artists
-        album_artists_set = set()
-        
-        click.secho("Album will be treated as Various Artists compilation.", fg="green")
-        click.echo()
     
     # Second pass: Extract track data and classify artists
     for filename, tagset in tags.items():
