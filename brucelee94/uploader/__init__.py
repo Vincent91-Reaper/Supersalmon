@@ -1581,6 +1581,143 @@ def replace_various_artists_with_track_artists(artists, metadata):
     return artists
 
 
+def _has_label_keywords(label):
+    """
+    Check if label contains label keywords that indicate it's a record label.
+    Prevents false positives for self-released albums where artist name == label.
+    
+    Keywords: Records, Production, Music, Entertainment, Label, Recordings,
+              Productions, Media, Group, Collective, Imprint
+    
+    Args:
+        label: The record label string to check
+    
+    Returns:
+        bool: True if label contains any of the keywords, False otherwise
+    """
+    if not label:
+        return False
+    
+    label_lower = label.lower()
+    keywords = [
+        'records', 'production', 'music', 'entertainment', 'label',
+        'recordings', 'productions', 'media', 'group', 'collective', 'imprint'
+    ]
+    
+    return any(keyword in label_lower for keyword in keywords)
+
+
+def _remove_label_from_track_artists(tags, label):
+    """
+    Remove label from all track artist tags in both FLAC and MP3 files.
+    Uses _clean_artist_string_with_label() helper for cleaning.
+    
+    Args:
+        tags: Dictionary of filename -> tagset mappings
+        label: The label string to remove from track artists
+    """
+    if not label:
+        return
+    
+    click.secho(f"Removing '{label}' from track artist tags...", fg="cyan")
+    
+    for filename, tagset in tags.items():
+        # Handle FLAC files
+        if hasattr(tagset, 'artist') and tagset.artist:
+            artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+            cleaned_list = []
+            
+            for artist_str in artist_list:
+                if artist_str and artist_str.strip():
+                    artist_str = str(artist_str).strip()
+                    cleaned = _clean_artist_string_with_label(artist_str, label)
+                    
+                    if cleaned:
+                        cleaned_list.append(cleaned)
+                    else:
+                        # Keep original if no label found
+                        cleaned_list.append(artist_str)
+            
+            if cleaned_list:
+                tagset.artist = cleaned_list
+                tagset.save()
+        
+        # Handle MP3 files (TPE1)
+        if hasattr(tagset, 'mut') and 'TPE1' in tagset.mut.tags:
+            tpe1_value = tagset.mut.tags['TPE1'].text
+            artist_list = tpe1_value if isinstance(tpe1_value, list) else [tpe1_value]
+            cleaned_list = []
+            
+            for artist_str in artist_list:
+                if artist_str and artist_str.strip():
+                    artist_str = str(artist_str).strip()
+                    cleaned = _clean_artist_string_with_label(artist_str, label)
+                    
+                    if cleaned:
+                        cleaned_list.append(cleaned)
+                    else:
+                        # Keep original if no label found
+                        cleaned_list.append(artist_str)
+            
+            if cleaned_list:
+                from mutagen.id3 import TPE1
+                tagset.mut.tags['TPE1'] = TPE1(encoding=3, text=cleaned_list)
+                tagset.mut.save()
+    
+    click.secho("Track artist tags cleaned successfully.", fg="green")
+
+
+def _process_label_as_various_artists(path, tags, label, metadata):
+    """
+    Unified processing when label is detected as album artist.
+    
+    Simple approach:
+    1. Retag album artist to "Various Artists"
+    2. Remove label from track artist tags
+    3. Rename folder
+    4. Update metadata
+    
+    Args:
+        path: Current folder path
+        tags: Dictionary of filename -> tagset mappings
+        label: The record label detected as album artist
+        metadata: Metadata dictionary to update
+    
+    Returns:
+        Updated path (if folder was renamed) or original path
+    """
+    if not label:
+        return path
+    
+    click.secho(f"\nDetected record label as album artist: {label}", fg="yellow")
+    click.secho("This appears to be a various artists compilation.", fg="yellow")
+    
+    # Step 1: Retag album artist to "Various Artists"
+    click.secho("Retagging album artist to 'Various Artists'...", fg="cyan")
+    _retag_albumartist_to_various_artists(tags)
+    
+    # Step 2: Remove label from track artist tags
+    _remove_label_from_track_artists(tags, label)
+    
+    # Step 3: Rename folder
+    click.secho("\nRenaming folder...", fg="cyan")
+    new_path = _rename_folder_with_various_artists(path)
+    if new_path != path:
+        click.secho(f"Renamed folder:", fg="green")
+        click.secho(f"  From: {os.path.basename(path)}", fg="white")
+        click.secho(f"  To:   {os.path.basename(new_path)}", fg="white")
+        path = new_path
+    
+    # Step 4: Update metadata label
+    if metadata and metadata.get("label") != label:
+        metadata["label"] = label
+        click.secho(f"Label updated for upload: {label}", fg="green")
+    
+    click.secho("\nAlbum will be treated as Various Artists compilation.", fg="green")
+    
+    return path
+
+
 def _clean_artist_string_with_label(artist_str, label_to_remove):
     """
     Helper function to clean an artist string by removing the label.
