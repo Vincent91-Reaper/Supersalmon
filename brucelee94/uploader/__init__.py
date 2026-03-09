@@ -746,6 +746,9 @@ def upload(
                                                     cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                                 else:
                                                     cleaned_list.append(cleaned)
+                                            else:
+                                                # Keep the original artist if it's already clean (no label to remove)
+                                                cleaned_list.append(artist_str)
                                     
                                     # Update artist field with cleaned list
                                     if cleaned_list:
@@ -781,6 +784,12 @@ def upload(
                                                             cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                                         else:
                                                             cleaned_list.append(cleaned)
+                                                    else:
+                                                        # Keep the original artist if it's already clean (no label to remove)
+                                                        cleaned_list.append(artist_str)
+                                                    else:
+                                                        # Keep the original artist if it's already clean (no label to remove)
+                                                        cleaned_list.append(artist_str)
                                             
                                             # Update TPE1 field with cleaned list
                                             if cleaned_list:
@@ -1300,6 +1309,9 @@ def edit_metadata(
                                                 cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                             else:
                                                 cleaned_list.append(cleaned)
+                                        else:
+                                            # Keep the original artist if it's already clean (no label to remove)
+                                            cleaned_list.append(artist_str)
                                 
                                 # Update artist field with cleaned list
                                 if cleaned_list:
@@ -2085,6 +2097,9 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                                     cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                 else:
                                     cleaned_list.append(cleaned)
+                            else:
+                                # Keep the original artist if it's already clean (no label to remove)
+                                cleaned_list.append(artist_str)
                     
                     # Update artist field with cleaned list
                     if cleaned_list:
@@ -2120,6 +2135,9 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                                             cleaned_list.extend([p.strip() for p in cleaned.split(found_sep) if p.strip()])
                                         else:
                                             cleaned_list.append(cleaned)
+                                    else:
+                                        # Keep the original artist if it's already clean (no label to remove)
+                                        cleaned_list.append(artist_str)
                             
                             # Update TPE1 field with cleaned list
                             if cleaned_list:
