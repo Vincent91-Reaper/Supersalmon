@@ -787,9 +787,6 @@ def upload(
                                                     else:
                                                         # Keep the original artist if it's already clean (no label to remove)
                                                         cleaned_list.append(artist_str)
-                                                    else:
-                                                        # Keep the original artist if it's already clean (no label to remove)
-                                                        cleaned_list.append(artist_str)
                                             
                                             # Update TPE1 field with cleaned list
                                             if cleaned_list:
