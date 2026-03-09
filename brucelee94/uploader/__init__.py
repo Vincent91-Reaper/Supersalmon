@@ -916,49 +916,63 @@ def _remove_label_from_track_artists(tags, label):
     click.secho(f"Removing '{label}' from track artist tags...", fg="cyan")
     
     for filename, tagset in tags.items():
+        click.secho(f"\n  Processing: {os.path.basename(filename)}", fg="yellow")
+        
         # Handle FLAC files
         if hasattr(tagset, 'artist') and tagset.artist:
             artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+            click.secho(f"    Original artist field (type={type(tagset.artist).__name__}): {artist_list}", fg="white")
             cleaned_list = []
             
             for artist_str in artist_list:
                 if artist_str and artist_str.strip():
                     artist_str = str(artist_str).strip()
+                    click.secho(f"      Processing artist string: '{artist_str}'", fg="white")
                     cleaned = _clean_artist_string_with_label(artist_str, label)
+                    click.secho(f"      Cleaned result: '{cleaned}'", fg="cyan")
                     
                     if cleaned:
                         cleaned_list.append(cleaned)
                     else:
                         # Keep original if no label found
                         cleaned_list.append(artist_str)
+                        click.secho(f"      Keeping original (no changes)", fg="white")
             
             if cleaned_list:
+                click.secho(f"    Final cleaned artist list: {cleaned_list}", fg="green")
                 tagset.artist = cleaned_list
                 tagset.save()
+                click.secho(f"    ✓ Saved changes to file", fg="green")
         
         # Handle MP3 files (TPE1)
         if hasattr(tagset, 'mut') and 'TPE1' in tagset.mut.tags:
             tpe1_value = tagset.mut.tags['TPE1'].text
             artist_list = tpe1_value if isinstance(tpe1_value, list) else [tpe1_value]
+            click.secho(f"    Original MP3 TPE1 field (type={type(tpe1_value).__name__}): {artist_list}", fg="white")
             cleaned_list = []
             
             for artist_str in artist_list:
                 if artist_str and artist_str.strip():
                     artist_str = str(artist_str).strip()
+                    click.secho(f"      Processing artist string: '{artist_str}'", fg="white")
                     cleaned = _clean_artist_string_with_label(artist_str, label)
+                    click.secho(f"      Cleaned result: '{cleaned}'", fg="cyan")
                     
                     if cleaned:
                         cleaned_list.append(cleaned)
                     else:
                         # Keep original if no label found
                         cleaned_list.append(artist_str)
+                        click.secho(f"      Keeping original (no changes)", fg="white")
             
             if cleaned_list:
+                click.secho(f"    Final cleaned artist list: {cleaned_list}", fg="green")
                 from mutagen.id3 import TPE1
                 tagset.mut.tags['TPE1'] = TPE1(encoding=3, text=cleaned_list)
                 tagset.mut.save()
+                click.secho(f"    ✓ Saved changes to MP3 file", fg="green")
     
-    click.secho("Track artist tags cleaned successfully.", fg="green")
+    click.secho("\n✓ Track artist tags cleaned successfully.", fg="green")
 
 
 def _process_label_as_various_artists(path, tags, label, metadata):
@@ -1026,10 +1040,13 @@ def _clean_artist_string_with_label(artist_str, label_to_remove):
         Cleaned artist string with label removed, or None if no changes needed
     """
     if not artist_str or not label_to_remove:
+        click.secho(f"        [DEBUG] Early return: artist_str={artist_str}, label={label_to_remove}", fg="magenta")
         return None
     
     artist_str = str(artist_str).strip()
     label_lower = label_to_remove.lower()
+    
+    click.secho(f"        [DEBUG] Cleaning '{artist_str}' (removing '{label_to_remove}')", fg="magenta")
     
     # Common separators used in artist tags (in priority order)
     # Semicolon and comma first as they're most common
@@ -1038,10 +1055,13 @@ def _clean_artist_string_with_label(artist_str, label_to_remove):
     # Try each separator
     for sep in separators:
         if sep in artist_str:
+            click.secho(f"        [DEBUG] Found separator '{sep}' in artist string", fg="magenta")
             parts = [p.strip() for p in artist_str.split(sep) if p.strip()]
+            click.secho(f"        [DEBUG] Split into parts: {parts}", fg="magenta")
             original_count = len(parts)
             # Filter out the label (case-insensitive)
             parts = [p for p in parts if p.lower() != label_lower]
+            click.secho(f"        [DEBUG] After filtering: {parts} (removed {original_count - len(parts)} items)", fg="magenta")
             
             # Only return if we actually removed something
             if parts and len(parts) < original_count:
@@ -1049,14 +1069,17 @@ def _clean_artist_string_with_label(artist_str, label_to_remove):
                 if len(parts) > 1:
                     # Use the same separator with proper spacing
                     if sep in [';', ',']:
-                        return f'{sep} '.join(parts)
+                        result = f'{sep} '.join(parts)
                     else:
-                        return f' {sep} '.join(parts)
+                        result = f' {sep} '.join(parts)
                 else:
-                    return parts[0]
+                    result = parts[0]
+                click.secho(f"        [DEBUG] Returning cleaned result: '{result}'", fg="magenta")
+                return result
     
     # Fallback: Check if label is a substring and remove it
     if label_lower in artist_str.lower():
+        click.secho(f"        [DEBUG] Label found as substring, using fallback cleaning", fg="magenta")
         # Try case-insensitive replacement
         import re
         pattern = re.compile(re.escape(label_to_remove), re.IGNORECASE)
@@ -1067,8 +1090,10 @@ def _clean_artist_string_with_label(artist_str, label_to_remove):
         cleaned = re.sub(r'\s+', ' ', cleaned).strip()
         
         if cleaned and cleaned != artist_str:
+            click.secho(f"        [DEBUG] Fallback result: '{cleaned}'", fg="magenta")
             return cleaned
     
+    click.secho(f"        [DEBUG] No changes made, returning None", fg="magenta")
     return None
 
 
