@@ -424,7 +424,7 @@ def upload(
         
         # SIMPLE UNIFIED LABEL HANDLING (replaces all special cases)
         # For Qobuz/Apple Music: Check if album artist == label with keywords
-        if not _extract_from_files:  # Qobuz/Apple Music workflow
+        if not metadata.get("_extract_from_files"):  # Qobuz/Apple Music workflow
             try:
                 # Get current album artist from tags
                 current_albumartist = None
