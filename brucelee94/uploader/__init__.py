@@ -928,6 +928,12 @@ def _remove_label_from_track_artists(tags, label):
                 if artist_str and artist_str.strip():
                     artist_str = str(artist_str).strip()
                     click.secho(f"      Processing artist string: '{artist_str}'", fg="white")
+                    
+                    # Skip if artist exactly matches the label (case-insensitive)
+                    if artist_str.lower() == label.lower():
+                        click.secho(f"      Skipping exact label match: '{artist_str}'", fg="yellow")
+                        continue
+                    
                     cleaned = _clean_artist_string_with_label(artist_str, label)
                     click.secho(f"      Cleaned result: '{cleaned}'", fg="cyan")
                     
@@ -955,6 +961,12 @@ def _remove_label_from_track_artists(tags, label):
                 if artist_str and artist_str.strip():
                     artist_str = str(artist_str).strip()
                     click.secho(f"      Processing artist string: '{artist_str}'", fg="white")
+                    
+                    # Skip if artist exactly matches the label (case-insensitive)
+                    if artist_str.lower() == label.lower():
+                        click.secho(f"      Skipping exact label match: '{artist_str}'", fg="yellow")
+                        continue
+                    
                     cleaned = _clean_artist_string_with_label(artist_str, label)
                     click.secho(f"      Cleaned result: '{cleaned}'", fg="cyan")
                     
