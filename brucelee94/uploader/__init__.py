@@ -433,31 +433,34 @@ def upload(
         # For Qobuz/Apple Music: Check if album artist == label with keywords
         if not metadata.get("_extract_from_files"):  # Qobuz/Apple Music workflow
             try:
-                # Get current album artist from tags
-                current_albumartist = None
-                for filename, tagset in tags.items():
-                    if hasattr(tagset, 'albumartist') and tagset.albumartist:
-                        current_albumartist = tagset.albumartist
-                        break
-                
-                if current_albumartist:
-                    # Extract label from metadata
-                    extracted_label = metadata.get("_original_label") or metadata.get("label")
+                # Smart detection: Only check for label if folder name suggests it
+                folder_name = os.path.basename(path)
+                if _should_check_for_label(folder_name):
+                    # Get current album artist from tags
+                    current_albumartist = None
+                    for filename, tagset in tags.items():
+                        if hasattr(tagset, 'albumartist') and tagset.albumartist:
+                            current_albumartist = tagset.albumartist
+                            break
                     
-                    # Simple check: album artist == label AND label has keywords
-                    if extracted_label and current_albumartist.lower().strip() == extracted_label.lower().strip():
-                        if _has_label_keywords(extracted_label):
-                            click.secho(f"\nDetected label '{extracted_label}' as album artist (has keywords)", fg="cyan")
-                            click.secho("Processing as Various Artists compilation...", fg="cyan")
-                            
-                            # Process: Retag to Various Artists, clean tracks, rename folder
-                            path = _process_label_as_various_artists(
-                                path, tags, extracted_label, metadata
-                            )
-                            
-                            # Refresh tags after processing
-                            tags = gather_tags(path)
-                            click.secho("Label handling complete.\n", fg="green")
+                    if current_albumartist:
+                        # Extract label from metadata
+                        extracted_label = metadata.get("_original_label") or metadata.get("label")
+                        
+                        # Simple check: album artist == label AND label has keywords
+                        if extracted_label and current_albumartist.lower().strip() == extracted_label.lower().strip():
+                            if _has_label_keywords(extracted_label):
+                                click.secho(f"\nDetected label '{extracted_label}' as album artist (has keywords)", fg="cyan")
+                                click.secho("Processing as Various Artists compilation...", fg="cyan")
+                                
+                                # Process: Retag to Various Artists, clean tracks, rename folder
+                                path = _process_label_as_various_artists(
+                                    path, tags, extracted_label, metadata
+                                )
+                                
+                                # Refresh tags after processing
+                                tags = gather_tags(path)
+                                click.secho("Label handling complete.\n", fg="green")
             
             except Exception as e:
                 click.secho(f"Error in label handling: {e}", fg="yellow", err=True)
@@ -882,6 +885,42 @@ def replace_various_artists_with_track_artists(artists, metadata):
     return artists
 
 
+def _should_check_for_label(folder_name):
+    """
+    Check if folder name indicates this might be a label compilation.
+    
+    Smart detection to avoid unnecessary label checking for regular artist albums.
+    Only proceeds with label detection if folder name contains:
+    1. Label keywords (records, productions, etc.)
+    2. Whitelisted label names (e.g., 'Vile Immerse')
+    
+    Args:
+        folder_name: The album folder name to check
+    
+    Returns:
+        bool: True if we should proceed with label detection, False to skip
+    """
+    if not folder_name:
+        return False
+    
+    folder_lower = folder_name.lower()
+    
+    # Check for label keywords in folder name
+    keywords = [
+        'records', 'production', 'music', 'entertainment', 'label',
+        'recordings', 'productions', 'media', 'group', 'collective', 'imprint'
+    ]
+    if any(keyword in folder_lower for keyword in keywords):
+        return True
+    
+    # Check for whitelisted labels in folder name
+    for known_label in KNOWN_RECORD_LABELS:
+        if known_label.lower() in folder_lower:
+            return True
+    
+    return False
+
+
 def _has_label_keywords(label):
     """
     Check if label contains label keywords that indicate it's a record label,
@@ -1290,21 +1329,24 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
     
     # SIMPLE UNIFIED LABEL HANDLING for Tidal/Deezer
     # Check if album artist == label with keywords
-    if original_albumartist and extracted_label:
-        if original_albumartist.lower().strip() == extracted_label.lower().strip():
-            if _has_label_keywords(extracted_label):
-                click.secho(f"\nDetected label '{extracted_label}' as album artist (has keywords)", fg="cyan")
-                click.secho("Processing as Various Artists compilation...", fg="cyan")
-                
-                # Process: Retag to Various Artists, clean tracks, rename folder
-                path = _process_label_as_various_artists(
-                    path, tags, extracted_label, metadata
-                )
-                
-                # Clear album_artists_set since we're treating this as Various Artists
-                album_artists_set = set()
-                
-                click.secho("Label handling complete.\n", fg="green")
+    # Smart detection: Only check for label if folder name suggests it
+    folder_name = os.path.basename(path)
+    if _should_check_for_label(folder_name):
+        if original_albumartist and extracted_label:
+            if original_albumartist.lower().strip() == extracted_label.lower().strip():
+                if _has_label_keywords(extracted_label):
+                    click.secho(f"\nDetected label '{extracted_label}' as album artist (has keywords)", fg="cyan")
+                    click.secho("Processing as Various Artists compilation...", fg="cyan")
+                    
+                    # Process: Retag to Various Artists, clean tracks, rename folder
+                    path = _process_label_as_various_artists(
+                        path, tags, extracted_label, metadata
+                    )
+                    
+                    # Clear album_artists_set since we're treating this as Various Artists
+                    album_artists_set = set()
+                    
+                    click.secho("Label handling complete.\n", fg="green")
     
     
     # Second pass: Extract track data and classify artists
