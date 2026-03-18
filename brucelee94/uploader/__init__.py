@@ -1607,6 +1607,23 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
         from brucelee94.tagger.pre_data import parse_title
         metadata["title"], metadata["edition_title"] = parse_title(raw_album_title)
     
+    # Fallback: Extract title from folder name if tags don't provide one
+    # This handles cases like "Jupiter Motel - EP" where the tags have no album title
+    if not metadata["title"]:
+        basename = os.path.basename(path)
+        # Pattern: "Artist - Title" with optional (Year) and [Format] tags
+        # Examples: "Artist - EP", "Artist - Album (2024)", "Artist - Title [FLAC]"
+        pattern = r"^.+?\s+-\s+(.+?)(?:\s+\(\d{4}\))?(?:\s+\[.+?\])*$"
+        match = re.match(pattern, basename)
+        if match:
+            folder_title = match.group(1).strip()
+            # Remove any remaining brackets/parentheses info
+            folder_title = re.sub(r'\s*[\(\[].*?[\)\]]', '', folder_title).strip()
+            if folder_title:
+                from brucelee94.tagger.pre_data import parse_title
+                metadata["title"], metadata["edition_title"] = parse_title(folder_title)
+                click.secho(f"No album title in tags, extracted from folder: '{metadata['title']}'", fg="yellow")
+    
     if years:
         metadata["year"] = max(set(years), key=years.count)
         metadata["group_year"] = metadata["year"]  # Set group_year same as year
