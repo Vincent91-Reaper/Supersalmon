@@ -1262,8 +1262,10 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                     if original_albumartist is None:
                         original_albumartist = str(aa).strip()
                     
-                    # Split by comma to handle cases like "Ismail Candide, Eddy Woogy"
-                    individual_artists = [a.strip() for a in str(aa).split(',') if a.strip()]
+                    # Split by common separators: comma, semicolon, slash, ampersand, pipe
+                    # Deezer uses semicolons: "Shirobon; Pizza Hotline"
+                    # Tidal uses commas: "Artist1, Artist2"
+                    individual_artists = [a.strip() for a in re.split(r'[,;/\\|&+]', str(aa)) if a.strip()]
                     for individual_artist in individual_artists:
                         # Skip "Various Artists" - it's a placeholder, not a real artist
                         if individual_artist.lower() != "various artists":
@@ -1281,7 +1283,7 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
             artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
             for artist in artist_list:
                 if artist and artist.strip():
-                    individual_artists = [a.strip() for a in str(artist).split(',') if a.strip()]
+                    individual_artists = [a.strip() for a in re.split(r'[,;/\\|&+]', str(artist)) if a.strip()]
                     for individual_artist in individual_artists:
                         track_artists_for_detection.add(individual_artist)
     
@@ -1381,8 +1383,10 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                 artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
                 for artist in artist_list:
                     if artist and artist.strip():
-                        # Split by comma to handle cases like "Gayga, Din" -> ["Gayga", "Din"]
-                        individual_artists = [a.strip() for a in str(artist).split(',') if a.strip()]
+                        # Split by common separators: comma, semicolon, slash, ampersand, pipe
+                        # Deezer uses semicolons: "Shirobon; Pizza Hotline"
+                        # Tidal uses commas: "Artist1, Artist2"
+                        individual_artists = [a.strip() for a in re.split(r'[,;/\\|&+]', str(artist)) if a.strip()]
                         for individual_artist in individual_artists:
                             # Determine if this artist is a main artist or guest artist
                             # Main artist: appears at both album level (albumartist) and track level
