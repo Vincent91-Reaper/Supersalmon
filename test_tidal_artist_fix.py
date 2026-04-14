@@ -8,6 +8,15 @@ main artists vs guest artists based on album-level and track-level artist inform
 
 import re
 
+# Keep this delimiter set aligned with uploader._build_metadata_from_files()
+# so regression tests reflect production artist tokenization behavior.
+ARTIST_SPLIT_PATTERN = r'[,;/\\|&+]'
+
+
+def split_artists(value):
+    """Split a tag value into artist tokens using production-matching delimiters."""
+    return [a.strip() for a in re.split(ARTIST_SPLIT_PATTERN, str(value)) if a.strip()]
+
 def test_artist_identification():
     """
     Test the artist identification logic.
@@ -180,9 +189,6 @@ def test_semicolon_separated_album_artists():
     print("\n" + "="*60)
     print("Test: Semicolon-separated album artists classification")
     print("="*60 + "\n")
-
-    split_pattern = r'[,;/\\|&+]'
-    split_artists = lambda value: [a.strip() for a in re.split(split_pattern, str(value)) if a.strip()]
 
     album_artists_raw = ["Shirobon; Pizza Hotline"]
     album_artists_set = set()
