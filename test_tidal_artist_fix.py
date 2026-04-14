@@ -182,18 +182,19 @@ def test_semicolon_separated_album_artists():
     print("="*60 + "\n")
 
     split_pattern = r'[,;/\\|&+]'
+    split_artists = lambda value: [a.strip() for a in re.split(split_pattern, str(value)) if a.strip()]
 
     album_artists_raw = ["Shirobon; Pizza Hotline"]
     album_artists_set = set()
     for aa in album_artists_raw:
-        individual_artists = [a.strip() for a in re.split(split_pattern, str(aa)) if a.strip()]
+        individual_artists = split_artists(aa)
         for individual_artist in individual_artists:
             album_artists_set.add(individual_artist.lower())
 
     track_artists_raw = ["Shirobon; Pizza Hotline"]
     track_artists = []
     for artist in track_artists_raw:
-        individual_artists = [a.strip() for a in re.split(split_pattern, str(artist)) if a.strip()]
+        individual_artists = split_artists(artist)
         for individual_artist in individual_artists:
             importance = "main" if individual_artist.lower() in album_artists_set else "guest"
             track_artists.append((individual_artist, importance))
