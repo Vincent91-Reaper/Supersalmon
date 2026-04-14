@@ -6,6 +6,8 @@ Tests that the _build_metadata_from_files function correctly identifies
 main artists vs guest artists based on album-level and track-level artist information.
 """
 
+import re
+
 def test_artist_identification():
     """
     Test the artist identification logic.
@@ -165,6 +167,45 @@ def test_no_albumartist_field():
     print("✓ Test passed! Handled missing albumartist field correctly.")
 
 
+def test_semicolon_separated_album_artists():
+    """
+    Regression test for Deezer-style semicolon-separated artist tags.
+
+    Scenario:
+    - albumartist: "Shirobon; Pizza Hotline"
+    - artist: "Shirobon; Pizza Hotline"
+
+    Expected: both artists are classified as main (not guest).
+    """
+    print("\n" + "="*60)
+    print("Test: Semicolon-separated album artists classification")
+    print("="*60 + "\n")
+
+    split_pattern = r'[,;/\\|&+]'
+
+    album_artists_raw = ["Shirobon; Pizza Hotline"]
+    album_artists_set = set()
+    for aa in album_artists_raw:
+        individual_artists = [a.strip() for a in re.split(split_pattern, str(aa)) if a.strip()]
+        for individual_artist in individual_artists:
+            album_artists_set.add(individual_artist.lower())
+
+    track_artists_raw = ["Shirobon; Pizza Hotline"]
+    track_artists = []
+    for artist in track_artists_raw:
+        individual_artists = [a.strip() for a in re.split(split_pattern, str(artist)) if a.strip()]
+        for individual_artist in individual_artists:
+            importance = "main" if individual_artist.lower() in album_artists_set else "guest"
+            track_artists.append((individual_artist, importance))
+
+    expected = [
+        ("Shirobon", "main"),
+        ("Pizza Hotline", "main"),
+    ]
+    assert track_artists == expected, f"Expected {expected}, got {track_artists}"
+    print("✓ Test passed! Semicolon-separated artists correctly classified as main.")
+
+
 if __name__ == "__main__":
     print("="*60)
     print("Testing Tidal Artist Identification Fix")
@@ -174,6 +215,7 @@ if __name__ == "__main__":
     test_artist_identification()
     test_artist_deduplication_priority()
     test_no_albumartist_field()
+    test_semicolon_separated_album_artists()
     
     print("\n" + "="*60)
     print("All tests passed! ✓")
