@@ -1272,10 +1272,6 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                             # Store in lowercase for case-insensitive comparison
                             album_artists_set.add(individual_artist.lower())
     
-    # DEBUG: Show album_artists_set used for main/guest classification
-    click.secho(f"\n[DEBUG] album_artists_set = {album_artists_set}", fg="magenta")
-    click.secho(f"[DEBUG] original_albumartist = {repr(original_albumartist)}", fg="magenta")
-
     # Pre-scan: Collect all unique track artists for record label detection
     track_artists_for_detection = set()
     for filename, tagset in tags.items():
@@ -1402,13 +1398,6 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                                 importance = "main"
                             else:
                                 importance = "guest"
-                            
-                            # DEBUG: Show classification result
-                            click.secho(
-                                f"[DEBUG] Artist '{individual_artist}' (lower='{individual_artist.lower()}') → "
-                                f"importance='{importance}' | in album_artists_set: {individual_artist.lower() in album_artists_set}",
-                                fg="magenta"
-                            )
                             
                             track_artists.append((individual_artist, importance))
                             all_artists.append((individual_artist, importance))
@@ -1609,13 +1598,6 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
     
     # Convert dict values to list
     unique_artists = list(seen_artists.values())
-    
-    # DEBUG: Show final artist list before assigning to metadata
-    click.secho(f"\n[DEBUG] Final unique_artists = {unique_artists}", fg="magenta")
-    main_artists_final = [a for a, i in unique_artists if i == "main"]
-    guest_artists_final = [a for a, i in unique_artists if i == "guest"]
-    click.secho(f"[DEBUG] Main artists: {main_artists_final}", fg="magenta")
-    click.secho(f"[DEBUG] Guest artists: {guest_artists_final}", fg="magenta")
     
     metadata["artists"] = unique_artists
     
