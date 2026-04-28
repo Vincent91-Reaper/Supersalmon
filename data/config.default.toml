@@ -28,13 +28,15 @@ dottorrents_dir = '.torrents'
 # ===============================
 # IMAGE UPLOAD SETTINGS
 # ===============================
-# Image hosters: ptpimg, ptscreens, oeimg, catbox, emp (not tested recently)
+# Image hosters: catbox, ptpimg, ptscreens, oeimg, emp (not tested recently)
+# Catbox is the recommended free/default hoster while ptpimg is unavailable.
+# Catbox does not require an API key.
 [image]
-image_uploader = "ptpimg"
-cover_uploader = "ptpimg"
-specs_uploader = "ptpimg"
+image_uploader = "catbox"
+cover_uploader = "catbox"
+specs_uploader = "catbox"
 
-# ptpimg API key (log into ptpimg, developpers tools, go to the Elements tab, and search for 'api_key')
+# ptpimg API key (only needed if you set one of the uploaders above to ptpimg)
 ptpimg_key = 'api_key'
 # ptscreens API key (log into ptscreens, settings, API)
 ptscreens_key = 'api_key'

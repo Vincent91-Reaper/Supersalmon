@@ -528,16 +528,16 @@ def upload(
     #
     #     remaining_gazelle_sites.remove(tracker)
 
-    # Handle cover image - prepare cover but don't upload to ptpimg yet
+    # Handle cover image - prepare cover but don't upload to the configured image host yet
     cover_to_upload_later = None
     is_cover_downloaded = False
     if is_16bit_transcode:
-        # For 16-bit transcodes, skip uploading cover to ptpimg entirely
+        # For 16-bit transcodes, skip uploading cover to the configured image host entirely
         # The cover.jpg was already copied to the folder during downconversion
         # RED will use the local cover.jpg file from the torrent
         cover_path = os.path.join(path, "cover.jpg")
         if os.path.exists(cover_path):
-            click.secho("Skipping cover upload to ptpimg for 16-bit transcode (using local cover.jpg)", fg="cyan")
+            click.secho("Skipping cover upload to image host for 16-bit transcode (using local cover.jpg)", fg="cyan")
         else:
             click.secho("Warning: cover.jpg not found in 16-bit folder", fg="yellow")
     elif group_id:
@@ -546,7 +546,7 @@ def upload(
         # Don't need cover URL for existing groups
         pass
     else:
-        # For new groups, prepare cover but upload to ptpimg AFTER torrent upload
+        # For new groups, prepare cover but upload to the configured image host AFTER torrent upload
         cover_path, is_cover_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
         cover_to_upload_later = cover_path
 
@@ -612,7 +612,7 @@ def upload(
     
     # Handle cover upload if needed (new groups only)
     if cover_to_upload_later and not is_16bit_transcode and is_new_group:
-        click.secho("Uploading cover image to ptpimg...", fg="cyan")
+        click.secho("Uploading cover image to configured image host...", fg="cyan")
         cover_url_to_add = upload_cover(cover_to_upload_later)
         # Generate album description to include with cover update (new groups only)
         album_desc_to_add = generate_description(track_data, metadata)

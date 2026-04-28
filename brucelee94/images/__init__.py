@@ -179,7 +179,7 @@ def _handle_failed_spectrals(spectrals, successful):
                 fg="magenta",
                 bold=True,
             ),
-            default="ptpimg",
+            default=cfg.image.specs_uploader,
         ).lower()
         if host not in HOSTS:
             click.secho(f"{host} is an invalid image host. Please choose another one.", fg="red")
