@@ -8,7 +8,7 @@ from brucelee94 import cfg
 from brucelee94.common import AliasedCommands, commandgroup
 from brucelee94.database import DB_PATH
 from brucelee94.errors import ImageUploadFailed
-from brucelee94.images import catbox, emp, oeimg, ptpimg, ptscreens
+from brucelee94.images import catbox, emp, imgbb, oeimg, ptpimg, ptscreens
 
 
 def _get_event_loop():
@@ -27,6 +27,7 @@ HOSTS = {
     "ptpimg": ptpimg,
     "emp": emp,
     "catbox": catbox,
+    "imgbb": imgbb,
     "ptscreens": ptscreens,
     "oeimg": oeimg,
 }

@@ -28,9 +28,9 @@ dottorrents_dir = '.torrents'
 # ===============================
 # IMAGE UPLOAD SETTINGS
 # ===============================
-# Image hosters: catbox, ptpimg, ptscreens, oeimg, emp (not tested recently)
-# Catbox is the recommended free/default hoster while ptpimg is unavailable.
-# Catbox does not require an API key.
+# Image hosters: imgbb, catbox, ptpimg, ptscreens, oeimg, emp (not tested recently)
+# ImgBB is a free, stable fallback hoster, but it requires an API key.
+# Catbox does not require an API key, but may pause uploads during storage issues.
 [image]
 image_uploader = "catbox"
 cover_uploader = "catbox"
@@ -42,6 +42,8 @@ ptpimg_key = 'api_key'
 ptscreens_key = 'api_key'
 # oeimg API key (log into imgoe, settings, API)
 oeimg_key = 'api_key'
+# ImgBB API key (create a free account at imgbb.com, then use API key from api.imgbb.com)
+imgbb_key = 'api_key'
 
 # Set to true to remove downloaded cover images that are created in source folder, when one does not exist
 # remove_auto_downloaded_cover_image = false
