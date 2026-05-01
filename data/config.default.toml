@@ -137,6 +137,9 @@ session = 'get-from-site-cookie'
 # prompt_puddletag = false
 # log_dupe_tolerance = 0.5
 # windows_use_recycle_bin = true
+# # Enable smart record-label cleaner pre-check (checks folder names for label keywords/whitelist).
+# # Keep false for fastest uploads; set true to auto-clean label-as-artist compilations.
+# smart_record_label_precheck = false
 
 # # multi_tracker support
 # multi_tracker_upload = true

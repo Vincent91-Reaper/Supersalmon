@@ -183,6 +183,7 @@ class Upload(BaseStruct):
     feh_fullscreen: bool = True
     prompt_puddletag: bool = False
     windows_use_recycle_bin: bool = True
+    smart_record_label_precheck: bool = False
 
     multi_tracker_upload: bool = True
     # TODO: should this be in tracker?

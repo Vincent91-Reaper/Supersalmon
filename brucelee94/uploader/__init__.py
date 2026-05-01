@@ -431,9 +431,9 @@ def upload(
         
         # SIMPLE UNIFIED LABEL HANDLING (replaces all special cases)
         # For Qobuz/Apple Music: Check if album artist == label with keywords
-        if not metadata.get("_extract_from_files"):  # Qobuz/Apple Music workflow
+        if not metadata.get("_extract_from_files") and cfg.upload.smart_record_label_precheck:  # Qobuz/Apple Music workflow
             try:
-                # Smart detection: Only check for label if folder name suggests it
+                # Optional smart detection: Only check for label if folder name suggests it
                 folder_name = os.path.basename(path)
                 if _should_check_for_label(folder_name):
                     # Get current album artist from tags
@@ -1330,10 +1330,9 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
                 break
     
     # SIMPLE UNIFIED LABEL HANDLING for Tidal/Deezer
-    # Check if album artist == label with keywords
-    # Smart detection: Only check for label if folder name suggests it
+    # Optional smart detection: Only check for label if folder name suggests it
     folder_name = os.path.basename(path)
-    if _should_check_for_label(folder_name):
+    if cfg.upload.smart_record_label_precheck and _should_check_for_label(folder_name):
         if original_albumartist and extracted_label:
             if original_albumartist.lower().strip() == extracted_label.lower().strip():
                 if _has_label_keywords(extracted_label):
