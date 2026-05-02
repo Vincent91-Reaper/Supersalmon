@@ -28,9 +28,9 @@ dottorrents_dir = '.torrents'
 # ===============================
 # IMAGE UPLOAD SETTINGS
 # ===============================
-# Image hosters: imgbb, catbox, ptpimg, ptscreens, oeimg, emp (not tested recently)
+# Image hosters: cyx, imgbb, catbox, ptpimg, ptscreens, oeimg, emp (not tested recently)
 # ImgBB is a free, stable fallback hoster, but it requires an API key.
-# Catbox does not require an API key, but may pause uploads during storage issues.
+# Catbox and cyx do not require API keys, but public hosts may pause uploads during storage issues.
 [image]
 image_uploader = "catbox"
 cover_uploader = "catbox"

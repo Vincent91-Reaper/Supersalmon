@@ -24,7 +24,7 @@ class Directory(BaseStruct):
             raise ValueError("tmp_dir is not a valid directory")
 
 
-ImgUploaderLiteral = Literal["ptpimg", "ptscreens", "oeimg", "catbox", "imgbb", "emp"]
+ImgUploaderLiteral = Literal["ptpimg", "ptscreens", "oeimg", "catbox", "cyx", "imgbb", "emp"]
 
 
 class ImageUploader(BaseStruct):
