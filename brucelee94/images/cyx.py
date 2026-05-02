@@ -8,7 +8,7 @@ from brucelee94.images.base import BaseImageUploader
 
 class ImageUploader(BaseImageUploader):
     def _perform(self, file_, ext):
-        url = "https://share.cyx.su/api/upload"
+        url = "https://share.cyx.su/"
         resp = requests.post(url, files={"file": file_})
         if resp.status_code != requests.codes.ok:
             raise ImageUploadFailed(f"Failed. Status {resp.status_code}:\n{resp.content}")
@@ -19,6 +19,11 @@ class ImageUploader(BaseImageUploader):
         raise ImageUploadFailed(f"Missing image URL in response:\n{resp.content}")
 
     def _extract_url(self, resp):
+        text = resp.text.strip()
+        direct_url = self._normalize_url(text)
+        if direct_url:
+            return direct_url
+
         try:
             data = resp.json()
         except ValueError:
@@ -32,9 +37,9 @@ class ImageUploader(BaseImageUploader):
             if url:
                 return url
 
-        text_match = re.search(r"https?://[^\s\"'<>]+", resp.text)
+        text_match = re.search(r"(?:https?:)?//[^\s\"'<>]+|/[^\s\"'<>]+", text)
         if text_match:
-            return text_match.group(0)
+            return self._normalize_url(text_match.group(0))
         return None
 
     def _find_url(self, value):
@@ -58,8 +63,11 @@ class ImageUploader(BaseImageUploader):
         return None
 
     def _normalize_url(self, value):
+        value = value.strip()
         if value.startswith("http://") or value.startswith("https://"):
             return value
+        if value.startswith("//"):
+            return f"https:{value}"
         if value.startswith("/"):
             return f"https://share.cyx.su{value}"
         return None
