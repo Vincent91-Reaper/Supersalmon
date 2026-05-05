@@ -380,9 +380,7 @@ def upload(
                 tags = check_tags(path)
                 if recompress:
                     recompress_path(path)
-                # Run folder structure check
-                # For Tidal: Always check (files don't have genre tags, so is_tidal=True)
-                # For Deezer: Use genre info (files have genre tags, so is_tidal=False)
+                # Run folder structure check only when the smart pre-check finds work to do.
                 check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=is_tidal, from_url=True)
                 
                 # Refresh tags and audio info
@@ -831,8 +829,7 @@ def edit_metadata(
     tags = check_tags(path)
     if not metadata["scene"] and recompress:
         recompress_path(path)
-    # Always run folder structure check when metadata was scraped from a URL
-    # (Qobuz, Tidal, Deezer, Apple Music, Beatport)
+    # Run folder structure check only when the smart pre-check finds work to do.
     check_folder_structure(path, metadata["scene"], metadata.get("genres", []), from_url=bool(source_url))
 
     # Convert genres to tags

@@ -31,35 +31,24 @@ def check_folder_structure(path, scene, genres=None, is_tidal=False, from_url=Fa
     """
     Run through every filesystem check that causes uploads to violate the rules
     or be rejected on the upload form. Only verify that path lengths <180.
-    
+
     Smart detection logic:
-    - For Tidal URLs: Always check (no genre info available in files)
-    - For other URL sources (Qobuz, Deezer, Apple Music, Beatport): 
-      Check only if files have long paths (>180 chars)
-    - For non-URL uploads: Check if classical genre OR if files have long paths
+    - Only run the path-length check when a quick pre-check finds long paths.
+    - Keep the existing classical/non-URL folder-structure check path, but do
+      not run the path-length check unless long paths are present.
     """
-    # For Tidal, always run the check (no genre info available)
-    if is_tidal:
-        pass  # Continue to run the check
-    # For other URL sources, check only if files actually have long paths
-    elif from_url:
-        if not has_long_file_paths(path):
-            # No long paths detected, skip the check
-            return
-    # For non-URL uploads, check if classical OR if files have long paths
-    else:
-        is_classical = genres and any('classical' in str(g).lower() for g in genres)
-        has_long_paths = has_long_file_paths(path)
-        
-        if not is_classical and not has_long_paths:
-            # Not classical and no long paths, skip the check
-            return
+    has_long_paths = has_long_file_paths(path)
+    is_classical = not from_url and genres and any("classical" in str(g).lower() for g in genres)
+
+    if not is_classical and not has_long_paths:
+        return
     
     while True:
         click.secho("\nChecking folder structure...", fg="cyan", bold=True)
         try:
             _check_illegal_folders(path)
-            _check_path_lengths(path, scene)
+            if has_long_paths:
+                _check_path_lengths(path, scene)
             return
         except NoncompliantFolderStructure:
             if scene:
