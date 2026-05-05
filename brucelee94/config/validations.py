@@ -182,6 +182,7 @@ class Upload(BaseStruct):
     native_spectrals_viewer: bool = False
     feh_fullscreen: bool = True
     prompt_puddletag: bool = False
+    standardize_tags: bool = False
     windows_use_recycle_bin: bool = True
     smart_record_label_precheck: bool = False
 
@@ -194,7 +195,7 @@ class Upload(BaseStruct):
 
     yes_all: bool = False
 
-    upload_to_seedbox: bool = True
+    upload_to_seedbox: bool = False
 
     # TODO: take these out of the upload struct!
     search: UploadSearch = msgspec.field(default_factory=UploadSearch)

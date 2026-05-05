@@ -18,7 +18,7 @@ from brucelee94 import cfg
 #     format_integrity,
 #     sanitize_integrity,
 # )
-from brucelee94.checks.logs import check_log_cambia
+# CD log checking removed for WEB-only race workflow
 # Upconvert check removed
 # from brucelee94.checks.upconverts import upload_upconvert_test
 from brucelee94.common import commandgroup
@@ -49,10 +49,7 @@ from brucelee94.tagger.pre_data import construct_rls_data
 from brucelee94.tagger.retagger import tag_files  # rename_files removed
 from brucelee94.tagger.review import review_metadata
 from brucelee94.tagger.tags import check_tags, gather_tags, standardize_tags
-from brucelee94.uploader.upload_to_group import (
-    check_existing_group,
-    print_torrents,
-)
+from brucelee94.uploader.upload_to_group import print_torrents
 from brucelee94.uploader.preassumptions import print_preassumptions
 # Request filling removed
 # from salmon.uploader.request_checker import check_requests
@@ -170,11 +167,7 @@ KNOWN_RECORD_LABELS = [
 #     is_flag=True,
 #     help="Skip check for MQA marker (on first file only)",
 # )
-@click.option(
-    "--skip-log-check",
-    is_flag=True,
-    help="Skip checking CD logs",
-)
+# CD log check option removed (WEB-only race workflow)
 # Integrity check option removed
 # @click.option(
 #     "--skip-integrity-check",
@@ -199,7 +192,7 @@ def up(
     source_url,
     yyy,
     # skip_mqa,  # removed
-    skip_log_check,
+    # skip_log_check,  # removed
     # skip_integrity_check,  # removed
 ):
     """Command to upload an album folder to a Gazelle Site."""
@@ -239,7 +232,7 @@ def up(
         # auto_rename=auto_rename,  # removed
         # skip_up=skip_up,  # removed
         # skip_mqa=skip_mqa,  # removed
-        skip_log_check=skip_log_check,
+        # skip_log_check removed (WEB-only race workflow)
         # skip_integrity_check=skip_integrity_check,  # removed
     )
 
@@ -262,7 +255,7 @@ def upload(
     # auto_rename=False,  # removed
     # skip_up=False,  # removed
     # skip_mqa=False,  # removed
-    skip_log_check=False,
+    # skip_log_check=False,  # removed
     # skip_integrity_check=False,  # removed
     is_16bit_transcode=False,  # NEW: Flag to indicate this is a 16-bit downconversion
     transcode_metadata=None,  # NEW: Metadata from the original 24-bit upload
@@ -275,7 +268,7 @@ def upload(
         source = _prompt_source()
     audio_info = gather_audio_info(path)
     hybrid = check_hybrid(audio_info)
-    if not scene:
+    if not scene and cfg.upload.standardize_tags:
         standardize_tags(path)
     tags = gather_tags(path)
     rls_data = construct_rls_data(
@@ -307,35 +300,7 @@ def upload(
         #     else:
         #         upload_upconvert_test(path)
 
-        if source == "CD" and not skip_log_check:
-            click.secho("\nChecking logs", fg="green")
-            for root, _, files in os.walk(path):
-                for f in files:
-                    if f.lower().endswith(".log"):
-                        filepath = os.path.join(root, f)
-                        click.secho(f"\nScoring {filepath}...", fg="cyan", bold=True)
-                        try:
-                            check_log_cambia(filepath, path)
-                        except Exception as e:
-                            if "Edited logs" in str(e):
-                                raise click.Abort() from e
-                            elif "CRC Mismatch" in str(e):
-                                click.secho("Error: CRC mismatch between log and audio files!", fg="red", bold=True)
-                                if not click.confirm(
-                                    click.style(
-                                        "Log file CRC does not match audio files. "
-                                        "Do you want to continue upload anyway?",
-                                        fg="magenta",
-                                    ),
-                                    default=False,
-                                ):
-                                    raise click.Abort() from e
-                            else:
-                                click.secho(f"Error checking log: {e}", fg="red")
-
-        if group_id is None:
-            # Dupe checking removed - just prompt for group selection
-            group_id = check_existing_group(gazelle_site)
+        # Existing group selection/check removed for race workflow; upload as a new group unless --group-id was supplied.
 
         # Spectral and lossy checking removed
 
@@ -500,7 +465,7 @@ def upload(
     torrent_id = None
     cover_url = None
 
-    seedbox_uploader = UploadManager()
+    seedbox_uploader = UploadManager() if cfg.upload.upload_to_seedbox else None
 
     # Single upload to RED only (multi-tracker loop removed)
     # while True:
@@ -657,7 +622,6 @@ def upload(
                     recompress=recompress,
                     source_url=source_url,  # Use the same source URL (Tidal/Apple Music/etc.) as the 24-bit version
                     searchstrs=searchstrs,
-                    skip_log_check=skip_log_check,
                     is_16bit_transcode=True,  # NEW: Flag to skip metadata scraping/retagging/cover upload
                     transcode_metadata=metadata,  # Pass the metadata from the 24-bit upload
                 )
@@ -667,7 +631,8 @@ def upload(
                 click.secho("Continuing without 16-bit upload.", fg="yellow")
 
     click.secho("\nDone uploading this release.", fg="green")
-    seedbox_uploader.execute_upload()
+    if seedbox_uploader is not None:
+        seedbox_uploader.execute_upload()
 
 
 def edit_metadata(

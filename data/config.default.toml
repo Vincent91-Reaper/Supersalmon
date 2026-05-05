@@ -135,6 +135,8 @@ session = 'get-from-site-cookie'
 # native_spectrals_viewer = false
 # feh_fullscreen = true
 # prompt_puddletag = false
+# Set true to normalize file tags before upload. Keep false for faster WEB race uploads.
+# standardize_tags = false
 # log_dupe_tolerance = 0.5
 # windows_use_recycle_bin = true
 # # Enable smart record-label cleaner pre-check (checks folder names for label keywords/whitelist).
@@ -154,8 +156,8 @@ session = 'get-from-site-cookie'
 # # answers yes to all questions during upload. risky!
 # yes_all = false
 
-# # enable seedbox uploading
-# upload_to_seedbox = true
+# # enable seedbox/upload-client tasks after upload. Keep false for fastest WEB race uploads.
+# upload_to_seedbox = false
 
 # [upload.search]
 # limit = 3
