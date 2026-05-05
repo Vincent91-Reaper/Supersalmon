@@ -491,9 +491,9 @@ def upload(
     #
     #     remaining_gazelle_sites.remove(tracker)
 
-    # Handle cover image - prepare cover but don't upload to the configured image host yet
-    cover_to_upload_later = None
-    is_cover_downloaded = False
+    # Cover image handling is deferred until after the torrent upload.
+    # This keeps the pre-upload race path fast; new groups are updated with
+    # cover/description in the post-upload section below.
     if is_16bit_transcode:
         # For 16-bit transcodes, skip uploading cover to the configured image host entirely
         # The cover.jpg was already copied to the folder during downconversion
@@ -503,15 +503,6 @@ def upload(
             click.secho("Skipping cover upload to image host for 16-bit transcode (using local cover.jpg)", fg="cyan")
         else:
             click.secho("Warning: cover.jpg not found in 16-bit folder", fg="yellow")
-    elif group_id:
-        if not remove_downloaded_cover_image:
-            download_cover_if_nonexistent(path, metadata["cover"])
-        # Don't need cover URL for existing groups
-        pass
-    else:
-        # For new groups, prepare cover but upload to the configured image host AFTER torrent upload
-        cover_path, is_cover_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
-        cover_to_upload_later = cover_path
 
 
 
@@ -573,15 +564,16 @@ def upload(
     album_desc_to_add = None
     cover_url_to_add = None
     
-    # Handle cover upload if needed (new groups only)
-    if cover_to_upload_later and not is_16bit_transcode and is_new_group:
-        click.secho("Uploading cover image to configured image host...", fg="cyan")
-        cover_url_to_add = upload_cover(cover_to_upload_later)
-        # Generate album description to include with cover update (new groups only)
+    # Prepare and upload cover only after successful torrent upload (new groups only).
+    if not is_16bit_transcode and is_new_group:
+        cover_to_upload_later, is_cover_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
+        if cover_to_upload_later:
+            click.secho("Uploading cover image to configured image host...", fg="cyan")
+            cover_url_to_add = upload_cover(cover_to_upload_later)
         album_desc_to_add = generate_description(track_data, metadata)
-    elif is_cover_downloaded and remove_downloaded_cover_image:
-        click.secho("Removing downloaded Cover Image File", fg="yellow")
-        os.remove(cover_to_upload_later)
+        if is_cover_downloaded and remove_downloaded_cover_image:
+            click.secho("Removing downloaded Cover Image File", fg="yellow")
+            os.remove(cover_to_upload_later)
     
     # Update group with cover and description (new groups only)
     if cover_url_to_add or album_desc_to_add:
