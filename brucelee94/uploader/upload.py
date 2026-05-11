@@ -30,6 +30,24 @@ def _get_event_loop():
             return loop
 
 
+def _tag_number_prefix(value, default=None):
+    """Return the first numeric part of a tag number stored as int or '1/2'."""
+    if value is None or value == "":
+        return default
+    return str(value).split("/")[0]
+
+
+def _is_later_disc(value):
+    """Return True when a discnumber tag indicates disc 2 or later."""
+    disc_num = _tag_number_prefix(value)
+    if not disc_num:
+        return False
+    try:
+        return int(disc_num) > 1
+    except (TypeError, ValueError):
+        return False
+
+
 def prepare_and_upload(
     gazelle_site,
     path,
@@ -447,8 +465,11 @@ def generate_description(track_data, metadata):
     multi_disc = any(
         (
             t["t"].discnumber
-            and t["t"].discnumber != "1/1"
-            and (t["t"].discnumber.startswith("1/") or int(t["t"].discnumber) > 1)
+            and str(t["t"].discnumber) != "1/1"
+            and (
+                str(t["t"].discnumber).startswith("1/")
+                or _is_later_disc(t["t"].discnumber)
+            )
         )
         for t in track_data.values()
     )
@@ -489,12 +510,7 @@ def generate_description(track_data, metadata):
         tracks_by_disc = defaultdict(list)
         
         for track in track_data.values():
-            disc_num = track["t"].discnumber
-            if disc_num:
-                # Extract just the disc number (e.g., "2" from "2/3")
-                disc_num = disc_num.split("/")[0]
-            else:
-                disc_num = "1"
+            disc_num = _tag_number_prefix(track["t"].discnumber, default="1")
             tracks_by_disc[disc_num].append(track)
         
         # Sort discs and tracks
@@ -513,9 +529,7 @@ def generate_description(track_data, metadata):
                 total_duration += track["duration"]
                 
                 # Use original track number from metadata - extract just the number part if it contains "/"
-                track_num_raw = track['t'].tracknumber
-                if '/' in track_num_raw:
-                    track_num_raw = track_num_raw.split('/')[0]
+                track_num_raw = _tag_number_prefix(track['t'].tracknumber, default="0")
                 # Zero-pad track numbers
                 track_num = str_to_int_if_int(track_num_raw, zpad=True)
                 description += f"[b]{track_num}.[/b] "
@@ -550,11 +564,7 @@ def generate_description(track_data, metadata):
                 else:
                     # Non-DJ Mix: Use metadata-based artists with guest separation
                     # Get track metadata for artist info (if available)
-                    disc_for_lookup = track['t'].discnumber
-                    if disc_for_lookup:
-                        disc_for_lookup = disc_for_lookup.split("/")[0]
-                    else:
-                        disc_for_lookup = "1"
+                    disc_for_lookup = _tag_number_prefix(track['t'].discnumber, default="1")
                     
                     track_metadata = metadata_tracks_map.get((disc_for_lookup, track_num_raw))
                     
