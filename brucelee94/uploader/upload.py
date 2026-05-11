@@ -521,8 +521,10 @@ def generate_description(track_data, metadata):
             description += f"[size=2][b]Disc {disc_num}[/b][/size]\n"
             
             # Sort tracks within disc by track number
-            disc_tracks = sorted(tracks_by_disc[disc_num], 
-                               key=lambda t: int(t["t"].tracknumber.split("/")[0]) if t["t"].tracknumber else 0)
+            disc_tracks = sorted(
+                tracks_by_disc[disc_num],
+                key=lambda t: int(_tag_number_prefix(t["t"].tracknumber, default="0")),
+            )
             
             for track in disc_tracks:
                 length = "{:02d}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
@@ -626,10 +628,7 @@ def generate_description(track_data, metadata):
             length = "{:02d}:{:02d}".format(track["duration"] // 60, track["duration"] % 60)
             total_duration += track["duration"]
             
-            # Extract just the number part if it contains "/"
-            track_num_raw = track['t'].tracknumber
-            if '/' in track_num_raw:
-                track_num_raw = track_num_raw.split('/')[0]
+            track_num_raw = _tag_number_prefix(track['t'].tracknumber, default="0")
             # Zero-pad track numbers
             track_num = str_to_int_if_int(track_num_raw, zpad=True)
             description += f"[b]{track_num}.[/b] "
