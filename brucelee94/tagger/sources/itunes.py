@@ -20,12 +20,15 @@ def _amp_album(soup):
         return data[0] if data else {}
     return {}
 
+
 def _amp_attrs(soup):
     return _amp_album(soup).get("attributes", {})
+
 
 def _amp_tracks(soup):
     album = _amp_album(soup)
     return album.get("relationships", {}).get("tracks", {}).get("data", [])
+
 
 def _amp_artists(soup):
     album = _amp_album(soup)
@@ -277,9 +280,11 @@ def parse_artists(soup, track, title):
 def parse_artists_header(soup):
     """Parse the artists listed in the header as artists of the release."""
     artists = []
+    if not hasattr(soup, "select"):
+        return artists
     try:
         release_artists = soup.select(".product-creator")[0].a.string.strip()
-    except (TypeError, IndexError):
+    except (AttributeError, TypeError, IndexError):
         return artists
 
     if re.match(r"[^,]+, [^&]+ (& [^&]+)+", release_artists):
@@ -301,6 +306,8 @@ def parse_artists_header(soup):
 
 def parse_artists_track(track):
     """Parse the artists listed per-track, below the track title."""
+    if not hasattr(track, "select"):
+        return []
     track_block = track.select(".by-line.typography-caption")
     if len(track_block) == 1:
         biline = track_block[0].text.strip().replace("\n", ", ")

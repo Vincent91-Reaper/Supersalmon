@@ -283,3 +283,30 @@ def test_itunes_amp_dict_has_no_html_comment(monkeypatch):
     )
 
     assert itunes.Scraper().parse_comment({"data": []}) is None
+
+
+def test_itunes_artist_helpers_ignore_amp_dict(monkeypatch):
+    common = types.ModuleType("brucelee94.common")
+    common.RE_FEAT = re.compile(r"$^")
+    common.parse_copyright = lambda value: value
+    sources = types.ModuleType("brucelee94.sources")
+    sources.iTunesBase = type("iTunesBase", (), {})
+    tagger_base = types.ModuleType("brucelee94.tagger.sources.base")
+    tagger_base.MetadataMixin = type("MetadataMixin", (), {})
+    errors = types.ModuleType("brucelee94.errors")
+    errors.ScrapeError = type("ScrapeError", (Exception,), {})
+
+    itunes = load_module(
+        monkeypatch,
+        "itunes_artist_helper_regression",
+        "brucelee94/tagger/sources/itunes.py",
+        {
+            "brucelee94.common": common,
+            "brucelee94.errors": errors,
+            "brucelee94.sources": sources,
+            "brucelee94.tagger.sources.base": tagger_base,
+        },
+    )
+
+    assert itunes.parse_artists_header({"data": []}) == []
+    assert itunes.parse_artists_track({"attributes": {"name": "Track"}}) == []
