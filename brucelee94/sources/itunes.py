@@ -87,8 +87,8 @@ class iTunesBase(BaseScraper):
     def _parse_jwt_expiry(token):
         try:
             payload = token.split(".")[1]
-            # JWT payloads may omit base64 padding; this is the number of '=' chars
-            # needed to make the payload length a multiple of 4 before decoding.
+            # JWT payloads may omit base64 padding. Add the required number of
+            # '=' characters to make the payload length a multiple of 4.
             payload += "=" * (-len(payload) % BASE64_PADDING_MODULO)
             decoded = base64.urlsafe_b64decode(payload.encode()).decode()
             return int(json.loads(decoded).get("exp", 0))

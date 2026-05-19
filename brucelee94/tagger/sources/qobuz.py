@@ -164,13 +164,13 @@ class Scraper(QobuzBase, MetadataMixin):
         return RE_FEAT.sub("", soup["title"])
 
     def parse_release_group_year(self, soup):
-        # Group year should represent the original release; stream date is only a fallback.
+        # Group year prefers the original release date; streaming release date is only a fallback.
         original_date = safe_get(soup, ["release_date_original"]) or safe_get(soup, ["release_date_stream"])
         match = RE_YEAR.search(original_date or "")
         return match.group(1) if match else None
 
     def parse_release_year(self, soup):
-        # Edition/upload year should represent the streaming release; original date is only a fallback.
+        # Edition/upload year prefers the streaming release date; original release date is only a fallback.
         stream_date = safe_get(soup, ["release_date_stream"]) or safe_get(soup, ["release_date_original"])
         match = RE_YEAR.search(stream_date or "")
         return match.group(1) if match else self.parse_release_group_year(soup)
@@ -443,7 +443,13 @@ class Scraper(QobuzBase, MetadataMixin):
     # --------------------------------------------------------------------------
 
     def _collect_track_artists(self, track, main_artist, featured_artists):
-        """Collect Qobuz track artists from performer fields and role-tagged performers."""
+        """Collect Qobuz track artists using role-aware performer parsing.
+
+        Prefer MainArtist entries from the Qobuz performers string, add
+        FeaturedArtist and Remixer contributors with their RED roles, then
+        fall back to track performer.name or album-level main artists when
+        role-tagged performers are unavailable.
+        """
         artists = []
         seen_artists = set()
 
