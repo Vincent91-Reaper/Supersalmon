@@ -68,19 +68,51 @@ class DeezerBase(BaseScraper):
         return cls.regex.search(url)[2]
 
     async def create_soup(self, url, params=None):
-        """Run a GET request to Deezer's JSON API for album data."""
+        """Run Deezer's web album API and public API for complete album metadata."""
         params = params or {}
         album_id = self.parse_release_id(url)
         try:
-            data = await self.get_json(f"/album/{album_id}", params=params, headers=HEADERS)
-            internal_data = await self.get_internal_api_data(f"/album/{album_id}", params)
-            data["tracklist"] = self.get_tracks(internal_data)
-            data["cover_xl"] = self.get_cover(internal_data)
-            return data
+            public_data = await self.get_json(f"/album/{album_id}", params=params, headers=HEADERS)
+            page_data = await loop.run_in_executor(None, lambda: self.get_page_album(album_id))
+            album_data = page_data["results"]["DATA"]
+            songs = page_data["results"]["SONGS"]["data"]
+
+            public_data.update(
+                {
+                    "title": album_data.get("ALB_TITLE") or public_data.get("title"),
+                    "release_date": album_data.get("DIGITAL_RELEASE_DATE") or public_data.get("release_date"),
+                    "release_date_original": album_data.get("ORIGINAL_RELEASE_DATE"),
+                    "copyright": album_data.get("COPYRIGHT"),
+                    "label": album_data.get("LABEL_NAME") or public_data.get("label"),
+                    "upc": album_data.get("UPC") or public_data.get("upc"),
+                    "record_type": (album_data.get("TYPE") or public_data.get("record_type") or "").lower(),
+                    "tracklist": songs,
+                    "cover_xl": self.get_cover_from_code(album_data.get("ALB_PICTURE")) or public_data.get("cover_xl"),
+                    "_deezer_page_album": album_data,
+                }
+            )
+            return public_data
         except json.decoder.JSONDecodeError as e:
             raise ScrapeError("Deezer page did not return valid JSON.") from e
         except (KeyError, ScrapeError) as e:
             raise ScrapeError(f"Failed to grab metadata for {url}.") from e
+
+    def get_page_album(self, album_id):
+        params = {"api_version": "1.0", "api_token": self.api_token or "", "input": "3"}
+        response = self.sesh.post(
+            "https://www.deezer.com/ajax/gw-light.php",
+            params={"method": "deezer.pageAlbum", **params},
+            data=json.dumps({"alb_id": album_id, "header": True, "lang": "en", "tab": 0}),
+            headers={**HEADERS, "Content-Type": "application/json"},
+            timeout=10,
+        )
+        try:
+            data = response.json()
+        except JSONDecodeError as e:
+            raise ScrapeError("Deezer pageAlbum did not return valid JSON.") from e
+        if response.status_code != 200 or data.get("error"):
+            raise ScrapeError(f"Deezer pageAlbum failed with status {response.status_code}.", data.get("error"))
+        return data
 
     async def get_internal_api_data(self, url, params=None):
         """Deezer puts some things in an api that isn't public facing.
@@ -102,5 +134,9 @@ class DeezerBase(BaseScraper):
 
     def get_cover(self, internal_data):
         "This uses a hardcoded url. Hope the dns url doesn't change."
-        artwork_code = internal_data["DATA"]["ALB_PICTURE"]
+        return self.get_cover_from_code(internal_data["DATA"]["ALB_PICTURE"])
+
+    def get_cover_from_code(self, artwork_code):
+        if not artwork_code:
+            return None
         return f"https://e-cdns-images.dzcdn.net/images/cover/{artwork_code}/1000x1000-000000-100-0-0.jpg"
