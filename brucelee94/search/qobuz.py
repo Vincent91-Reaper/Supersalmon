@@ -19,7 +19,7 @@ class Searcher(QobuzBase, SearchMixin):
             resp = await self.get_json(
                 "/catalog/search",
                 params={"query": searchstr, "limit": limit, "offset": 0, "facet": None},
-                headers=self.headers,
+                headers=self.headers(),
             )
 
             if not resp or "albums" not in resp or "items" not in resp["albums"]:
