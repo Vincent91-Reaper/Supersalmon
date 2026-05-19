@@ -22,28 +22,39 @@ SPLIT_GENRES = {
 
 
 class Scraper(BeatportBase, MetadataMixin):
+    @staticmethod
+    def _tracks(soup):
+        return soup["state"]["data"]["results"]
+
+    @staticmethod
+    def _release(soup):
+        return Scraper._tracks(soup)[0]["release"]
+
     def parse_release_title(self, soup):
         try:
-            return soup["state"]["data"]["results"][0]["release"]["name"]
+            return self._release(soup)["name"]
         except (KeyError, IndexError) as e:
             raise ScrapeError("Could not parse release title") from e
 
     def parse_cover_url(self, soup):
         try:
-            return soup["state"]["data"]["results"][0]["release"]["image"]["uri"]
+            return self._release(soup)["image"]["uri"]
         except (KeyError, IndexError) as e:
             raise ScrapeError("Could not parse cover URL") from e
 
     def parse_genres(self, soup):
         genres = {"Electronic"}
         try:
-            tracks = soup["state"]["data"]["results"]
+            tracks = self._tracks(soup)
             for track in tracks:
-                genre_name = track["genre"]["name"]
-                try:
-                    genres |= SPLIT_GENRES[genre_name]
-                except KeyError:
-                    genres.add(genre_name)
+                for genre in (track.get("genre"), track.get("sub_genre")):
+                    if not genre:
+                        continue
+                    genre_name = genre["name"]
+                    try:
+                        genres |= SPLIT_GENRES[genre_name]
+                    except KeyError:
+                        genres.add(genre_name)
             return genres
         except (KeyError, IndexError) as e:
             raise ScrapeError("Could not parse genres") from e
@@ -57,7 +68,7 @@ class Scraper(BeatportBase, MetadataMixin):
 
     def parse_release_date(self, soup):
         try:
-            raw_date = soup["state"]["data"]["results"][0]["new_release_date"]
+            raw_date = self._tracks(soup)[0]["new_release_date"]
             # Format date to "Month Day, Year" format (e.g., "December 31, 2025")
             # Beatport typically returns dates in YYYY-MM-DD format
             if raw_date:
@@ -82,15 +93,18 @@ class Scraper(BeatportBase, MetadataMixin):
 
     def parse_release_label(self, soup):
         try:
-            return soup["state"]["data"]["results"][0]["release"]["label"]["name"]
+            return self._release(soup)["label"]["name"]
         except (KeyError, IndexError) as e:
             raise ScrapeError("Could not parse release label") from e
 
     def parse_release_catno(self, soup):
         try:
-            return soup["state"]["data"]["results"][0]["catalog_number"]
+            return self._tracks(soup)[0]["catalog_number"]
         except (KeyError, IndexError) as e:
             raise ScrapeError("Could not parse catalog number") from e
+
+    def parse_upc(self, soup):
+        return self._release(soup).get("upc")
 
     def parse_release_type(self, soup):
         # Beatport doesn't provide explicit type, default to EP for most releases
@@ -110,18 +124,18 @@ class Scraper(BeatportBase, MetadataMixin):
                 track_num = str(i)
                 # Get artists and remixers
                 artists = []
-                for artist in track["artists"]:
+                for artist in track.get("artists") or []:
                     # Split on &, ;, /, and comma to handle multiple artist separators
                     for split in re.split(r" & |; | / |, ", artist["name"]):
                         artists.append((split.strip(), "main"))
-                for remixer in track["remixers"]:
+                for remixer in track.get("remixers") or []:
                     # Split on &, ;, /, and comma to handle multiple artist separators
                     for split in re.split(r" & |; | / |, ", remixer["name"]):
                         artists.append((split.strip(), "remixer"))
 
                 # Get title with mix name if not Original Mix
                 title = track["name"]
-                if track["mix_name"] and track["mix_name"] != "Original Mix":
+                if track.get("mix_name") and track["mix_name"] != "Original Mix":
                     title += f" ({track['mix_name']})"
 
                 tracks[str(cur_disc)][track_num] = self.generate_track(
@@ -129,8 +143,8 @@ class Scraper(BeatportBase, MetadataMixin):
                     discno=cur_disc,
                     artists=artists,
                     title=title,
-                    streamable=track["is_available_for_streaming"],
-                    isrc=track["isrc"],
+                    streamable=track.get("is_available_for_streaming"),
+                    isrc=track.get("isrc"),
                 )
             return dict(tracks)
         except (KeyError, IndexError) as e:

@@ -1,52 +1,37 @@
-import json
-
 from brucelee94 import cfg
 from brucelee94.errors import ScrapeError
 from brucelee94.search.base import IdentData, SearchMixin
 from brucelee94.sources import BeatportBase
-from brucelee94.sources.base import BaseScraper
 
 
 class Searcher(BeatportBase, SearchMixin):
-    async def create_soup(self, url, params=None):
-        """Override to use BaseScraper's create_soup directly for search."""
-        return await BaseScraper.create_soup(self, url, params)
-
     async def search_releases(self, searchstr, limit):
         releases = {}
-        soup = await self.create_soup(self.search_url, params={"q": searchstr})
+        response = await self.api_get(
+            self.api_search_url,
+            params={"q": searchstr, "type": "releases", "per_page": max(limit, 25)},
+        )
         try:
-            script_tag = soup.find("script", id="__NEXT_DATA__")
-            if not script_tag:
-                raise ScrapeError("Could not find Next.js data script tag")
-
-            data = json.loads(script_tag.string)
-            search_results = data["props"]["pageProps"]["dehydratedState"]["queries"][0]["state"]["data"]["data"]
+            search_results = response["releases"]
             for result in search_results:
-                try:
-                    rls_id = result["release_id"]
+                rls_id = result["id"]
+                main_artists = [artist["name"] for artist in result.get("artists") or [] if artist.get("name")]
+                title = result["name"]
+                artists = (
+                    ", ".join(main_artists) if len(main_artists) < 4 else cfg.upload.formatting.various_artist_word
+                )
+                label = (result.get("label") or {}).get("name") or ""
 
-                    # Filter artists to get only main artists (not remixers)
-                    main_artists = [a["artist_name"] for a in result["artists"] if a["artist_type_name"] == "Artist"]
-
-                    title = result["release_name"]
-                    artists = (
-                        ", ".join(main_artists) if len(main_artists) < 4 else cfg.upload.formatting.various_artist_word
+                if label.lower() not in cfg.upload.search.excluded_labels:
+                    releases[rls_id] = (
+                        IdentData(artists, title, None, result.get("track_count"), "WEB"),
+                        self.format_result(artists, title, label),
                     )
-                    label = result["label"]["label_name"]
-
-                    if label.lower() not in cfg.upload.search.excluded_labels:
-                        releases[rls_id] = (
-                            IdentData(artists, title, None, None, "WEB"),
-                            self.format_result(artists, title, label),
-                        )
-                except (KeyError, IndexError) as e:
-                    raise ScrapeError("Failed to parse search result item") from e
 
                 if len(releases) == limit:
                     break
 
-        except (KeyError, IndexError) as e:
-            raise ScrapeError("Failed to parse scraped search results") from e
+        except (KeyError, TypeError) as e:
+            raise ScrapeError("Failed to parse Beatport API search results") from e
 
         return "Beatport", releases
