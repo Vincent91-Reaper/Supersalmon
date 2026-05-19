@@ -52,9 +52,6 @@ class BeatportBase(BaseScraper):
 
     @classmethod
     def _get_token(cls, force_refresh=False):
-        if not force_refresh and cls._token and time.time() < cls._token_expires - cls.TOKEN_REFRESH_BUFFER_SECONDS:
-            return cls._token
-
         with cls._token_lock:
             if not force_refresh and cls._token and time.time() < cls._token_expires - cls.TOKEN_REFRESH_BUFFER_SECONDS:
                 return cls._token
@@ -136,12 +133,14 @@ class BeatportBase(BaseScraper):
         }
         compat_tracks = []
         for track in tracks:
+            release_catno = release.get("catalog_number")
+            release_date = release.get("new_release_date")
             compat_tracks.append(
                 {
                     **track,
                     "release": release_payload,
-                    "catalog_number": release.get("catalog_number") or track.get("catalog_number"),
-                    "new_release_date": release.get("new_release_date") or track.get("new_release_date"),
+                    "catalog_number": release_catno if release_catno is not None else track.get("catalog_number"),
+                    "new_release_date": release_date if release_date is not None else track.get("new_release_date"),
                 }
             )
         return compat_tracks

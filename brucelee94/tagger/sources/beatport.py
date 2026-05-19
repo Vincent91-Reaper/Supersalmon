@@ -47,7 +47,8 @@ class Scraper(BeatportBase, MetadataMixin):
         try:
             tracks = self._tracks(soup)
             for track in tracks:
-                for genre_data in (track.get("genre"), track.get("sub_genre") or track.get("subGenre")):
+                subgenre_data = track.get("sub_genre") if "sub_genre" in track else track.get("subGenre")
+                for genre_data in (track.get("genre"), subgenre_data):
                     if not genre_data:
                         continue
                     genre_name = genre_data["name"]

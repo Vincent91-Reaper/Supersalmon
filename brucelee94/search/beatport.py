@@ -16,7 +16,7 @@ class Searcher(BeatportBase, SearchMixin):
             for result in search_results:
                 rls_id = result["id"]
                 main_artists = [
-                    artist["name"] for artist in result.get("artists") or [] if artist.get("name") is not None
+                    artist["name"] for artist in result.get("artists") or [] if artist.get("name")
                 ]
                 title = result["name"]
                 artists = (
