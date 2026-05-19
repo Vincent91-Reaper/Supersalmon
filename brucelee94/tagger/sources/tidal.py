@@ -160,4 +160,4 @@ class Scraper(TidalBase, MetadataMixin):
                     artist_set.add(artist["name"].lower())
 
         # In case something is fucked, have a failsafe of returning all artists.
-        return result if result else [(unescape(a.get("name", "")), "main") for a in artists if a.get("name")]
+        return result if result else [(unescape(a["name"]), "main") for a in artists if a.get("name")]

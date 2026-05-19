@@ -52,7 +52,7 @@ class TidalBase(BaseScraper):
                 script_url = f"https://tidal.com{script_url}"
             script = requests.get(script_url, timeout=10).text
             # Tidal bundles environment-specific token variable names near STAGE/PROD markers.
-            stage_match = re.search(r"(?<=STAGE.+?\[)([^,]+)(?=.+PROD)", script)
+            stage_match = re.search(r"STAGE.*?\[([^,]+).*?PROD", script)
             if stage_match:
                 token_match = re.search(rf"{re.escape(stage_match[1])}=.(\w+)", script)
             else:

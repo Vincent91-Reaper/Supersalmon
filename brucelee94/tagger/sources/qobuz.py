@@ -164,11 +164,13 @@ class Scraper(QobuzBase, MetadataMixin):
         return RE_FEAT.sub("", soup["title"])
 
     def parse_release_group_year(self, soup):
+        # Group year should represent the original release; stream date is only a fallback.
         original_date = safe_get(soup, ["release_date_original"]) or safe_get(soup, ["release_date_stream"])
         match = RE_YEAR.search(original_date or "")
         return match.group(1) if match else None
 
     def parse_release_year(self, soup):
+        # Edition/upload year should represent the streaming release; original date is only a fallback.
         stream_date = safe_get(soup, ["release_date_stream"]) or safe_get(soup, ["release_date_original"])
         match = RE_YEAR.search(stream_date or "")
         return match.group(1) if match else self.parse_release_group_year(soup)

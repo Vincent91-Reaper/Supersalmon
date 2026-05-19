@@ -12,6 +12,8 @@ from brucelee94.sources.base import BaseScraper
 
 loop = asyncio.get_event_loop()
 
+DEEZER_GW_INPUT_MODE = "3"  # Deezer web gw-light API input mode used by its album page.
+
 HEADERS = {
     "User-Agent": choice(UAGENTS),
     "Content-Language": "en-US",
@@ -49,7 +51,7 @@ class DeezerBase(BaseScraper):
         if self._csrf_token:
             return self._csrf_token
 
-        params = {"api_version": "1.0", "api_token": "null", "input": "3"}
+        params = {"api_version": "1.0", "api_token": "null", "input": DEEZER_GW_INPUT_MODE}
         response = self.sesh.get(
             "https://www.deezer.com/ajax/gw-light.php",
             params={"method": "deezer.getUserData", **params},
@@ -98,7 +100,7 @@ class DeezerBase(BaseScraper):
             raise ScrapeError(f"Failed to grab metadata for {url}.") from e
 
     def get_page_album(self, album_id):
-        params = {"api_version": "1.0", "api_token": self.api_token or "", "input": "3"}
+        params = {"api_version": "1.0", "api_token": self.api_token or "", "input": DEEZER_GW_INPUT_MODE}
         response = self.sesh.post(
             "https://www.deezer.com/ajax/gw-light.php",
             params={"method": "deezer.pageAlbum", **params},

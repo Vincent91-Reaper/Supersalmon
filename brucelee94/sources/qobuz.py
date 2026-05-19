@@ -38,9 +38,7 @@ class QobuzBase(BaseScraper):
             if script_url.startswith("/"):
                 script_url = f"https://open.qobuz.com{script_url}"
             script = requests.get(script_url, timeout=10).text
-            token_match = re.search(r"app_id\s*:\s*[\"']?([A-Za-z0-9]+)", script)
-            if not token_match:
-                token_match = re.search(r"app_id[\"']?\s*[:=]\s*[\"']([A-Za-z0-9]+)", script)
+            token_match = re.search(r"[\"']?app_id[\"']?\s*[:=]\s*[\"']?([A-Za-z0-9]+)", script)
             if not token_match:
                 raise ScrapeError("Could not parse Qobuz app id from web assets.")
             cls._dynamic_app_id = token_match[1]
