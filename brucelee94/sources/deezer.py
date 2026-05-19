@@ -108,10 +108,10 @@ class DeezerBase(BaseScraper):
         )
         try:
             data = response.json()
-        except JSONDecodeError as e:
+        except json.JSONDecodeError as e:
             raise ScrapeError("Deezer pageAlbum did not return valid JSON.") from e
         if response.status_code != 200 or data.get("error"):
-            raise ScrapeError(f"Deezer pageAlbum failed with status {response.status_code}.", data.get("error"))
+            raise ScrapeError(f"Deezer pageAlbum failed with status {response.status_code}; see payload for details.", data.get("error"))
         return data
 
     async def get_internal_api_data(self, url, params=None):

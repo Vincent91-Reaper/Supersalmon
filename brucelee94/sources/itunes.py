@@ -56,7 +56,7 @@ class iTunesBase(BaseScraper):
         except json.JSONDecodeError as e:
             raise ScrapeError("Apple AMP API did not return valid JSON.") from e
         if response.status_code != 200:
-            raise ScrapeError(f"Apple AMP API failed with status {response.status_code}.", data)
+            raise ScrapeError(f"Apple AMP API failed with status {response.status_code}; see payload for details.", data)
         return data
 
     @classmethod

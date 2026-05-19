@@ -103,6 +103,12 @@ def safe_get(d, keys, default=None):
     return result if result else default
 
 
+def _is_featured_artist_only(roles):
+    return any(role == "featuredartist" for role in roles) and not any(
+        role == "associatedperformer" for role in roles
+    )
+
+
 # ------------------------------------------------------------------------------
 # Qobuz Metadata Scraper Class
 # ------------------------------------------------------------------------------
@@ -454,7 +460,7 @@ class Scraper(QobuzBase, MetadataMixin):
             artist_name, roles = parts[0], [role.lower() for role in parts[1:]]
             if any(role == "mainartist" for role in roles):
                 performer_main_artists.append(artist_name)
-            if any(role == "featuredartist" for role in roles) and not any(role == "associatedperformer" for role in roles):
+            if _is_featured_artist_only(roles):
                 add_artist(artist_name, "guest")
             if any(role == "remixer" for role in roles):
                 add_artist(artist_name, "remixer")

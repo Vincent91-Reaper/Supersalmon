@@ -17,6 +17,8 @@ RECORD_TYPES = {
     "EP": "EP",
     "SINGLE": "Single",
 }
+DEFAULT_DISC_NUMBER = 1
+DEFAULT_TRACK_NUMBER = 1
 
 
 class Scraper(TidalBase, MetadataMixin):
@@ -75,8 +77,8 @@ class Scraper(TidalBase, MetadataMixin):
         tracks = defaultdict(dict)
         for track in soup["tracklist"]:
             parsed_artists = self.parse_artists(track.get("artists", []), track.get("title", ""), track.get("id"))
-            discno = track.get("volumeNumber") or track.get("volume") or 1
-            trackno = track.get("trackNumber") or track.get("number") or 1
+            discno = track.get("volumeNumber") or track.get("volume") or DEFAULT_DISC_NUMBER
+            trackno = track.get("trackNumber") or track.get("number") or DEFAULT_TRACK_NUMBER
 
             tracks[str(discno)][str(trackno)] = self.generate_track(
                 trackno=trackno,
