@@ -50,7 +50,21 @@ class Scraper(TidalBase, MetadataMixin):
             return None
 
     def parse_release_label(self, soup):
-        return parse_copyright(soup["copyright"])
+        return parse_copyright(soup.get("copyright", ""))
+
+    def parse_genres(self, soup):
+        genres = set()
+        for key in ("genre", "genres"):
+            value = soup.get(key)
+            if isinstance(value, str):
+                genres.add(value)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, str):
+                        genres.add(item)
+                    elif isinstance(item, dict) and item.get("name"):
+                        genres.add(item["name"])
+        return genres
 
     def parse_upc(self, soup):
         return soup["upc"]
@@ -58,20 +72,22 @@ class Scraper(TidalBase, MetadataMixin):
     def parse_tracks(self, soup):
         tracks = defaultdict(dict)
         for track in soup["tracklist"]:
-            parsed_artists = self.parse_artists(track["artists"], track["title"], track["id"])
-            
-            tracks[str(track["volumeNumber"])][str(track["trackNumber"])] = self.generate_track(
-                trackno=track["trackNumber"],
-                discno=track["volumeNumber"],
+            parsed_artists = self.parse_artists(track.get("artists", []), track.get("title", ""), track.get("id"))
+            discno = track.get("volumeNumber") or track.get("volume") or 1
+            trackno = track.get("trackNumber") or track.get("number") or 1
+
+            tracks[str(discno)][str(trackno)] = self.generate_track(
+                trackno=trackno,
+                discno=discno,
                 artists=parsed_artists,
-                title=self.parse_title(track["title"], track["version"]),
-                replay_gain=track["replayGain"],
-                peak=track["peak"],
-                isrc=track["isrc"],
-                explicit=track["explicit"],
-                format_=track["audioQuality"],
-                stream_id=track["id"],
-                streamable=track["allowStreaming"],
+                title=self.parse_title(track.get("title", ""), track.get("version")),
+                replay_gain=track.get("replayGain"),
+                peak=track.get("peak"),
+                isrc=track.get("isrc"),
+                explicit=track.get("explicit"),
+                format_=track.get("audioQuality"),
+                stream_id=track.get("id"),
+                streamable=track.get("allowStreaming", True),
             )
         return dict(tracks)
 
@@ -101,23 +117,24 @@ class Scraper(TidalBase, MetadataMixin):
         if remixer_str:
             remix_str = unescape(remixer_str[1]).lower()
 
-        all_guests = all(a["type"] == "FEATURED" for a in artists)
+        all_guests = all(a.get("type", "MAIN") == "FEATURED" for a in artists)
         for artist in artists:
-            artist_without_feat = artist["name"]
-            feat = RE_FEAT.search(artist["name"])
+            artist_without_feat = artist.get("name", "")
+            feat = RE_FEAT.search(artist_without_feat)
             if feat:
                 for artist_ in re_split(feat[1]):
                     result.append((unescape(artist_), "guest"))
                     artist_set.add(unescape(artist_).lower())
                 artist_without_feat = re.sub(re.escape(feat[0]) + "$", "", artist_without_feat).rstrip()
             for a in re_split(artist_without_feat):
-                if artist["type"] in ROLES and unescape(a).lower() not in artist_set:
+                artist_type = artist.get("type", "MAIN")
+                if artist_type in ROLES and unescape(a).lower() not in artist_set:
                     if unescape(a).lower() in remix_str:
                         result.append((unescape(a), "remixer"))
                     elif all_guests:
                         result.append((unescape(a), "main"))
                     else:
-                        result.append((unescape(a), ROLES[artist["type"]]))
+                        result.append((unescape(a), ROLES[artist_type]))
                     artist_set.add(unescape(a).lower())
 
         if "mix" in title.lower():  # Get contributors for (re)mixes.
@@ -139,4 +156,4 @@ class Scraper(TidalBase, MetadataMixin):
                     artist_set.add(artist["name"].lower())
 
         # In case something is fucked, have a failsafe of returning all artists.
-        return result if result else [(unescape(a["name"]), "main") for a in artists]
+        return result if result else [(unescape(a.get("name", "")), "main") for a in artists if a.get("name")]
