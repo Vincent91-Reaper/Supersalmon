@@ -77,6 +77,118 @@ def test_tidal_album_items_preserve_track_artists(monkeypatch):
     assert data["tracklist"][0]["artists"] == [{"name": "Fasina", "type": "MAIN"}]
 
 
+def test_tidal_album_tracks_fallback_when_items_have_no_artists(monkeypatch):
+    class ScrapeError(Exception):
+        pass
+
+    class BaseScraper:
+        def __init__(self):
+            pass
+
+    cfg = types.SimpleNamespace(
+        metadata=types.SimpleNamespace(tidal=types.SimpleNamespace(token=None, fetch_regions=[]))
+    )
+    brucelee94 = types.ModuleType("brucelee94")
+    brucelee94.cfg = cfg
+    errors = types.ModuleType("brucelee94.errors")
+    errors.ScrapeError = ScrapeError
+    base = types.ModuleType("brucelee94.sources.base")
+    base.BaseScraper = BaseScraper
+
+    tidal = load_module(
+        monkeypatch,
+        "tidal_tracks_fallback_regression",
+        "brucelee94/sources/tidal.py",
+        {
+            "brucelee94": brucelee94,
+            "brucelee94.errors": errors,
+            "brucelee94.sources.base": base,
+        },
+    )
+    monkeypatch.setattr(tidal, "get_tidal_regions_to_fetch", lambda: ["US"])
+    requested_paths = []
+
+    class Scraper(tidal.TidalBase):
+        def _headers(self):
+            return {}
+
+        async def get_json(self, url, params=None, headers=None):
+            requested_paths.append(url)
+            if url.endswith("/items"):
+                return {"items": [{"item": {"id": 1, "title": "Track Without Artists"}}]}
+            if url.endswith("/tracks"):
+                return {
+                    "items": [
+                        {
+                            "id": 1,
+                            "title": "Track With Artists",
+                            "artists": [{"name": "Tems", "type": "MAIN"}],
+                        }
+                    ]
+                }
+            return {"title": "Love Is A Kingdom", "artists": [{"name": "Tems", "type": "MAIN"}]}
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    data = loop.run_until_complete(Scraper().create_soup("https://tidal.com/album/474707708"))
+
+    assert requested_paths == [
+        "/albums/474707708",
+        "/albums/474707708/items",
+        "/albums/474707708/tracks",
+    ]
+    assert data["tracklist"][0]["title"] == "Track With Artists"
+    assert data["tracklist"][0]["artists"] == [{"name": "Tems", "type": "MAIN"}]
+
+
+def test_tidal_album_artist_fills_missing_track_artists(monkeypatch):
+    class ScrapeError(Exception):
+        pass
+
+    class BaseScraper:
+        def __init__(self):
+            pass
+
+    cfg = types.SimpleNamespace(
+        metadata=types.SimpleNamespace(tidal=types.SimpleNamespace(token=None, fetch_regions=[]))
+    )
+    brucelee94 = types.ModuleType("brucelee94")
+    brucelee94.cfg = cfg
+    errors = types.ModuleType("brucelee94.errors")
+    errors.ScrapeError = ScrapeError
+    base = types.ModuleType("brucelee94.sources.base")
+    base.BaseScraper = BaseScraper
+
+    tidal = load_module(
+        monkeypatch,
+        "tidal_album_artist_fallback_regression",
+        "brucelee94/sources/tidal.py",
+        {
+            "brucelee94": brucelee94,
+            "brucelee94.errors": errors,
+            "brucelee94.sources.base": base,
+        },
+    )
+    monkeypatch.setattr(tidal, "get_tidal_regions_to_fetch", lambda: ["US"])
+
+    class Scraper(tidal.TidalBase):
+        def _headers(self):
+            return {}
+
+        async def get_json(self, url, params=None, headers=None):
+            if url.endswith("/items"):
+                return {"items": [{"item": {"id": 1, "title": "First"}}]}
+            if url.endswith("/tracks"):
+                return {"items": []}
+            return {"title": "Love Is A Kingdom", "artists": [{"name": "Tems", "type": "MAIN"}]}
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    data = loop.run_until_complete(Scraper().create_soup("https://tidal.com/album/474707708"))
+
+    assert data["tracklist"][0]["artists"] == [{"name": "Tems", "type": "MAIN"}]
+
+
 def test_deezer_label_text_accepts_tuple_values(monkeypatch):
     common = types.ModuleType("brucelee94.common")
     common.RE_FEAT = re.compile(r"$^")

@@ -76,7 +76,8 @@ class Scraper(TidalBase, MetadataMixin):
     def parse_tracks(self, soup):
         tracks = defaultdict(dict)
         for track in soup["tracklist"]:
-            parsed_artists = self.parse_artists(track.get("artists", []), track.get("title", ""), track.get("id"))
+            artists = self.normalize_artists(track.get("artists") or track.get("artist"))
+            parsed_artists = self.parse_artists(artists, track.get("title", ""), track.get("id"))
             discno = track.get("volumeNumber") or track.get("volume") or DEFAULT_DISC_NUMBER
             trackno = track.get("trackNumber") or track.get("number") or DEFAULT_TRACK_NUMBER
 

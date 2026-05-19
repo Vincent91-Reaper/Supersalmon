@@ -33,6 +33,69 @@ class TidalBase(BaseScraper):
     def parse_release_id(cls, url):
         return cls.regex.search(url)[2]
 
+    @staticmethod
+    def normalize_artists(artists):
+        if isinstance(artists, dict):
+            artists = [artists]
+        elif isinstance(artists, str):
+            artists = [{"name": artists, "type": "MAIN"}]
+        elif not isinstance(artists, list):
+            artists = []
+
+        normalized = []
+        for artist in artists:
+            if isinstance(artist, str):
+                normalized.append({"name": artist, "type": "MAIN"})
+            elif isinstance(artist, dict) and artist.get("name"):
+                normalized.append(artist)
+        return normalized
+
+    def _track_artists(self, track):
+        return self.normalize_artists(track.get("artists") or track.get("artist"))
+
+    def _tracklist_has_artists(self, tracklist):
+        return any(self._track_artists(track) for track in tracklist)
+
+    def _normalize_track_artists(self, track, album_artists):
+        track["artists"] = self._track_artists(track) or album_artists
+        return track
+
+    @staticmethod
+    def _unwrap_album_items(items):
+        return [item.get("item", item) for item in items]
+
+    async def _fetch_album_items(self, album_id, base_params):
+        results = []
+        offset = 0
+        while True:
+            track_resp = await self.get_json(
+                f"/albums/{album_id}/items",
+                params={**base_params, "limit": 100, "offset": offset},
+                headers=self._headers(),
+            )
+            items = track_resp.get("items", [])
+            results.extend(items)
+            if len(items) < 100:
+                break
+            offset += 100
+        return self._unwrap_album_items(results)
+
+    async def _fetch_album_tracks(self, album_id, base_params):
+        results = []
+        offset = 0
+        while True:
+            track_resp = await self.get_json(
+                f"/albums/{album_id}/tracks",
+                params={**base_params, "limit": 100, "offset": offset},
+                headers=self._headers(),
+            )
+            items = track_resp.get("items", [])
+            results.extend(items)
+            if len(items) < 100:
+                break
+            offset += 100
+        return results
+
     def _headers(self):
         token = cfg.metadata.tidal.token or self.get_web_token()
         return {"x-tidal-token": token} if token else {}
@@ -74,22 +137,21 @@ class TidalBase(BaseScraper):
                 self.country_code = cc
                 base_params = {**params, "countryCode": cc}
                 data = await self.get_json(f"/albums/{album_id}", params=base_params, headers=self._headers())
+                album_artists = self.normalize_artists(data.get("artists") or data.get("artist"))
 
-                results = []
-                offset = 0
-                while True:
-                    track_resp = await self.get_json(
-                        f"/albums/{album_id}/items",
-                        params={**base_params, "limit": 100, "offset": offset},
-                        headers=self._headers(),
-                    )
-                    items = track_resp.get("items", [])
-                    results.extend(items)
-                    if len(items) < 100:
-                        break
-                    offset += 100
+                tracklist = await self._fetch_album_items(album_id, base_params)
+                if not self._tracklist_has_artists(tracklist):
+                    try:
+                        fallback_tracklist = await self._fetch_album_tracks(album_id, base_params)
+                    except ScrapeError:
+                        fallback_tracklist = []
+                    if fallback_tracklist:
+                        tracklist = fallback_tracklist
 
-                data["tracklist"] = [item.get("item", item) for item in results]
+                data["tracklist"] = [self._normalize_track_artists(track, album_artists) for track in tracklist]
+                if not data["tracklist"] or not self._tracklist_has_artists(data["tracklist"]):
+                    raise ScrapeError("Tidal album response did not include usable track artists.")
+
                 return data
             except json.decoder.JSONDecodeError as e:
                 raise ScrapeError("Tidal page did not return valid JSON.") from e
