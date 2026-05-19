@@ -14,8 +14,31 @@ ALIAS_GENRE = {
 }
 
 
+def _amp_album(soup):
+    if isinstance(soup, dict):
+        data = soup.get("data") or []
+        return data[0] if data else {}
+    return {}
+
+def _amp_attrs(soup):
+    return _amp_album(soup).get("attributes", {})
+
+def _amp_tracks(soup):
+    album = _amp_album(soup)
+    return album.get("relationships", {}).get("tracks", {}).get("data", [])
+
+def _amp_artists(soup):
+    album = _amp_album(soup)
+    return album.get("relationships", {}).get("artists", {}).get("data", [])
+
+
 class Scraper(iTunesBase, MetadataMixin):
     def parse_release_title(self, soup):
+        if isinstance(soup, dict):
+            title = _amp_attrs(soup).get("name", "").strip()
+            if not title:
+                raise ScrapeError("Failed to parse Apple Music title from AMP API.")
+            return RE_FEAT.sub("", title)
         try:
             title = soup.find("meta", {"name": "apple:title"})["content"].strip()
             return RE_FEAT.sub("", title)
@@ -23,26 +46,22 @@ class Scraper(iTunesBase, MetadataMixin):
             raise ScrapeError("Failed to parse scraped title.") from e
 
     def parse_cover_url(self, soup):
+        if isinstance(soup, dict):
+            artwork = _amp_attrs(soup).get("artwork", {}).get("url")
+            return artwork.replace("{w}x{h}", "100000x100000-999") if artwork else None
         try:
-            # Get artwork URL from og:image meta tag
             cover_url = soup.find("meta", {"property": "og:image"})["content"].strip()
-            
-            # Enhance cover quality: Replace with ultra high-resolution version
-            # Standard patterns: 100x100bb, 200x200bb, 600x600bb, etc.
-            # Ultra high-res: 100000x100000-999 (gets maximum available resolution)
-            # Based on YADG userscript optimization
-            import re
-            # Match any resolution pattern like 100x100bb, 600x600bb, etc.
             enhanced_url = re.sub(r'\d+x\d+bb', '100000x100000-999', cover_url)
             return enhanced_url
         except (TypeError, IndexError) as e:
             raise ScrapeError("Could not parse cover URL.") from e
 
     def parse_genres(self, soup):
+        if isinstance(soup, dict):
+            return {g for gs in _amp_attrs(soup).get("genreNames", []) for g in ALIAS_GENRE.get(gs, [gs])}
         try:
             info = json.loads(soup.find("script", {"id": "schema:music-album"}).text)
             genres = {g for gs in info["genre"] for g in ALIAS_GENRE.get(gs, [gs])}
-            # either replace with alias (which can be more than one tag) or return untouched.
             return genres
         except (TypeError, IndexError) as e:
             raise ScrapeError("Could not parse genres.") from e
@@ -55,12 +74,9 @@ class Scraper(iTunesBase, MetadataMixin):
 
     def parse_release_type(self, soup):
         try:
-            title = soup.find("meta", {"name": "apple:title"})["content"].strip()
-            # Check for DJ Mix first (can appear anywhere in title, often in parentheses)
-            # Pattern matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
+            title = _amp_attrs(soup).get("name", "") if isinstance(soup, dict) else soup.find("meta", {"name": "apple:title"})["content"].strip()
             if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
                 return "DJ Mix"
-            # Check for suffixes
             if re.match(r".*\sEP$", title, re.IGNORECASE):
                 return "EP"
             if re.match(r".*\sSingle$", title, re.IGNORECASE):
@@ -70,14 +86,9 @@ class Scraper(iTunesBase, MetadataMixin):
             raise ScrapeError("Could not parse release type.") from e
 
     def parse_release_date(self, soup):
-        """
-        Parse the release date from the meta tag.
-        Formats the date to "Month Day, Year" format (e.g., "December 31, 2025").
-        """
+        """Parse and format the Apple Music release date."""
         try:
-            date_string = soup.find(attrs={"property": "music:release_date"})["content"].split("T")[0]
-            # Format date to "Month Day, Year" format
-            # Apple Music returns dates in YYYY-MM-DD format
+            date_string = (_amp_attrs(soup).get("releaseDate") if isinstance(soup, dict) else soup.find(attrs={"property": "music:release_date"})["content"]).split("T")[0]
             if date_string:
                 from datetime import datetime
                 parsed_date = datetime.strptime(date_string, "%Y-%m-%d")
@@ -87,17 +98,25 @@ class Scraper(iTunesBase, MetadataMixin):
             return None
 
     def parse_release_label(self, soup):
+        if isinstance(soup, dict):
+            title = _amp_attrs(soup).get("name", "")
+            if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+                return ""
+            return _amp_attrs(soup).get("recordLabel") or parse_copyright(_amp_attrs(soup).get("copyright", ""))
         try:
-            # Check if this is a DJ Mix release - if so, return empty label
             title = soup.find("meta", {"name": "apple:title"})["content"].strip()
             if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
                 return ""
-            
             json.loads(soup.find("script", {"id": "serialized-server-data"}).text)
             copyright = soup.find("p", {"data-testid": "tracklist-footer-description"}).text
             return parse_copyright(copyright)
         except IndexError as e:
             raise ScrapeError("Could not parse record label.") from e
+
+    def parse_upc(self, soup):
+        if isinstance(soup, dict):
+            return _amp_attrs(soup).get("upc")
+        return None
 
     def parse_comment(self, soup):
         try:
@@ -108,6 +127,25 @@ class Scraper(iTunesBase, MetadataMixin):
     def parse_tracks(self, soup):
         tracks = defaultdict(dict)
         cur_disc = 1
+
+        if isinstance(soup, dict):
+            album_artists = [(a.get("attributes", {}).get("name"), "main") for a in _amp_artists(soup)]
+            album_artists = [(name, role) for name, role in album_artists if name]
+            for track in _amp_tracks(soup):
+                attrs = track.get("attributes", {})
+                track_artists = [(a.get("attributes", {}).get("name"), "main") for a in track.get("relationships", {}).get("artists", {}).get("data", [])]
+                track_artists = [(name, role) for name, role in track_artists if name] or album_artists
+                discno = attrs.get("discNumber") or 1
+                trackno = attrs.get("trackNumber") or 1
+                title = RE_FEAT.sub("", attrs.get("name", ""))
+                tracks[str(discno)][trackno] = self.generate_track(
+                    trackno=trackno,
+                    discno=discno,
+                    artists=track_artists,
+                    title=title,
+                    explicit=attrs.get("contentRating") == "explicit",
+                )
+            return dict(tracks)
 
         # Find and parse JSON data from <script> tag
         script_tag = soup.find("script", {"type": "application/ld+json"})
