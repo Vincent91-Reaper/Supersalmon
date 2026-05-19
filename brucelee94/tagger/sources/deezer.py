@@ -56,14 +56,17 @@ class Scraper(DeezerBase, MetadataMixin):
             # Format date to "Month Day, Year" format (e.g., "December 31, 2025")
             # Deezer typically returns dates in YYYY-MM-DD format
             if raw_date:
-                from datetime import datetime
                 import platform
+                from datetime import datetime
                 try:
                     # Parse the date string
                     parsed_date = datetime.strptime(raw_date, "%Y-%m-%d")
                     # Format as "Month Day, Year"
                     try:
-                        formatted_date = parsed_date.strftime("%B %-d, %Y") if platform.system() != "Windows" else parsed_date.strftime("%B %#d, %Y")
+                        if platform.system() != "Windows":
+                            formatted_date = parsed_date.strftime("%B %-d, %Y")
+                        else:
+                            formatted_date = parsed_date.strftime("%B %#d, %Y")
                     except (ValueError, TypeError):
                         # Fallback for platforms that don't support %- or %#
                         formatted_date = parsed_date.strftime("%B %d, %Y").replace(' 0', ' ')

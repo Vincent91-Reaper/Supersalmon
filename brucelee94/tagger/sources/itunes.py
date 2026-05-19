@@ -74,7 +74,10 @@ class Scraper(iTunesBase, MetadataMixin):
 
     def parse_release_type(self, soup):
         try:
-            title = _amp_attrs(soup).get("name", "") if isinstance(soup, dict) else soup.find("meta", {"name": "apple:title"})["content"].strip()
+            if isinstance(soup, dict):
+                title = _amp_attrs(soup).get("name", "")
+            else:
+                title = soup.find("meta", {"name": "apple:title"})["content"].strip()
             if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
                 return "DJ Mix"
             if re.match(r".*\sEP$", title, re.IGNORECASE):
@@ -88,7 +91,11 @@ class Scraper(iTunesBase, MetadataMixin):
     def parse_release_date(self, soup):
         """Parse and format the Apple Music release date."""
         try:
-            date_string = (_amp_attrs(soup).get("releaseDate") if isinstance(soup, dict) else soup.find(attrs={"property": "music:release_date"})["content"]).split("T")[0]
+            if isinstance(soup, dict):
+                raw_date = _amp_attrs(soup).get("releaseDate")
+            else:
+                raw_date = soup.find(attrs={"property": "music:release_date"})["content"]
+            date_string = raw_date.split("T")[0]
             if date_string:
                 from datetime import datetime
                 parsed_date = datetime.strptime(date_string, "%Y-%m-%d")
@@ -135,7 +142,10 @@ class Scraper(iTunesBase, MetadataMixin):
             album_artists = [(name, role) for name, role in album_artists if name]
             for track in _amp_tracks(soup):
                 attrs = track.get("attributes", {})
-                track_artists = [(a.get("attributes", {}).get("name"), "main") for a in track.get("relationships", {}).get("artists", {}).get("data", [])]
+                track_artists = [
+                    (a.get("attributes", {}).get("name"), "main")
+                    for a in track.get("relationships", {}).get("artists", {}).get("data", [])
+                ]
                 track_artists = [(name, role) for name, role in track_artists if name] or album_artists
                 discno = attrs.get("discNumber") or 1
                 trackno = attrs.get("trackNumber") or 1
