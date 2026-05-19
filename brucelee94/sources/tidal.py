@@ -51,18 +51,27 @@ class TidalBase(BaseScraper):
         return normalized
 
     def _track_artists(self, track):
+        if not isinstance(track, dict):
+            return []
         return self.normalize_artists(track.get("artists") or track.get("artist"))
 
     def _tracklist_has_artists(self, tracklist):
         return any(self._track_artists(track) for track in tracklist)
 
     def _normalize_track_artists(self, track, album_artists):
+        if not isinstance(track, dict):
+            return track
         track["artists"] = self._track_artists(track) or album_artists
         return track
 
     @staticmethod
     def _unwrap_album_items(items):
-        return [item.get("item", item) for item in items]
+        tracklist = []
+        for item in items:
+            track = item.get("item", item) if isinstance(item, dict) else item
+            if isinstance(track, dict):
+                tracklist.append(track)
+        return tracklist
 
     async def _fetch_album_items(self, album_id, base_params):
         results = []
@@ -94,7 +103,7 @@ class TidalBase(BaseScraper):
             if len(items) < 100:
                 break
             offset += 100
-        return results
+        return [item for item in results if isinstance(item, dict)]
 
     def _headers(self):
         token = cfg.metadata.tidal.token or self.get_web_token()
