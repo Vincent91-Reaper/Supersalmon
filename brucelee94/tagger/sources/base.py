@@ -137,6 +137,8 @@ class MetadataMixin(ABC):
         **kwargs,
     ):
         """Return a generated track dictionary containing the required values."""
+        if isinstance(title, tuple):
+            title = title[0]
         return {
             "track#": str(trackno),
             "disc#": str(discno),

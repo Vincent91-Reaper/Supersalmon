@@ -214,6 +214,51 @@ def test_deezer_label_text_accepts_tuple_values(monkeypatch):
     assert deezer.Scraper().process_label({"label": ({"name": "Test Label"},), "artists": []}) == "Test Label"
 
 
+def test_track_title_tuple_from_parse_title_is_flattened(monkeypatch):
+    cfg = types.SimpleNamespace(
+        upload=types.SimpleNamespace(
+            search=types.SimpleNamespace(blacklisted_genres=[]),
+            formatting=types.SimpleNamespace(strip_useless_versions=True, various_artist_threshold=4),
+        )
+    )
+    brucelee94 = types.ModuleType("brucelee94")
+    brucelee94.cfg = cfg
+    common = types.ModuleType("brucelee94.common")
+    common.fetch_genre = lambda value: {value}
+    common.less_uppers = lambda first, second: first
+    common.normalize_accents = lambda value: value
+    errors = types.ModuleType("brucelee94.errors")
+    errors.GenreNotInWhitelist = type("GenreNotInWhitelist", (Exception,), {})
+
+    base = load_module(
+        monkeypatch,
+        "metadata_base_regression",
+        "brucelee94/tagger/sources/base.py",
+        {
+            "brucelee94": brucelee94,
+            "brucelee94.common": common,
+            "brucelee94.errors": errors,
+        },
+    )
+
+    class Scraper(base.MetadataMixin):
+        def parse_release_title(self, soup):
+            pass
+
+        def parse_release_year(self, soup):
+            pass
+
+        def parse_release_label(self, soup):
+            pass
+
+        def parse_tracks(self, soup):
+            pass
+
+    track = Scraper().generate_track(trackno=1, discno=1, artists=[("Artist", "main")], title=("Surprise", None))
+
+    assert track["title"] == "Surprise"
+
+
 def test_itunes_amp_dict_has_no_html_comment(monkeypatch):
     common = types.ModuleType("brucelee94.common")
     common.RE_FEAT = re.compile(r"$^")
