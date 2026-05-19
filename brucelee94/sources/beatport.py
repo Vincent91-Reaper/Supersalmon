@@ -50,7 +50,11 @@ class BeatportBase(BaseScraper):
         try:
             data = response.json()
             cls._token = data["access_token"]
-            cls._token_expires = time.time() + int(data.get("expires_in") or 3600)
+            try:
+                expires_in = int(data.get("expires_in") or 3600)
+            except (TypeError, ValueError):
+                expires_in = 3600
+            cls._token_expires = time.time() + expires_in
             return cls._token
         except (KeyError, TypeError, ValueError) as e:
             raise ScrapeError("Failed to parse Beatport anonymous token response") from e

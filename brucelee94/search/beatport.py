@@ -24,7 +24,13 @@ class Searcher(BeatportBase, SearchMixin):
 
                 if label.lower() not in cfg.upload.search.excluded_labels:
                     releases[rls_id] = (
-                        IdentData(artists, title, None, result.get("track_count"), "WEB"),
+                        IdentData(
+                            artist=artists,
+                            album=title,
+                            year=None,
+                            track_count=result.get("track_count"),
+                            source="WEB",
+                        ),
                         self.format_result(artists, title, label),
                     )
 
