@@ -1,5 +1,7 @@
+import platform
 import re
 from collections import defaultdict
+from datetime import datetime
 from html import unescape
 
 from brucelee94.common import RE_FEAT, parse_copyright, re_split
@@ -56,8 +58,6 @@ class Scraper(DeezerBase, MetadataMixin):
             # Format date to "Month Day, Year" format (e.g., "December 31, 2025")
             # Deezer typically returns dates in YYYY-MM-DD format
             if raw_date:
-                import platform
-                from datetime import datetime
                 try:
                     # Parse the date string
                     parsed_date = datetime.strptime(raw_date, "%Y-%m-%d")
