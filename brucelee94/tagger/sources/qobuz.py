@@ -452,11 +452,11 @@ class Scraper(QobuzBase, MetadataMixin):
             if len(parts) < 2:
                 continue
             artist_name, roles = parts[0], [role.lower() for role in parts[1:]]
-            if any("mainartist" == role for role in roles):
+            if any(role == "mainartist" for role in roles):
                 performer_main_artists.append(artist_name)
-            if any("featuredartist" == role for role in roles) and not any("associatedperformer" == role for role in roles):
+            if any(role == "featuredartist" for role in roles) and not any(role == "associatedperformer" for role in roles):
                 add_artist(artist_name, "guest")
-            if any("remixer" == role for role in roles):
+            if any(role == "remixer" for role in roles):
                 add_artist(artist_name, "remixer")
 
         if performer_main_artists:

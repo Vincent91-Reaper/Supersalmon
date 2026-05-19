@@ -9,6 +9,9 @@ from brucelee94.errors import ScrapeError
 from .base import BaseScraper, loop
 
 
+TOKEN_REFRESH_BUFFER_SECONDS = 7 * 24 * 3600
+
+
 class iTunesBase(BaseScraper):
     url = site_url = "https://itunes.apple.com"
     search_url = "https://itunes.apple.com/search"
@@ -58,7 +61,7 @@ class iTunesBase(BaseScraper):
 
     @classmethod
     def get_amp_token(cls):
-        if cls._amp_token and time.time() < cls._amp_token_expires - 7 * 24 * 3600:
+        if cls._amp_token and time.time() < cls._amp_token_expires - TOKEN_REFRESH_BUFFER_SECONDS:
             return cls._amp_token
         try:
             html = requests.get("https://music.apple.com/us/new", timeout=10).text

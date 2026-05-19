@@ -9,6 +9,9 @@ from brucelee94.errors import ScrapeError
 from brucelee94.sources.base import BaseScraper
 
 
+TOKEN_CACHE_DURATION_SECONDS = 86400
+
+
 class TidalBase(BaseScraper):
     url = "https://tidal.com/v1"
     site_url = "https://listen.tidal.com"
@@ -37,7 +40,7 @@ class TidalBase(BaseScraper):
 
     @classmethod
     def get_web_token(cls):
-        if cls._web_token and time.time() - cls._web_token_fetched_at < 86400:
+        if cls._web_token and time.time() - cls._web_token_fetched_at < TOKEN_CACHE_DURATION_SECONDS:
             return cls._web_token
         try:
             html = requests.get("https://tidal.com", timeout=10).text

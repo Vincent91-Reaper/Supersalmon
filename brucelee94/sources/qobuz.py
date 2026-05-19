@@ -9,6 +9,9 @@ from brucelee94.errors import ScrapeError
 from brucelee94.sources.base import BaseScraper
 
 
+APP_ID_CACHE_DURATION_SECONDS = 86400
+
+
 class QobuzBase(BaseScraper):
     url = "https://www.qobuz.com/api.json/0.2"
     site_url = "https://www.qobuz.com"
@@ -24,7 +27,7 @@ class QobuzBase(BaseScraper):
     def get_app_id(cls):
         if cfg.metadata.qobuz.app_id:
             return cfg.metadata.qobuz.app_id
-        if cls._dynamic_app_id and time.time() - cls._dynamic_app_id_fetched_at < 86400:
+        if cls._dynamic_app_id and time.time() - cls._dynamic_app_id_fetched_at < APP_ID_CACHE_DURATION_SECONDS:
             return cls._dynamic_app_id
         try:
             html = requests.get("https://open.qobuz.com", timeout=10).text
