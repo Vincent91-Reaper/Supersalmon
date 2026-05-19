@@ -15,7 +15,9 @@ class Searcher(BeatportBase, SearchMixin):
             search_results = response["releases"]
             for result in search_results:
                 rls_id = result["id"]
-                main_artists = [artist["name"] for artist in result.get("artists") or [] if artist.get("name")]
+                main_artists = [
+                    artist["name"] for artist in result.get("artists") or [] if artist.get("name") is not None
+                ]
                 title = result["name"]
                 artists = (
                     ", ".join(main_artists) if len(main_artists) < 4 else cfg.upload.formatting.various_artist_word

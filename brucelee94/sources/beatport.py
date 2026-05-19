@@ -1,6 +1,7 @@
 import re
 import threading
 import time
+from functools import partial
 
 import requests
 
@@ -37,6 +38,15 @@ class BeatportBase(BaseScraper):
     }
 
     @classmethod
+    def _parse_token_expires_in(cls, value):
+        if value is None:
+            return cls.DEFAULT_TOKEN_EXPIRY_SECONDS
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return cls.DEFAULT_TOKEN_EXPIRY_SECONDS
+
+    @classmethod
     def _api_headers(cls):
         return {**cls.beatport_headers, "Authorization": f"Bearer {cls._get_token()}"}
 
@@ -63,12 +73,7 @@ class BeatportBase(BaseScraper):
             except (KeyError, TypeError, ValueError) as e:
                 raise ScrapeError("Failed to parse Beatport anonymous token response") from e
 
-            raw_expires_in = data.get("expires_in")
-            try:
-                expires_in = int(raw_expires_in) if raw_expires_in is not None else cls.DEFAULT_TOKEN_EXPIRY_SECONDS
-            except (TypeError, ValueError):
-                expires_in = cls.DEFAULT_TOKEN_EXPIRY_SECONDS
-            cls._token_expires = time.time() + expires_in
+            cls._token_expires = time.time() + cls._parse_token_expires_in(data.get("expires_in"))
             return cls._token
 
     @classmethod
@@ -92,7 +97,7 @@ class BeatportBase(BaseScraper):
             raise ScrapeError("Beatport API did not return JSON") from e
 
     async def api_get(self, url, params=None):
-        return await loop.run_in_executor(None, lambda: self._api_get_sync(url, params=params))
+        return await loop.run_in_executor(None, partial(self._api_get_sync, url, params=params))
 
     async def create_soup(self, url, params=None):
         """Fetch Beatport release metadata through Beatport's JSON API."""
