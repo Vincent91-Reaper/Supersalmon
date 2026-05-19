@@ -13,6 +13,18 @@ RECORD_TYPES = {
 }
 
 
+def _label_text(label):
+    if isinstance(label, dict):
+        return _label_text(label.get("name") or label.get("title"))
+    if isinstance(label, (tuple, list, set)):
+        for item in label:
+            text = _label_text(item)
+            if text:
+                return text
+        return ""
+    return str(label) if label else ""
+
+
 class Scraper(DeezerBase, MetadataMixin):
     def parse_release_title(self, soup):
         return RE_FEAT.sub("", soup["title"])
@@ -64,12 +76,7 @@ class Scraper(DeezerBase, MetadataMixin):
             return None
 
     def parse_release_label(self, soup):
-        label = soup.get("label")
-        if isinstance(label, dict):
-            label = label.get("name", "")
-        elif isinstance(label, (tuple, list)):
-            label = label[0] if label else ""
-        return parse_copyright(label)
+        return parse_copyright(_label_text(soup.get("label")))
 
     def parse_genres(self, soup):
         return {g["name"] for g in soup["genres"]["data"]}
@@ -105,11 +112,7 @@ class Scraper(DeezerBase, MetadataMixin):
         return dict(tracks)
 
     def process_label(self, data):
-        label = data.get("label", "")
-        if isinstance(label, dict):
-            label = label.get("name", "")
-        elif isinstance(label, (tuple, list)):
-            label = label[0] if label else ""
+        label = _label_text(data.get("label"))
         # Check for self-released albums
         if label and data.get("artists"):
             for artist_name, role in data["artists"]:

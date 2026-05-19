@@ -80,8 +80,8 @@ class TidalBase(BaseScraper):
                 offset = 0
                 while True:
                     track_resp = await self.get_json(
-                        f"/albums/{album_id}/items/credits",
-                        params={**base_params, "filter": "ALL", "limit": 100, "offset": offset, "includeContributors": "true"},
+                        f"/albums/{album_id}/items",
+                        params={**base_params, "limit": 100, "offset": offset},
                         headers=self._headers(),
                     )
                     items = track_resp.get("items", [])

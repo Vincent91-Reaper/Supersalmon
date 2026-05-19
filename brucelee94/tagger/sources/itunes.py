@@ -119,6 +119,8 @@ class Scraper(iTunesBase, MetadataMixin):
         return None
 
     def parse_comment(self, soup):
+        if isinstance(soup, dict):
+            return None
         try:
             return soup.select(".product-hero-desc .product-hero-desc__section > p")[0]["aria-label"].strip()
         except IndexError:
