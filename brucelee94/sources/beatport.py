@@ -8,6 +8,10 @@ from brucelee94.sources.base import BaseScraper, loop
 
 
 class BeatportBase(BaseScraper):
+    API_PAGE_SIZE = 100
+    DEFAULT_TOKEN_EXPIRY_SECONDS = 3600
+    TOKEN_REFRESH_BUFFER_SECONDS = 300
+
     url = site_url = "https://beatport.com"
     api_url = "https://api.beatport.com"
     token_url = "https://www.beatport.com/api/auth/refresh-anon-token"
@@ -36,7 +40,7 @@ class BeatportBase(BaseScraper):
 
     @classmethod
     def _get_token(cls, force_refresh=False):
-        if not force_refresh and cls._token and time.time() < cls._token_expires - 300:
+        if not force_refresh and cls._token and time.time() < cls._token_expires - cls.TOKEN_REFRESH_BUFFER_SECONDS:
             return cls._token
 
         try:
@@ -51,9 +55,9 @@ class BeatportBase(BaseScraper):
             data = response.json()
             cls._token = data["access_token"]
             try:
-                expires_in = int(data.get("expires_in") or 3600)
+                expires_in = int(data.get("expires_in") or cls.DEFAULT_TOKEN_EXPIRY_SECONDS)
             except (TypeError, ValueError):
-                expires_in = 3600
+                expires_in = cls.DEFAULT_TOKEN_EXPIRY_SECONDS
             cls._token_expires = time.time() + expires_in
             return cls._token
         except (KeyError, TypeError, ValueError) as e:
@@ -100,7 +104,7 @@ class BeatportBase(BaseScraper):
     async def _get_release_tracks(self, release_id):
         results = []
         next_url = f"/v4/catalog/releases/{release_id}/tracks/"
-        params = {"per_page": 100}
+        params = {"per_page": self.API_PAGE_SIZE}
         while next_url:
             response = await self.api_get(next_url, params=params)
             results.extend(response.get("results") or [])
