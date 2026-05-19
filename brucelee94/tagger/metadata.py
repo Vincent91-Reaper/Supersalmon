@@ -85,8 +85,21 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
             # Break out of prompt loop to scrape
             break
     
-    # Tidal and Deezer URLs are now scraped directly via their web APIs instead
-    # of forcing file-tag metadata extraction.
+    # Special case: Check if this is a Tidal or Deezer URL
+    # For Tidal/Deezer, we want to skip scraping and extract metadata from file tags instead
+    import re
+    tidal_pattern = re.compile(r"^https?://.*(?:tidal|wimpmusic)\.com.*\/(album)\/([0-9]+)")
+    deezer_pattern = re.compile(r"^https?://.*deezer\.com.*\/(album)\/([0-9]+)")
+    
+    if tidal_pattern.match(url_input):
+        click.secho("Tidal URL detected - skipping metadata scraping", fg="cyan")
+        # Return a special marker to indicate we should extract from file tags
+        return {"_extract_from_files": True, "_source_url": url_input, "_is_tidal": True}, url_input
+    elif deezer_pattern.match(url_input):
+        click.secho("Deezer URL detected - skipping metadata scraping", fg="cyan")
+        # Return a special marker to indicate we should extract from file tags
+        return {"_extract_from_files": True, "_source_url": url_input, "_is_deezer": True}, url_input
+    
     # Try to scrape from the URL
     source_url = None
     metadata = None
