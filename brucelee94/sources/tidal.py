@@ -9,7 +9,7 @@ from brucelee94.errors import ScrapeError
 from brucelee94.sources.base import BaseScraper
 
 
-TOKEN_CACHE_DURATION_SECONDS = 86400
+TOKEN_CACHE_DURATION_SECONDS = 86400  # Cache extracted Tidal web token for 24 hours.
 
 
 class TidalBase(BaseScraper):

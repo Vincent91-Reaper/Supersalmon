@@ -9,7 +9,7 @@ from brucelee94.errors import ScrapeError
 from brucelee94.sources.base import BaseScraper
 
 
-APP_ID_CACHE_DURATION_SECONDS = 86400
+APP_ID_CACHE_DURATION_SECONDS = 86400  # Cache extracted Qobuz app id for 24 hours.
 
 
 class QobuzBase(BaseScraper):
