@@ -367,6 +367,9 @@ class Scraper(QobuzBase, MetadataMixin):
         # Get title from soup
         title = soup.get("title", "")
         
+        if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+            return "DJ Mix"
+
         # Try to get directly from Qobuz's mapping
         qobuz_type = soup.get("release_type", "").lower()
         if qobuz_type in RECORD_TYPES:

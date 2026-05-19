@@ -108,6 +108,8 @@ class Scraper(BeatportBase, MetadataMixin):
         return self._release(soup).get("upc")
 
     def parse_release_type(self, soup):
+        if re.search(r"DJ[\s\-]*Mix", self.parse_release_title(soup), re.IGNORECASE):
+            return "DJ Mix"
         # Beatport doesn't provide explicit type, default to EP for most releases
         return "EP"
 

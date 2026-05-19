@@ -43,6 +43,8 @@ class Scraper(TidalBase, MetadataMixin):
         return date
 
     def parse_release_type(self, soup):
+        if re.search(r"DJ[\s\-]*Mix", soup.get("title", ""), re.IGNORECASE):
+            return "DJ Mix"
         # Try to get from Tidal's type mapping
         try:
             return RECORD_TYPES[soup["type"]]
