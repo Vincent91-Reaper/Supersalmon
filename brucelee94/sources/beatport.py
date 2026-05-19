@@ -1,4 +1,5 @@
 import re
+import threading
 import time
 
 import requests
@@ -22,6 +23,7 @@ class BeatportBase(BaseScraper):
 
     _token = None
     _token_expires = 0
+    _token_lock = threading.Lock()
 
     beatport_headers = {
         "Accept": "application/json, text/plain, */*",
@@ -43,25 +45,31 @@ class BeatportBase(BaseScraper):
         if not force_refresh and cls._token and time.time() < cls._token_expires - cls.TOKEN_REFRESH_BUFFER_SECONDS:
             return cls._token
 
-        try:
-            response = requests.post(cls.token_url, headers=cls.beatport_headers, timeout=15)
-        except requests.RequestException as e:
-            raise ScrapeError("Failed to fetch Beatport anonymous token") from e
+        with cls._token_lock:
+            if not force_refresh and cls._token and time.time() < cls._token_expires - cls.TOKEN_REFRESH_BUFFER_SECONDS:
+                return cls._token
 
-        if response.status_code != 200:
-            raise ScrapeError(f"Failed to fetch Beatport anonymous token. Status code: {response.status_code}")
-
-        try:
-            data = response.json()
-            cls._token = data["access_token"]
             try:
-                expires_in = int(data.get("expires_in") or cls.DEFAULT_TOKEN_EXPIRY_SECONDS)
+                response = requests.post(cls.token_url, headers=cls.beatport_headers, timeout=15)
+            except requests.RequestException as e:
+                raise ScrapeError("Failed to fetch Beatport anonymous token") from e
+
+            if response.status_code != 200:
+                raise ScrapeError(f"Failed to fetch Beatport anonymous token. Status code: {response.status_code}")
+
+            try:
+                data = response.json()
+                cls._token = data["access_token"]
+            except (KeyError, TypeError, ValueError) as e:
+                raise ScrapeError("Failed to parse Beatport anonymous token response") from e
+
+            raw_expires_in = data.get("expires_in")
+            try:
+                expires_in = int(raw_expires_in) if raw_expires_in is not None else cls.DEFAULT_TOKEN_EXPIRY_SECONDS
             except (TypeError, ValueError):
                 expires_in = cls.DEFAULT_TOKEN_EXPIRY_SECONDS
             cls._token_expires = time.time() + expires_in
             return cls._token
-        except (KeyError, TypeError, ValueError) as e:
-            raise ScrapeError("Failed to parse Beatport anonymous token response") from e
 
     @classmethod
     def _api_get_sync(cls, url, params=None, retry=True):
