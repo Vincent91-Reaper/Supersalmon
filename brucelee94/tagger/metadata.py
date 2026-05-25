@@ -14,6 +14,10 @@ from brucelee94.tagger.sources import METASOURCES
 from brucelee94.tagger.sources.base import generate_artists
 
 
+def _normalize_source_url(source, url):
+    return source.Scraper.normalize_url(url)
+
+
 def _get_event_loop():
     """Get or create an event loop for async operations."""
     try:
@@ -92,10 +96,12 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     deezer_pattern = re.compile(r"^https?://.*deezer\.com.*\/(album)\/([0-9]+)")
     
     if tidal_pattern.match(url_input):
+        url_input = _normalize_source_url(METASOURCES["Tidal"], url_input)
         click.secho("Tidal URL detected - skipping metadata scraping", fg="cyan")
         # Return a special marker to indicate we should extract from file tags
         return {"_extract_from_files": True, "_source_url": url_input, "_is_tidal": True}, url_input
     elif deezer_pattern.match(url_input):
+        url_input = _normalize_source_url(METASOURCES["Deezer"], url_input)
         click.secho("Deezer URL detected - skipping metadata scraping", fg="cyan")
         # Return a special marker to indicate we should extract from file tags
         return {"_extract_from_files": True, "_source_url": url_input, "_is_deezer": True}, url_input
@@ -106,6 +112,7 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     
     for name, source in METASOURCES.items():
         if source.Scraper.regex.match(url_input):
+            url_input = _normalize_source_url(source, url_input)
             click.secho(f"Scraping metadata from {name}...", fg="cyan")
             source_url = url_input
             if url_input not in rls_data["urls"]:
@@ -284,6 +291,11 @@ def _select_choice(choices, rls_data):
 
             # Handle URLs (both starred and unstarred)
             if stripped.lower().startswith("http"):
+                for source in METASOURCES.values():
+                    if source.Scraper.regex.match(stripped):
+                        stripped = _normalize_source_url(source, stripped)
+                        break
+
                 # Add any URL to rls_data urls if not already there
                 if stripped not in rls_data["urls"]:
                     rls_data["urls"].append(stripped)

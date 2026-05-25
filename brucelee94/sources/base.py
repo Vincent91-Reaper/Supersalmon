@@ -42,6 +42,13 @@ class BaseScraper:
             return cls.site_url + cls.release_format.format(rls_id=rls_id, rls_name=cls.url_format_rls_name(rls_name))
         return cls.site_url + cls.release_format.format(rls_id=rls_id)
 
+    @classmethod
+    def normalize_url(cls, url):
+        match = cls.regex.match(url)
+        if not match or not match.lastindex:
+            return url
+        return url[: match.end(match.lastindex)]
+
     async def get_json(self, url, params=None, headers=None):
         """
         Run an asynchronius GET request to a JSON API maintained by

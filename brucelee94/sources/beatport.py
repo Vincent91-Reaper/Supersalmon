@@ -20,7 +20,7 @@ class BeatportBase(BaseScraper):
     search_url = "https://beatport.com/search/releases"
     api_search_url = "/v4/catalog/search/"
     release_format = "/release/{rls_name}/{rls_id}"
-    regex = re.compile(r"^https?://(?:(?:www|classic)\.)?beatport\.com/release/.+?/(\d+)/?$")
+    regex = re.compile(r"^https?://(?:(?:www|classic)\.)?beatport\.com/release/.+?/(\d+)(?:[/?#].*)?$")
 
     _token = None
     _token_expires = 0
