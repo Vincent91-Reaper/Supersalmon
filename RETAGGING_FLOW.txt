@@ -1,0 +1,137 @@
+╔════════════════════════════════════════════════════════════════════════╗
+║                    RETAGGING DECISION FLOW                             ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+                         ┌─────────────────┐
+                         │  Start Retagging│
+                         │     Process     │
+                         └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │ For each track  │
+                         │  in metadata    │
+                         └────────┬────────┘
+                                  │
+                ┌─────────────────▼─────────────────┐
+                │ Is preserve_artists flag set?     │
+                │   (Apple Music source)            │
+                └──┬────────────────────────────┬───┘
+                   │ YES                        │ NO
+                   │                            │
+          ┌────────▼────────┐          ┌────────▼────────┐
+          │  Skip retagging │          │  Get file artist│
+          │  (preserve tags)│          │   and main from │
+          └─────────────────┘          │    metadata     │
+                                       └────────┬────────┘
+                                                │
+                                ┌───────────────▼───────────────┐
+                                │ Is scraped artist "Various    │
+                                │        Artists"?              │
+                                └──┬───────────────────────┬────┘
+                                   │ YES                   │ NO
+                                   │                       │
+                          ┌────────▼────────┐     ┌────────▼────────┐
+                          │  Skip retagging │     │ Is file artist  │
+                          │  (preserve per  │     │ empty or None?  │
+                          │  track artists) │     └──┬──────────┬───┘
+                          └─────────────────┘        │ YES      │ NO
+                                                     │          │
+                                            ┌────────▼──────┐   │
+                                            │  RETAG FILE   │   │
+                                            │ (artist missing)  │
+                                            └───────────────┘   │
+                                                                │
+                                                    ┌───────────▼────────────┐
+                                                    │ Are ALL main artists   │
+                                                    │ present in file tags?  │
+                                                    │ (using subset check)   │
+                                                    └──┬─────────────────┬───┘
+                                                       │ YES             │ NO
+                                                       │                 │
+                                              ┌────────▼────────┐  ┌────▼──────────┐
+                                              │  NO RETAG       │  │  RETAG FILE   │
+                                              │ (main artist    │  │ (main artist  │
+                                              │ present, keep   │  │  missing)     │
+                                              │ featured artists)  └───────────────┘
+                                              └─────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║                           KEY POINTS                                   ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+✓ Main artist present (even with featured) → NO RETAG
+✗ Main artist missing → RETAG
+✓ Various Artists → NO RETAG (preserve per-track info)
+✓ Apple Music → NO RETAG (preserve all artists)
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║                      ARTIST COMPARISON LOGIC                           ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+Step 1: Normalize Artist Strings
+┌─────────────────────────────────────────────────────────────────────┐
+│ "Artist A & Artist B feat. Artist C"                                │
+│                    ↓                                                 │
+│ Replace "feat.", "ft.", "featuring" with "|"                        │
+│                    ↓                                                 │
+│ "Artist A & Artist B | Artist C"                                    │
+│                    ↓                                                 │
+│ Replace "&", ",", ";" with "|"                                      │
+│                    ↓                                                 │
+│ "Artist A | Artist B | Artist C"                                    │
+│                    ↓                                                 │
+│ Split, strip, lowercase                                             │
+│                    ↓                                                 │
+│ {"artist a", "artist b", "artist c"}                                │
+└─────────────────────────────────────────────────────────────────────┘
+
+Step 2: Check Subset Relationship
+┌─────────────────────────────────────────────────────────────────────┐
+│ File artists: {"artist a", "artist b", "artist c"}                 │
+│ Main artists: {"artist a", "artist b"}                             │
+│                                                                      │
+│ Question: Are main artists ⊆ file artists?                         │
+│                                                                      │
+│ {"artist a", "artist b"} ⊆ {"artist a", "artist b", "artist c"}   │
+│                                                                      │
+│ Answer: YES → NO RETAG ✓                                           │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║                         EXAMPLE SCENARIOS                              ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+Scenario 1: Main + Featured
+┌────────────────────────────────────┐
+│ File:     "A, B"                   │
+│ Metadata: "A"                      │
+│ Result:   NO RETAG ✓               │
+│ Reason:   A ⊆ {A, B}              │
+└────────────────────────────────────┘
+
+Scenario 2: Wrong Main
+┌────────────────────────────────────┐
+│ File:     "B"                      │
+│ Metadata: "A"                      │
+│ Result:   RETAG ✗                  │
+│ Reason:   A ⊄ {B}                 │
+└────────────────────────────────────┘
+
+Scenario 3: Multiple Main + Featured
+┌────────────────────────────────────┐
+│ File:     "A & B feat. C"          │
+│ Metadata: "A & B"                  │
+│ Result:   NO RETAG ✓               │
+│ Reason:   {A, B} ⊆ {A, B, C}      │
+└────────────────────────────────────┘
+
+Scenario 4: One Main Missing
+┌────────────────────────────────────┐
+│ File:     "A, C"                   │
+│ Metadata: "A & B"                  │
+│ Result:   RETAG ✗                  │
+│ Reason:   {A, B} ⊄ {A, C}         │
+└────────────────────────────────────┘

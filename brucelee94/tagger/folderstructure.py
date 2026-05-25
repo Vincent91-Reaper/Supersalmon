@@ -31,35 +31,24 @@ def check_folder_structure(path, scene, genres=None, is_tidal=False, from_url=Fa
     """
     Run through every filesystem check that causes uploads to violate the rules
     or be rejected on the upload form. Only verify that path lengths <180.
-    
+
     Smart detection logic:
-    - For Tidal URLs: Always check (no genre info available in files)
-    - For other URL sources (Qobuz, Deezer, Apple Music, Beatport): 
-      Check only if files have long paths (>180 chars)
-    - For non-URL uploads: Check if classical genre OR if files have long paths
+    - Only run the path-length check when a quick pre-check finds long paths.
+    - Keep the existing classical/non-URL folder-structure check path, but do
+      not run the path-length check unless long paths are present.
     """
-    # For Tidal, always run the check (no genre info available)
-    if is_tidal:
-        pass  # Continue to run the check
-    # For other URL sources, check only if files actually have long paths
-    elif from_url:
-        if not has_long_file_paths(path):
-            # No long paths detected, skip the check
-            return
-    # For non-URL uploads, check if classical OR if files have long paths
-    else:
-        is_classical = genres and any('classical' in str(g).lower() for g in genres)
-        has_long_paths = has_long_file_paths(path)
-        
-        if not is_classical and not has_long_paths:
-            # Not classical and no long paths, skip the check
-            return
+    has_long_paths = has_long_file_paths(path)
+    is_classical = not from_url and genres and any("classical" in str(g).lower() for g in genres)
+
+    if not is_classical and not has_long_paths:
+        return
     
     while True:
         click.secho("\nChecking folder structure...", fg="cyan", bold=True)
         try:
             _check_illegal_folders(path)
-            _check_path_lengths(path, scene)
+            if has_long_paths:
+                _check_path_lengths(path, scene)
             return
         except NoncompliantFolderStructure:
             if scene:
@@ -103,46 +92,57 @@ def _check_illegal_folders(path):
 
 
 def _check_path_lengths(path, scene):
-    """Verify that all path lengths are <=180 characters."""
-    offending_files, really_offending_files = [], []
+    """Verify that all relative path lengths are <=180 characters."""
+    offending_files = []
+    
+    # Get the download directory from config
     root_len = len(cfg.directory.download_directory) + 1
+    
     for root, _, files in os.walk(path):
-        if len(os.path.abspath(root)) - root_len > 180:
-            click.secho("A subfolder has a path length >180 characters.", fg="red")
-            raise NoncompliantFolderStructure
         for f in files:
             filepath = os.path.abspath(os.path.join(root, f))
-            filepathlen = len(filepath) - root_len
-            if filepathlen > 180:
-                if filepathlen < 250:
-                    offending_files.append(filepath)
-                else:
-                    really_offending_files.append(filepath)
+            
+            # Calculate relative path from download directory
+            # This is what RED checks: folder_name + "/" + subfolder + "/" + filename
+            relative_len = len(filepath) - root_len
+            
+            if relative_len > 180:
+                offending_files.append(filepath)
 
-    if scene and (offending_files or really_offending_files):
+    if scene and offending_files:
         click.secho("The following files exceed 180 characters in length.", fg="red", bold=True)
-        for f in offending_files + really_offending_files:
-            click.echo(f" >> {f}")
-        raise NoncompliantFolderStructure
-
-    if really_offending_files:
-        click.secho(
-            "The following files exceed 180 characters in length, but cannot "
-            "be safely truncated (more than 70 characters above the limit):",
-            fg="red",
-            bold=True,
-        )
-        for f in really_offending_files:
+        for f in offending_files:
             click.echo(f" >> {f}")
         raise NoncompliantFolderStructure
 
     if not offending_files:
         return click.secho("No paths exceed 180 characters in length.", fg="green")
 
-    click.secho("The following exceed 180 characters in length, truncating...", fg="red")
+    click.secho("The following paths exceed 180 characters in length, truncating...", fg="red")
     for filepath in sorted(offending_files):
-        filename, ext = os.path.splitext(filepath)
-        newpath = filepath[: 178 - len(filename) - len(ext) * 2 + root_len] + ".." + ext
+        # Calculate target length
+        target_relative_len = 180
+        current_relative_len = len(filepath) - root_len
+        excess = current_relative_len - target_relative_len
+        
+        # Get directory and filename components
+        dir_part = os.path.dirname(filepath)
+        file_basename = os.path.basename(filepath)
+        filename_no_ext, ext = os.path.splitext(file_basename)
+        
+        # Safety check: ensure filename is long enough to truncate
+        if len(filename_no_ext) < excess + 2:
+            click.secho(
+                f"Cannot truncate (filename too short): {filepath}",
+                fg="red"
+            )
+            continue
+        
+        # Truncate the filename (not including extension) and add ".."
+        truncated_filename = filename_no_ext[:len(filename_no_ext) - excess - 2]
+        new_filename = truncated_filename + ".." + ext
+        newpath = os.path.join(dir_part, new_filename)
+        
         os.rename(filepath, newpath)
         click.echo(f" >> {newpath}")
 

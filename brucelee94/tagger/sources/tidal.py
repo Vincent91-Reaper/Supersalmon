@@ -43,6 +43,7 @@ class Scraper(TidalBase, MetadataMixin):
         return date
 
     def parse_release_type(self, soup):
+        # Try to get from Tidal's type mapping
         try:
             return RECORD_TYPES[soup["type"]]
         except KeyError:

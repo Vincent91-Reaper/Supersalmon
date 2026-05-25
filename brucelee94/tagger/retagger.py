@@ -81,6 +81,10 @@ def create_track_changes(tags, metadata, preserve_artists=False):
     Compare the track data in the metadata to the track data in the tags
     and auto-tag with correct artists from scraped metadata.
     Only retags main artists (and composers for classical albums).
+    Also corrects track numbers if they differ from scraped metadata.
+    
+    Only retags if main artists are missing from the file tags.
+    If main artists are present (even with additional featured artists), files are not retagged.
     
     Args:
         preserve_artists: If True (for Apple Music), don't modify artist tags
@@ -93,6 +97,17 @@ def create_track_changes(tags, metadata, preserve_artists=False):
     
     for (filename, tagset), trackmeta in zip(tags.items(), tracks, strict=False):
         changes[filename] = []
+        
+        # Check and fix track number if it differs from scraped metadata
+        try:
+            old_tracknumber = str(tagset.tracknumber).split("/")[0] if tagset.tracknumber else None
+            new_tracknumber = trackmeta.get("track#")
+            
+            # Update track number if it's different and new_tracknumber is valid
+            if new_tracknumber and old_tracknumber != new_tracknumber:
+                changes[filename].append(Change("tracknumber", old_tracknumber, new_tracknumber))
+        except (TypeError, AttributeError):
+            pass
         
         # Auto-tag artists from scraped metadata (unless preserve_artists is True for Apple Music)
         if not preserve_artists:
@@ -109,11 +124,13 @@ def create_track_changes(tags, metadata, preserve_artists=False):
             if new_artist_str.lower() == "various artists":
                 continue
             
-            # Update artist tag if it's missing OR the actual artist names are different
-            # Normalize comparison to ignore order and separator differences
+            # Only retag if main artists are missing from the file tags
+            # If old artist is None or empty, retag
             if old_artist_str == "None" or not old_artist_str:
                 changes[filename].append(Change("artist", old_artist_str, new_artist_str))
-            elif not _artists_match(old_artist_str, new_artist_str):
+            # If main artists are not present in file tags, retag
+            # This allows files with additional featured artists to keep them
+            elif not _main_artists_present(old_artist_str, new_artist_str):
                 changes[filename].append(Change("artist", old_artist_str, new_artist_str))
 
     return changes
@@ -195,6 +212,23 @@ def create_main_artist_str(artists, is_classical=False):
     return artist_str
 
 
+def _normalize_artists(artist_str):
+    """
+    Normalize an artist string to a set of individual artist names.
+    Handles various separators and returns lowercase artist names for comparison.
+    Also handles 'feat.' and 'featuring' as separators.
+    """
+    # First, handle feat/featuring patterns - replace with delimiter
+    # Match variations: feat., feat, featuring, ft., ft
+    artist_str = re.sub(r'\s+(feat\.?|featuring|ft\.?)\s+', '|', artist_str, flags=re.IGNORECASE)
+    
+    # Replace common separators with a single delimiter
+    normalized = artist_str.replace(" & ", "|").replace(", ", "|").replace(",", "|").replace(";", "|")
+    # Split and strip whitespace, convert to lowercase for case-insensitive comparison
+    artists = {name.strip().lower() for name in normalized.split("|") if name.strip()}
+    return artists
+
+
 def _artists_match(old_artist_str, new_artist_str):
     """
     Check if two artist strings contain the same artists, regardless of order or separator.
@@ -202,19 +236,26 @@ def _artists_match(old_artist_str, new_artist_str):
     
     Example: "Hannah Boleyn & Punctual" matches "Punctual, Hannah Boleyn"
     """
-    # Normalize both strings: split by common separators and create sets of artist names
-    def normalize_artists(artist_str):
-        # Replace common separators with a single delimiter
-        normalized = artist_str.replace(" & ", "|").replace(", ", "|").replace(",", "|").replace(";", "|")
-        # Split and strip whitespace, convert to lowercase for case-insensitive comparison
-        artists = {name.strip().lower() for name in normalized.split("|") if name.strip()}
-        return artists
-    
-    old_artists = normalize_artists(old_artist_str)
-    new_artists = normalize_artists(new_artist_str)
+    old_artists = _normalize_artists(old_artist_str)
+    new_artists = _normalize_artists(new_artist_str)
     
     # Artists match if both sets contain the same names
     return old_artists == new_artists
+
+
+def _main_artists_present(old_artist_str, main_artist_str):
+    """
+    Check if all main artists are present in the file tags, even if additional artists exist.
+    This allows files to keep additional featured/guest artists without retagging.
+    
+    Example: If main artist is "Artist A" and file has "Artist A, Artist B", 
+             main artists are present (returns True), so don't retag.
+    """
+    old_artists = _normalize_artists(old_artist_str)
+    main_artists = _normalize_artists(main_artist_str)
+    
+    # Main artists are present if they are a subset of the file's artists
+    return main_artists.issubset(old_artists)
 
 
 def print_changes(album_changes, track_changes, a_track):

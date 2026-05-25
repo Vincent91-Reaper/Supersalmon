@@ -65,21 +65,17 @@ class Scraper(DeezerBase, MetadataMixin):
 
     def parse_release_label(self, soup):
         label = soup.get("label")
-        # Handle different label formats from Deezer API
-        # Label can be a string, dict with "name" field, tuple/list, or other types
         if isinstance(label, dict):
             label = label.get("name", "")
         elif isinstance(label, (tuple, list)):
-            # If tuple/list, take first element (usually the name)
             label = label[0] if label else ""
-        elif not isinstance(label, str):
-            label = str(label) if label else ""
         return parse_copyright(label)
 
     def parse_genres(self, soup):
         return {g["name"] for g in soup["genres"]["data"]}
 
     def parse_release_type(self, soup):
+        # Try to get from Deezer's type mapping
         try:
             return RECORD_TYPES[soup["record_type"]]
         except KeyError:
@@ -107,25 +103,16 @@ class Scraper(DeezerBase, MetadataMixin):
         return dict(tracks)
 
     def process_label(self, data):
-        label = data["label"]
-        
-        # Handle different label formats from Deezer API
-        # Label can be a string, dict with "name" field, tuple/list, or other types
+        label = data.get("label", "")
         if isinstance(label, dict):
             label = label.get("name", "")
         elif isinstance(label, (tuple, list)):
-            # If tuple/list, take first element (usually the name)
             label = label[0] if label else ""
-        elif not isinstance(label, str):
-            label = str(label) if label else ""
-        
         # Check for self-released albums
-        if label and any(
-            label.lower().startswith(artist_name.lower()) and role == "main" 
-            for artist_name, role in data["artists"]
-        ):
-            return "Self-Released"
-        
+        if label and data.get("artists"):
+            for artist_name, role in data["artists"]:
+                if label.lower().startswith(artist_name.lower()) and role == "main":
+                    return "Self-Released"
         return label
 
     def parse_artists(self, artists, default_artists, title):

@@ -8,7 +8,7 @@ from brucelee94 import cfg
 from brucelee94.common import AliasedCommands, commandgroup
 from brucelee94.database import DB_PATH
 from brucelee94.errors import ImageUploadFailed
-from brucelee94.images import catbox, emp, oeimg, ptpimg, ptscreens
+from brucelee94.images import catbox, cyx, emp, imgbb, oeimg, ptpimg, ptscreens
 
 
 def _get_event_loop():
@@ -27,6 +27,8 @@ HOSTS = {
     "ptpimg": ptpimg,
     "emp": emp,
     "catbox": catbox,
+    "cyx": cyx,
+    "imgbb": imgbb,
     "ptscreens": ptscreens,
     "oeimg": oeimg,
 }
@@ -179,7 +181,7 @@ def _handle_failed_spectrals(spectrals, successful):
                 fg="magenta",
                 bold=True,
             ),
-            default="ptpimg",
+            default=cfg.image.specs_uploader,
         ).lower()
         if host not in HOSTS:
             click.secho(f"{host} is an invalid image host. Please choose another one.", fg="red")

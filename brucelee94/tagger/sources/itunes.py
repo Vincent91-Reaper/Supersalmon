@@ -88,6 +88,11 @@ class Scraper(iTunesBase, MetadataMixin):
 
     def parse_release_label(self, soup):
         try:
+            # Check if this is a DJ Mix release - if so, return empty label
+            title = soup.find("meta", {"name": "apple:title"})["content"].strip()
+            if re.search(r"DJ[\s\-]*Mix", title, re.IGNORECASE):
+                return ""
+            
             json.loads(soup.find("script", {"id": "serialized-server-data"}).text)
             copyright = soup.find("p", {"data-testid": "tracklist-footer-description"}).text
             return parse_copyright(copyright)
@@ -117,6 +122,10 @@ class Scraper(iTunesBase, MetadataMixin):
         if "tracks" not in data:
             raise ScrapeError("Tracks data not found in JSON.")
 
+        # Check if this is a DJ Mix - only extract per-track artists for DJ Mix releases
+        release_type = self.parse_release_type(soup)
+        is_dj_mix = (release_type == "DJ Mix")
+
         # Try multiple methods to extract album-level artists
         header_artists = parse_artists_header(soup)
         
@@ -141,6 +150,12 @@ class Scraper(iTunesBase, MetadataMixin):
         # Use "main" importance for album-level artists
         artists_tuples = [(artist, "main") for artist in header_artists]
 
+        # For DJ Mix: Parse HTML track elements to extract per-track artists
+        html_tracks = []
+        if is_dj_mix:
+            # Find HTML track rows - they should match JSON-LD tracks by index
+            html_tracks = soup.select(".songs-list-row")
+
         for index, track in enumerate(data["tracks"], start=1):
             try:
                 num = index
@@ -154,11 +169,39 @@ class Scraper(iTunesBase, MetadataMixin):
                 # if int(num) == 1 and num in tracks[str(cur_disc)]:
                 #    cur_disc += 1
 
+                # For DJ Mix ONLY: Extract per-track artists from HTML data
+                # For regular albums: Use album-level artists (existing behavior)
+                track_artists = artists_tuples  # Default to album artists
+                
+                if is_dj_mix:
+                    # Extract per-track artists for DJ Mix releases from HTML
+                    per_track_artists = []
+                    
+                    # Get corresponding HTML track element (0-indexed)
+                    if index - 1 < len(html_tracks):
+                        html_track = html_tracks[index - 1]
+                        # Extract main artists from HTML by-line
+                        track_artist_names = parse_artists_track(html_track)
+                        for artist_name in track_artist_names:
+                            per_track_artists.append((artist_name, "main"))
+                    
+                    # Extract guest artists from title (feat. ...)
+                    feat_match = RE_FEAT.search(raw_title)
+                    if feat_match:
+                        feat_str = feat_match.group(1)
+                        # Parse featured artists
+                        guest_artists = _parse_artists_commas(feat_str)
+                        for guest in guest_artists:
+                            per_track_artists.append((guest, "guest"))
+                    
+                    # Use per-track artists if found, otherwise fall back to album artists
+                    if per_track_artists:
+                        track_artists = per_track_artists
+
                 tracks[str(cur_disc)][num] = self.generate_track(
                     trackno=num,
                     discno=cur_disc,
-                    artists=artists_tuples,
-                    # artists=parse_artists(soup, track, raw_title),
+                    artists=track_artists,
                     title=title,
                     # explicit=explicit,
                 )

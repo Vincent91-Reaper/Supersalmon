@@ -18,7 +18,7 @@ from brucelee94 import cfg
 #     format_integrity,
 #     sanitize_integrity,
 # )
-from brucelee94.checks.logs import check_log_cambia
+# CD log checking removed for WEB-only race workflow
 # Upconvert check removed
 # from brucelee94.checks.upconverts import upload_upconvert_test
 from brucelee94.common import commandgroup
@@ -49,10 +49,7 @@ from brucelee94.tagger.pre_data import construct_rls_data
 from brucelee94.tagger.retagger import tag_files  # rename_files removed
 from brucelee94.tagger.review import review_metadata
 from brucelee94.tagger.tags import check_tags, gather_tags, standardize_tags
-from brucelee94.uploader.upload_to_group import (
-    check_existing_group,
-    print_torrents,
-)
+from brucelee94.uploader.upload_to_group import print_torrents
 from brucelee94.uploader.preassumptions import print_preassumptions
 # Request filling removed
 # from salmon.uploader.request_checker import check_requests
@@ -74,6 +71,13 @@ from brucelee94.uploader.upload import (
 )
 
 loop = asyncio.get_event_loop()
+
+# Whitelist of known record labels that don't contain standard keywords
+# These labels will always trigger the label cleaning feature
+KNOWN_RECORD_LABELS = [
+    'Vile Immerse',
+    # Add more labels here as needed
+]
 
 
 @commandgroup.command()
@@ -163,11 +167,7 @@ loop = asyncio.get_event_loop()
 #     is_flag=True,
 #     help="Skip check for MQA marker (on first file only)",
 # )
-@click.option(
-    "--skip-log-check",
-    is_flag=True,
-    help="Skip checking CD logs",
-)
+# CD log check option removed (WEB-only race workflow)
 # Integrity check option removed
 # @click.option(
 #     "--skip-integrity-check",
@@ -192,7 +192,7 @@ def up(
     source_url,
     yyy,
     # skip_mqa,  # removed
-    skip_log_check,
+    # skip_log_check,  # removed
     # skip_integrity_check,  # removed
 ):
     """Command to upload an album folder to a Gazelle Site."""
@@ -232,7 +232,7 @@ def up(
         # auto_rename=auto_rename,  # removed
         # skip_up=skip_up,  # removed
         # skip_mqa=skip_mqa,  # removed
-        skip_log_check=skip_log_check,
+        # skip_log_check removed (WEB-only race workflow)
         # skip_integrity_check=skip_integrity_check,  # removed
     )
 
@@ -255,7 +255,7 @@ def upload(
     # auto_rename=False,  # removed
     # skip_up=False,  # removed
     # skip_mqa=False,  # removed
-    skip_log_check=False,
+    # skip_log_check=False,  # removed
     # skip_integrity_check=False,  # removed
     is_16bit_transcode=False,  # NEW: Flag to indicate this is a 16-bit downconversion
     transcode_metadata=None,  # NEW: Metadata from the original 24-bit upload
@@ -268,7 +268,7 @@ def upload(
         source = _prompt_source()
     audio_info = gather_audio_info(path)
     hybrid = check_hybrid(audio_info)
-    if not scene:
+    if not scene and cfg.upload.standardize_tags:
         standardize_tags(path)
     tags = gather_tags(path)
     rls_data = construct_rls_data(
@@ -300,35 +300,7 @@ def upload(
         #     else:
         #         upload_upconvert_test(path)
 
-        if source == "CD" and not skip_log_check:
-            click.secho("\nChecking logs", fg="green")
-            for root, _, files in os.walk(path):
-                for f in files:
-                    if f.lower().endswith(".log"):
-                        filepath = os.path.join(root, f)
-                        click.secho(f"\nScoring {filepath}...", fg="cyan", bold=True)
-                        try:
-                            check_log_cambia(filepath, path)
-                        except Exception as e:
-                            if "Edited logs" in str(e):
-                                raise click.Abort() from e
-                            elif "CRC Mismatch" in str(e):
-                                click.secho("Error: CRC mismatch between log and audio files!", fg="red", bold=True)
-                                if not click.confirm(
-                                    click.style(
-                                        "Log file CRC does not match audio files. "
-                                        "Do you want to continue upload anyway?",
-                                        fg="magenta",
-                                    ),
-                                    default=False,
-                                ):
-                                    raise click.Abort() from e
-                            else:
-                                click.secho(f"Error checking log: {e}", fg="red")
-
-        if group_id is None:
-            # Dupe checking removed - just prompt for group selection
-            group_id = check_existing_group(gazelle_site)
+        # Existing group selection/check removed for race workflow; upload as a new group unless --group-id was supplied.
 
         # Spectral and lossy checking removed
 
@@ -356,22 +328,25 @@ def upload(
             if new_source_url is not None:
                 source_url = new_source_url
             
-            # Special case: Tidal URLs - extract metadata from file tags instead of scraping
+            # Special case: Tidal/Deezer URLs - extract metadata from file tags instead of scraping
             if metadata.get("_extract_from_files"):
                 click.secho("Extracting metadata from file tags...", fg="cyan")
                 source_url = metadata.get("_source_url")
+                is_tidal = metadata.get("_is_tidal", False)
+                is_deezer = metadata.get("_is_deezer", False)
                 
-                # Build metadata from file tags
-                metadata = _build_metadata_from_files(path, tags, rls_data)
+                # Build metadata from file tags (pass is_deezer for BARCODE handling)
+                # Also get updated path in case folder was renamed (e.g., Various Artists detection)
+                metadata, path = _build_metadata_from_files(path, tags, rls_data, is_deezer=is_deezer)
                 
-                # Skip retagging for Tidal - files are already correct
-                # Skip the edit_metadata workflow entirely for Tidal
+                # Skip retagging for Tidal/Deezer - files are already correct
+                # Skip the edit_metadata workflow entirely
                 # Just check tags and folder structure
                 tags = check_tags(path)
                 if recompress:
                     recompress_path(path)
-                # Always run folder structure check for Tidal (since files don't have genre tags)
-                check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=True, from_url=True)
+                # Run folder structure check only when the smart pre-check finds work to do.
+                check_folder_structure(path, metadata["scene"], metadata.get("genres", []), is_tidal=is_tidal, from_url=True)
                 
                 # Refresh tags and audio info
                 tags = gather_tags(path)
@@ -416,6 +391,45 @@ def upload(
             # Dupe recheck removed - directly proceed
             click.echo()
         track_data = concat_track_data(tags, audio_info)
+        
+        # SIMPLE UNIFIED LABEL HANDLING (replaces all special cases)
+        # For Qobuz/Apple Music: Check if album artist == label with keywords
+        if not metadata.get("_extract_from_files") and cfg.upload.smart_record_label_precheck:  # Qobuz/Apple Music workflow
+            try:
+                # Optional smart detection: Only check for label if folder name suggests it
+                folder_name = os.path.basename(path)
+                if _should_check_for_label(folder_name):
+                    # Get current album artist from tags
+                    current_albumartist = None
+                    for filename, tagset in tags.items():
+                        if hasattr(tagset, 'albumartist') and tagset.albumartist:
+                            current_albumartist = tagset.albumartist
+                            break
+                    
+                    if current_albumartist:
+                        # Extract label from metadata
+                        extracted_label = metadata.get("_original_label") or metadata.get("label")
+                        
+                        # Simple check: album artist == label AND label has keywords
+                        if extracted_label and current_albumartist.lower().strip() == extracted_label.lower().strip():
+                            if _has_label_keywords(extracted_label):
+                                click.secho(f"\nDetected label '{extracted_label}' as album artist (has keywords)", fg="cyan")
+                                click.secho("Processing as Various Artists compilation...", fg="cyan")
+                                
+                                # Process: Retag to Various Artists, clean tracks, rename folder
+                                path = _process_label_as_various_artists(
+                                    path, tags, extracted_label, metadata
+                                )
+                                
+                                # Refresh tags after processing
+                                tags = gather_tags(path)
+                                click.secho("Label handling complete.\n", fg="green")
+            
+            except Exception as e:
+                click.secho(f"Error in label handling: {e}", fg="yellow", err=True)
+                import traceback
+                traceback.print_exc()
+        
     except click.Abort:
         return click.secho("\nAborting upload...", fg="red")
     except AbortAndDeleteFolder:
@@ -451,7 +465,7 @@ def upload(
     torrent_id = None
     cover_url = None
 
-    seedbox_uploader = UploadManager()
+    seedbox_uploader = UploadManager() if cfg.upload.upload_to_seedbox else None
 
     # Single upload to RED only (multi-tracker loop removed)
     # while True:
@@ -477,27 +491,18 @@ def upload(
     #
     #     remaining_gazelle_sites.remove(tracker)
 
-    # Handle cover image - prepare cover but don't upload to ptpimg yet
-    cover_to_upload_later = None
-    is_cover_downloaded = False
+    # Cover image handling is deferred until after the torrent upload.
+    # This keeps the pre-upload race path fast; new groups are updated with
+    # cover/description in the post-upload section below.
     if is_16bit_transcode:
-        # For 16-bit transcodes, skip uploading cover to ptpimg entirely
+        # For 16-bit transcodes, skip uploading cover to the configured image host entirely
         # The cover.jpg was already copied to the folder during downconversion
         # RED will use the local cover.jpg file from the torrent
         cover_path = os.path.join(path, "cover.jpg")
         if os.path.exists(cover_path):
-            click.secho("Skipping cover upload to ptpimg for 16-bit transcode (using local cover.jpg)", fg="cyan")
+            click.secho("Skipping cover upload to image host for 16-bit transcode (using local cover.jpg)", fg="cyan")
         else:
             click.secho("Warning: cover.jpg not found in 16-bit folder", fg="yellow")
-    elif group_id:
-        if not remove_downloaded_cover_image:
-            download_cover_if_nonexistent(path, metadata["cover"])
-        # Don't need cover URL for existing groups
-        pass
-    else:
-        # For new groups, prepare cover but upload to ptpimg AFTER torrent upload
-        cover_path, is_cover_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
-        cover_to_upload_later = cover_path
 
 
 
@@ -559,15 +564,16 @@ def upload(
     album_desc_to_add = None
     cover_url_to_add = None
     
-    # Handle cover upload if needed (new groups only)
-    if cover_to_upload_later and not is_16bit_transcode and is_new_group:
-        click.secho("Uploading cover image to ptpimg...", fg="cyan")
-        cover_url_to_add = upload_cover(cover_to_upload_later)
-        # Generate album description to include with cover update (new groups only)
+    # Prepare and upload cover only after successful torrent upload (new groups only).
+    if not is_16bit_transcode and is_new_group:
+        cover_to_upload_later, is_cover_downloaded = download_cover_if_nonexistent(path, metadata["cover"])
+        if cover_to_upload_later:
+            click.secho("Uploading cover image to configured image host...", fg="cyan")
+            cover_url_to_add = upload_cover(cover_to_upload_later)
         album_desc_to_add = generate_description(track_data, metadata)
-    elif is_cover_downloaded and remove_downloaded_cover_image:
-        click.secho("Removing downloaded Cover Image File", fg="yellow")
-        os.remove(cover_to_upload_later)
+        if is_cover_downloaded and remove_downloaded_cover_image:
+            click.secho("Removing downloaded Cover Image File", fg="yellow")
+            os.remove(cover_to_upload_later)
     
     # Update group with cover and description (new groups only)
     if cover_url_to_add or album_desc_to_add:
@@ -608,7 +614,6 @@ def upload(
                     recompress=recompress,
                     source_url=source_url,  # Use the same source URL (Tidal/Apple Music/etc.) as the 24-bit version
                     searchstrs=searchstrs,
-                    skip_log_check=skip_log_check,
                     is_16bit_transcode=True,  # NEW: Flag to skip metadata scraping/retagging/cover upload
                     transcode_metadata=metadata,  # Pass the metadata from the 24-bit upload
                 )
@@ -618,7 +623,8 @@ def upload(
                 click.secho("Continuing without 16-bit upload.", fg="yellow")
 
     click.secho("\nDone uploading this release.", fg="green")
-    seedbox_uploader.execute_upload()
+    if seedbox_uploader is not None:
+        seedbox_uploader.execute_upload()
 
 
 def edit_metadata(
@@ -632,6 +638,7 @@ def edit_metadata(
     if not metadata.get("rls_type"):
         click.secho("Warning: No release type found in metadata. Please select one:", fg="yellow")
         metadata["rls_type"] = _prompt_for_release_type()
+    
     
     # For Apple Music, ensure album-level artists exist
     # The scraped metadata should already have artists at the album level
@@ -691,7 +698,11 @@ def edit_metadata(
         unique_artists = main_artists if main_artists else guest_artists
         metadata["artists"] = unique_artists
         
-        if not unique_artists:
+        # Apply Various Artists replacement logic
+        # This will replace "Various Artists" with track artists if it's the only album artist
+        metadata["artists"] = replace_various_artists_with_track_artists(metadata["artists"], metadata)
+        
+        if not metadata["artists"]:
             click.secho("ERROR: No artist information found in track metadata!", fg="red", bold=True)
             click.secho("Track metadata structure:", fg="yellow")
             # Debug output - show first track to help diagnose
@@ -707,9 +718,7 @@ def edit_metadata(
     
     # Check if this is a DJ Mix release and adjust artist roles accordingly
     # DJ Mix pattern: matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
-    click.secho(f"DEBUG: Checking DJ Mix - rls_type: {metadata.get('rls_type')}, title: {metadata.get('title')}", fg="yellow")
     if metadata.get("rls_type") == "DJ Mix" and metadata.get("artists"):
-        click.secho("DEBUG: DJ Mix release type detected, processing artist roles...", fg="yellow")
         # For DJ Mix releases, the album artist should be the DJ/Compiler
         # and track artists should be the main artists
         # Extract album artist from file tags (albumartist field)
@@ -723,7 +732,6 @@ def edit_metadata(
         
         # Deduplicate album artists
         album_artists = list(set(album_artists))
-        click.secho(f"DEBUG: Album artists (from albumartist tag): {album_artists}", fg="yellow")
         
         # If we found album artists, restructure the artist list
         if album_artists:
@@ -737,7 +745,6 @@ def edit_metadata(
             track_artists_set = set()
             album_artists_lower = [aa.lower() for aa in album_artists]
             
-            click.secho("DEBUG: Extracting track artists from file tags...", fg="yellow")
             # Extract artists from individual track files
             for filename, tagset in tags.items():
                 if hasattr(tagset, 'artist') and tagset.artist:
@@ -754,10 +761,7 @@ def edit_metadata(
                         for sub_artist in sub_artists:
                             if sub_artist and sub_artist.lower() not in album_artists_lower:
                                 if sub_artist not in track_artists_set:
-                                    click.secho(f"DEBUG: Found track artist: {sub_artist}", fg="cyan")
                                     track_artists_set.add(sub_artist)
-            
-            click.secho(f"DEBUG: Track artists (excluding album artists): {sorted(track_artists_set)}", fg="yellow")
             
             # Add track artists as main (importance 1)
             for artist in sorted(track_artists_set):
@@ -767,14 +771,11 @@ def edit_metadata(
             metadata["artists"] = new_artists
             
             click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
-            click.secho(f"DEBUG: Final artist list: {new_artists}", fg="yellow")
             
             # Remove "(DJ Mix)" suffix from title for cleaner group name
             # Keep detection in title, but remove suffix for display
             original_title = metadata["title"]
             metadata["title"] = re.sub(r'\s*\(DJ[\s\-]*Mix\)\s*$', '', metadata["title"], flags=re.IGNORECASE).strip()
-            if metadata["title"] != original_title:
-                click.secho(f"DEBUG: Removed '(DJ Mix)' suffix from title: '{original_title}' -> '{metadata['title']}'", fg="cyan")
         else:
             click.secho("WARNING: DJ Mix detected but no albumartist tag found in files", fg="red")
     
@@ -785,8 +786,7 @@ def edit_metadata(
     tags = check_tags(path)
     if not metadata["scene"] and recompress:
         recompress_path(path)
-    # Always run folder structure check when metadata was scraped from a URL
-    # (Qobuz, Tidal, Deezer, Apple Music, Beatport)
+    # Run folder structure check only when the smart pre-check finds work to do.
     check_folder_structure(path, metadata["scene"], metadata.get("genres", []), from_url=bool(source_url))
 
     # Convert genres to tags
@@ -798,10 +798,368 @@ def edit_metadata(
     return path, metadata, tags, audio_info
 
 
-def _build_metadata_from_files(path, tags, rls_data):
+def replace_various_artists_with_track_artists(artists, metadata):
     """
-    Build metadata structure from file tags for Tidal URLs.
+    Replace "Various Artists" with actual track artists when it's the only album artist.
+    
+    This handles special cases where files from Tidal/Deezer (or scraped from Qobuz/Apple Music)
+    have "Various Artists" as the album artist, which causes upload failures.
+    
+    Args:
+        artists: List of (artist_name, importance) tuples
+        metadata: Metadata dict containing tracks information
+    
+    Returns:
+        List of (artist_name, importance) tuples with "Various Artists" replaced if needed
+    """
+    # Check if "Various Artists" is the only album artist
+    if len(artists) == 1 and artists[0][0].lower() == "various artists":
+        # Extract all unique track artists (main importance only)
+        track_artists = set()
+        
+        if "tracks" in metadata and metadata["tracks"]:
+            for disc_tracks in metadata["tracks"].values():
+                for track_info in disc_tracks.values():
+                    if "artists" in track_info:
+                        for artist_name, importance in track_info["artists"]:
+                            if importance == "main":
+                                track_artists.add(artist_name)
+        
+        # Replace "Various Artists" with track artists if we found any
+        if track_artists:
+            result = [(artist, "main") for artist in sorted(track_artists)]
+            return result
+        else:
+            return artists
+    
+    # Keep original artists if:
+    # - Not "Various Artists"
+    # - "Various Artists" plus other artists (intentional)
+    # - No track artists found (fallback)
+    return artists
+
+
+def _should_check_for_label(folder_name):
+    """
+    Check if folder name indicates this might be a label compilation.
+    
+    Smart detection to avoid unnecessary label checking for regular artist albums.
+    Only proceeds with label detection if folder name contains:
+    1. Label keywords (records, productions, etc.)
+    2. Whitelisted label names (e.g., 'Vile Immerse')
+    
+    Args:
+        folder_name: The album folder name to check
+    
+    Returns:
+        bool: True if we should proceed with label detection, False to skip
+    """
+    if not folder_name:
+        return False
+    
+    folder_lower = folder_name.lower()
+    
+    # Check for label keywords in folder name
+    keywords = [
+        'records', 'production', 'music', 'entertainment', 'label',
+        'recordings', 'productions', 'media', 'group', 'collective', 'imprint'
+    ]
+    if any(keyword in folder_lower for keyword in keywords):
+        return True
+    
+    # Check for whitelisted labels in folder name
+    for known_label in KNOWN_RECORD_LABELS:
+        if known_label.lower() in folder_lower:
+            return True
+    
+    return False
+
+
+def _has_label_keywords(label):
+    """
+    Check if label contains label keywords that indicate it's a record label,
+    or if it's in the whitelist of known record labels.
+    
+    Prevents false positives for self-released albums where artist name == label.
+    
+    Keywords: Records, Production, Music, Entertainment, Label, Recordings,
+              Productions, Media, Group, Collective, Imprint
+    
+    Whitelist: Known labels without standard keywords (e.g., 'Vile Immerse')
+    
+    Args:
+        label: The record label string to check
+    
+    Returns:
+        bool: True if label contains any of the keywords or is in whitelist, False otherwise
+    """
+    if not label:
+        return False
+    
+    # Check whitelist first (exact match, case-insensitive)
+    label_stripped = label.strip()
+    for known_label in KNOWN_RECORD_LABELS:
+        if label_stripped.lower() == known_label.lower():
+            return True
+    
+    # Then check keywords
+    label_lower = label.lower()
+    keywords = [
+        'records', 'production', 'music', 'entertainment', 'label',
+        'recordings', 'productions', 'media', 'group', 'collective', 'imprint'
+    ]
+    
+    return any(keyword in label_lower for keyword in keywords)
+
+
+def _remove_label_from_track_artists(tags, label):
+    """
+    Remove label from all track artist tags in both FLAC and MP3 files.
+    Uses _clean_artist_string_with_label() helper for cleaning.
+    
+    Args:
+        tags: Dictionary of filename -> tagset mappings
+        label: The label string to remove from track artists
+    """
+    if not label:
+        return
+    
+    for filename, tagset in tags.items():
+        # Handle FLAC files
+        if hasattr(tagset, 'artist') and tagset.artist:
+            artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+            cleaned_list = []
+            
+            for artist_str in artist_list:
+                if artist_str and artist_str.strip():
+                    artist_str = str(artist_str).strip()
+                    
+                    # Skip if artist exactly matches the label (case-insensitive)
+                    if artist_str.lower() == label.lower():
+                        continue
+                    
+                    cleaned = _clean_artist_string_with_label(artist_str, label)
+                    
+                    if cleaned:
+                        cleaned_list.append(cleaned)
+                    else:
+                        # Keep original if no label found
+                        cleaned_list.append(artist_str)
+            
+            if cleaned_list:
+                tagset.artist = cleaned_list
+                tagset.save()
+        
+        # Handle MP3 files (TPE1)
+        if hasattr(tagset, 'mut') and 'TPE1' in tagset.mut.tags:
+            tpe1_value = tagset.mut.tags['TPE1'].text
+            artist_list = tpe1_value if isinstance(tpe1_value, list) else [tpe1_value]
+            cleaned_list = []
+            
+            for artist_str in artist_list:
+                if artist_str and artist_str.strip():
+                    artist_str = str(artist_str).strip()
+                    
+                    # Skip if artist exactly matches the label (case-insensitive)
+                    if artist_str.lower() == label.lower():
+                        continue
+                    
+                    cleaned = _clean_artist_string_with_label(artist_str, label)
+                    
+                    if cleaned:
+                        cleaned_list.append(cleaned)
+                    else:
+                        # Keep original if no label found
+                        cleaned_list.append(artist_str)
+            
+            if cleaned_list:
+                from mutagen.id3 import TPE1
+                tagset.mut.tags['TPE1'] = TPE1(encoding=3, text=cleaned_list)
+                tagset.mut.save()
+
+
+def _process_label_as_various_artists(path, tags, label, metadata):
+    """
+    Unified processing when label is detected as album artist.
+    
+    Simple approach:
+    1. Retag album artist to "Various Artists"
+    2. Remove label from track artist tags
+    3. Rename folder
+    4. Update metadata
+    
+    Args:
+        path: Current folder path
+        tags: Dictionary of filename -> tagset mappings
+        label: The record label detected as album artist
+        metadata: Metadata dictionary to update
+    
+    Returns:
+        Updated path (if folder was renamed) or original path
+    """
+    if not label:
+        return path
+    
+    click.secho(f"\nDetected record label as album artist: {label}", fg="yellow")
+    click.secho("This appears to be a various artists compilation.", fg="yellow")
+    
+    # Step 1: Retag album artist to "Various Artists"
+    click.secho("Retagging album artist to 'Various Artists'...", fg="cyan")
+    _retag_albumartist_to_various_artists(tags)
+    
+    # Step 2: Remove label from track artist tags
+    _remove_label_from_track_artists(tags, label)
+    
+    # Step 3: Rename folder
+    click.secho("\nRenaming folder...", fg="cyan")
+    new_path = _rename_folder_with_various_artists(path)
+    if new_path != path:
+        click.secho(f"Renamed folder:", fg="green")
+        click.secho(f"  From: {os.path.basename(path)}", fg="white")
+        click.secho(f"  To:   {os.path.basename(new_path)}", fg="white")
+        path = new_path
+    
+    # Step 4: Update metadata label
+    if metadata and metadata.get("label") != label:
+        metadata["label"] = label
+        click.secho(f"Label updated for upload: {label}", fg="green")
+    
+    click.secho("\nAlbum will be treated as Various Artists compilation.", fg="green")
+    
+    return path
+
+
+def _clean_artist_string_with_label(artist_str, label_to_remove):
+    """
+    Helper function to clean an artist string by removing the label.
+    Handles multiple separators: semicolon (;), comma (,), forward slash (/), 
+    backslash (\), ampersand (&), plus (+), and pipe (|).
+    
+    Args:
+        artist_str: Artist string that may contain label (e.g., "War Child Records; Arctic Monkeys")
+        label_to_remove: Label name to remove
+    
+    Returns:
+        Cleaned artist string with label removed, or None if no changes needed
+    """
+    if not artist_str or not label_to_remove:
+        return None
+    
+    artist_str = str(artist_str).strip()
+    label_lower = label_to_remove.lower()
+    
+    # Common separators used in artist tags (in priority order)
+    # Semicolon and comma first as they're most common
+    separators = [';', ',', '/', '\\', '&', '+', '|']
+    
+    # Try each separator
+    for sep in separators:
+        if sep in artist_str:
+            parts = [p.strip() for p in artist_str.split(sep) if p.strip()]
+            original_count = len(parts)
+            # Filter out the label (case-insensitive)
+            parts = [p for p in parts if p.lower() != label_lower]
+            
+            # Only return if we actually removed something
+            if parts and len(parts) < original_count:
+                # Preserve the separator style in output
+                if len(parts) > 1:
+                    # Use the same separator with proper spacing
+                    if sep in [';', ',']:
+                        result = f'{sep} '.join(parts)
+                    else:
+                        result = f' {sep} '.join(parts)
+                else:
+                    result = parts[0]
+                return result
+    
+    # Fallback: Check if label is a substring and remove it
+    if label_lower in artist_str.lower():
+        # Try case-insensitive replacement
+        import re
+        pattern = re.compile(re.escape(label_to_remove), re.IGNORECASE)
+        cleaned = pattern.sub('', artist_str).strip()
+        # Clean up any leftover separators
+        cleaned = re.sub(r'^[;,/\\&+|]\s*', '', cleaned)
+        cleaned = re.sub(r'\s*[;,/\\&+|]$', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        
+        if cleaned and cleaned != artist_str:
+            return cleaned
+    
+    return None
+
+
+def _retag_albumartist_to_various_artists(tags):
+    """
+    Retag all files' albumartist field to "Various Artists".
+    
+    Args:
+        tags: Dictionary of file tags
+    """
+    for filename, tagset in tags.items():
+        try:
+            # Set albumartist to "Various Artists"
+            tagset.albumartist = "Various Artists"
+            # Save the changes to the file
+            tagset.save()
+        except Exception as e:
+            click.secho(f"Warning: Could not retag {filename}: {e}", fg="yellow")
+
+
+def _rename_folder_with_various_artists(path):
+    """
+    Rename folder from "Record Label - Album..." to "Various Artists - Album..."
+    
+    Args:
+        path: Current folder path
+    
+    Returns:
+        New folder path after renaming
+    """
+    import os
+    import re
+    
+    basename = os.path.basename(path)
+    parent_dir = os.path.dirname(path)
+    
+    # Pattern to extract artist from folder name
+    # Format: "Artist - Album (Year) [Source Format] [Bit-Sample]"
+    # We want to replace everything before " - " with "Various Artists"
+    pattern = r"^(.+?)\s+-\s+(.+)$"
+    match = re.match(pattern, basename)
+    
+    if match:
+        # Replace artist with "Various Artists"
+        new_basename = f"Various Artists - {match.group(2)}"
+        new_path = os.path.join(parent_dir, new_basename)
+        
+        # Rename the folder
+        try:
+            os.rename(path, new_path)
+            click.secho(f"\nRenamed folder:", fg="cyan")
+            click.secho(f"  From: {basename}", fg="white")
+            click.secho(f"  To:   {new_basename}", fg="green")
+            return new_path
+        except Exception as e:
+            click.secho(f"Warning: Could not rename folder: {e}", fg="yellow")
+            return path
+    
+    return path
+
+
+def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
+    """
+    Build metadata structure from file tags for Tidal and Deezer URLs.
     Extracts all necessary information from the existing file metadata.
+    
+    Also detects and handles record label albums (where label is tagged as album artist).
+    
+    Args:
+        path: Path to the album folder
+        tags: Dictionary of file tags
+        rls_data: Release data dictionary
+        is_deezer: Boolean indicating if this is a Deezer upload (for BARCODE handling)
     """
     # Initialize metadata structure (matching EMPTY_METADATA from pre_data.py)
     metadata = {
@@ -840,6 +1198,113 @@ def _build_metadata_from_files(path, tags, rls_data):
     genres = []
     upcs = []
     
+    # First pass: Extract album artists to distinguish main artists from guest artists
+    # Album artists are artists who appear at the album level (albumartist field)
+    # Track artists who also appear as album artists are "main" artists
+    # Track artists who don't appear as album artists are "guest" artists
+    # 
+    # IMPORTANT: Exclude "Various Artists" from the set because it's a placeholder, not a real artist
+    # When album artist is only "Various Artists", all track artists should be treated as "main"
+    album_artists_set = set()
+    original_albumartist = None  # Store the original album artist for record label detection
+    for filename, tagset in tags.items():
+        if hasattr(tagset, 'albumartist') and tagset.albumartist:
+            aa_list = tagset.albumartist if isinstance(tagset.albumartist, list) else [tagset.albumartist]
+            for aa in aa_list:
+                if aa and aa.strip():
+                    # Store the first album artist we find for record label detection
+                    if original_albumartist is None:
+                        original_albumartist = str(aa).strip()
+                    
+                    # Split by common separators: comma, semicolon, slash, ampersand, pipe
+                    # Deezer uses semicolons: "Shirobon; Pizza Hotline"
+                    # Tidal uses commas: "Artist1, Artist2"
+                    individual_artists = [a.strip() for a in re.split(r'[,;/\\|&+]', str(aa)) if a.strip()]
+                    for individual_artist in individual_artists:
+                        # Skip "Various Artists" - it's a placeholder, not a real artist
+                        if individual_artist.lower() != "various artists":
+                            # Store in lowercase for case-insensitive comparison
+                            album_artists_set.add(individual_artist.lower())
+    
+    # Pre-scan: Collect all unique track artists for record label detection
+    track_artists_for_detection = set()
+    for filename, tagset in tags.items():
+        if hasattr(tagset, 'artist') and tagset.artist:
+            artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
+            for artist in artist_list:
+                if artist and artist.strip():
+                    individual_artists = [a.strip() for a in re.split(r'[,;/\\|&+]', str(artist)) if a.strip()]
+                    for individual_artist in individual_artists:
+                        track_artists_for_detection.add(individual_artist)
+    
+    # Pre-scan: Extract label for record label detection
+    # We need to extract the label before checking if album artist is a label
+    extracted_label = None
+    for filename, tagset in tags.items():
+        # Try to get copyright field from the underlying mutagen object
+        copyright_text = None
+        try:
+            if hasattr(tagset, 'mut'):
+                # For FLAC files, the tags are in a dictionary-like object
+                if isinstance(tagset.mut, mutagen.flac.FLAC):
+                    # Try different case variations
+                    for key in ['copyright', 'COPYRIGHT', 'Copyright']:
+                        if key in tagset.mut:
+                            copyright_val = tagset.mut.get(key)
+                            if copyright_val:
+                                copyright_text = copyright_val[0] if isinstance(copyright_val, list) else copyright_val
+                                break
+        except (AttributeError, KeyError, IndexError, TypeError):
+            pass
+        
+        if copyright_text:
+            copyright_text = str(copyright_text).strip()
+            
+            # Clean up copyright text by removing common distribution phrases
+            copyright_text = re.sub(r'\s*under exclusive license to\s*', ' ', copyright_text, flags=re.IGNORECASE)
+            copyright_text = re.sub(r',?\s*a division of [^,]+', '', copyright_text, flags=re.IGNORECASE)
+            copyright_text = re.sub(r'\s+', ' ', copyright_text).strip()
+            
+            # Parse copyright: first try to extract label after year
+            match = re.search(r'\d{4}\s+(.+)', copyright_text)
+            if match:
+                extracted_label = match.group(1).strip()
+            else:
+                # If no year pattern, use the entire copyright text as label
+                extracted_label = copyright_text
+            
+            # If we found a label, we can stop looking
+            if extracted_label:
+                break
+        
+        # Try label field if copyright didn't work
+        if not extracted_label and hasattr(tagset, 'label') and tagset.label:
+            extracted_label = str(tagset.label).strip()
+            if extracted_label:
+                break
+    
+    # SIMPLE UNIFIED LABEL HANDLING for Tidal/Deezer
+    # Optional smart detection: Only check for label if folder name suggests it
+    folder_name = os.path.basename(path)
+    if cfg.upload.smart_record_label_precheck and _should_check_for_label(folder_name):
+        if original_albumartist and extracted_label:
+            if original_albumartist.lower().strip() == extracted_label.lower().strip():
+                if _has_label_keywords(extracted_label):
+                    click.secho(f"\nDetected label '{extracted_label}' as album artist (has keywords)", fg="cyan")
+                    click.secho("Processing as Various Artists compilation...", fg="cyan")
+                    
+                    # Process: Retag to Various Artists, clean tracks, rename folder
+                    path = _process_label_as_various_artists(
+                        path, tags, extracted_label, metadata
+                    )
+                    
+                    # Clear album_artists_set since we're treating this as Various Artists
+                    album_artists_set = set()
+                    
+                    click.secho("Label handling complete.\n", fg="green")
+    
+    
+    # Second pass: Extract track data and classify artists
     for filename, tagset in tags.items():
         try:
             # Extract disc number (default to 1)
@@ -867,11 +1332,28 @@ def _build_metadata_from_files(path, tags, rls_data):
                 artist_list = tagset.artist if isinstance(tagset.artist, list) else [tagset.artist]
                 for artist in artist_list:
                     if artist and artist.strip():
-                        # Split by comma to handle cases like "Gayga, Din" -> ["Gayga", "Din"]
-                        individual_artists = [a.strip() for a in str(artist).split(',') if a.strip()]
+                        # Split by common separators: comma, semicolon, slash, ampersand, pipe
+                        # Deezer uses semicolons: "Shirobon; Pizza Hotline"
+                        # Tidal uses commas: "Artist1, Artist2"
+                        individual_artists = [a.strip() for a in re.split(r'[,;/\\|&+]', str(artist)) if a.strip()]
                         for individual_artist in individual_artists:
-                            track_artists.append((individual_artist, "main"))
-                            all_artists.append((individual_artist, "main"))
+                            # Determine if this artist is a main artist or guest artist
+                            # Main artist: appears at both album level (albumartist) and track level
+                            # Guest artist: appears only at track level (not in albumartist)
+                            # 
+                            # SPECIAL CASE: If album_artists_set is empty (e.g., album artist was "Various Artists"),
+                            # treat all track artists as "main" by default
+                            if not album_artists_set:
+                                # No real album artists found (only "Various Artists" or empty)
+                                # All track artists are main artists
+                                importance = "main"
+                            elif individual_artist.lower() in album_artists_set:
+                                importance = "main"
+                            else:
+                                importance = "guest"
+                            
+                            track_artists.append((individual_artist, importance))
+                            all_artists.append((individual_artist, importance))
             
             # Extract album title
             if hasattr(tagset, 'album') and tagset.album:
@@ -977,10 +1459,58 @@ def _build_metadata_from_files(path, tags, rls_data):
                 catnos.append(tagset.catalognumber)
             
             # Extract UPC/Barcode (try both 'upc' and 'barcode' fields)
-            if hasattr(tagset, 'upc') and tagset.upc:
-                upcs.append(str(tagset.upc))
-            elif hasattr(tagset, 'barcode') and tagset.barcode:
-                upcs.append(str(tagset.barcode))
+            barcode_value = None
+            
+            try:
+                # Try UPC field first
+                if hasattr(tagset, 'upc') and tagset.upc:
+                    barcode_value = str(tagset.upc)
+                # Try barcode field with hasattr
+                elif hasattr(tagset, 'barcode') and tagset.barcode:
+                    barcode_value = str(tagset.barcode)
+                # For FLAC/Vorbis tags, try accessing via dictionary with various case variations
+                else:
+                    # Try to access tags as a dictionary (works for FLAC Vorbis comments)
+                    tag_dict = None
+                    
+                    # TagFile wraps mutagen objects - access the underlying mutagen object
+                    if hasattr(tagset, 'mut'):
+                        mut_obj = tagset.mut
+                        # For FLAC files, tags is the Vorbis comment dict
+                        if hasattr(mut_obj, 'tags') and mut_obj.tags:
+                            tag_dict = mut_obj.tags
+                        # For direct mutagen objects (fallback)
+                        elif hasattr(mut_obj, '__getitem__'):
+                            tag_dict = mut_obj
+                    elif hasattr(tagset, 'tags'):
+                        tag_dict = tagset.tags
+                    elif hasattr(tagset, '__dict__'):
+                        # Some tag formats expose tags as attributes
+                        tag_dict = tagset.__dict__
+                    
+                    if tag_dict:
+                        # Try various case variations of barcode
+                        for barcode_key in ['BARCODE', 'barcode', 'Barcode', 'CATALOGUENUMBER', 'CatalogueNumber']:
+                            if barcode_key in tag_dict:
+                                value = tag_dict[barcode_key]
+                                # Handle list values (common in Vorbis comments)
+                                if isinstance(value, list) and len(value) > 0:
+                                    barcode_value = str(value[0])
+                                elif value:
+                                    barcode_value = str(value)
+                                if barcode_value:
+                                    break
+                
+                # If we found a barcode value, add it to appropriate lists
+                if barcode_value:
+                    upcs.append(barcode_value)
+                    # For Deezer files, BARCODE = UPC = Catalogue number
+                    # Add to catnos so it's used as the catalogue number
+                    if is_deezer:
+                        catnos.append(barcode_value)
+            except Exception as e:
+                # If BARCODE extraction fails, silently continue
+                pass
             
             # Extract genre
             if hasattr(tagset, 'genre') and tagset.genre:
@@ -1003,14 +1533,29 @@ def _build_metadata_from_files(path, tags, rls_data):
             continue
     
     # Deduplicate and assign artists
-    seen_artists = set()
-    unique_artists = []
+    # Prioritize "main" importance over "guest" for the same artist
+    seen_artists = {}  # dict to track artist name (lowercase) -> (original_name, importance)
     for artist, importance in all_artists:
-        if artist.lower() not in seen_artists:
-            seen_artists.add(artist.lower())
-            unique_artists.append((artist, importance))
+        artist_lower = artist.lower()
+        if artist_lower not in seen_artists:
+            # First time seeing this artist
+            seen_artists[artist_lower] = (artist, importance)
+        else:
+            # Artist already seen - prioritize "main" over "guest"
+            existing_name, existing_importance = seen_artists[artist_lower]
+            if existing_importance == "guest" and importance == "main":
+                # Upgrade guest to main
+                seen_artists[artist_lower] = (artist, importance)
+            # If existing is "main" and new is "guest", keep existing (main)
+            # If both are same importance, keep existing
+    
+    # Convert dict values to list
+    unique_artists = list(seen_artists.values())
     
     metadata["artists"] = unique_artists
+    
+    # Replace "Various Artists" with track artists if it's the only album artist
+    metadata["artists"] = replace_various_artists_with_track_artists(metadata["artists"], metadata)
     
     # Assign most common values
     if album_titles:
@@ -1018,6 +1563,23 @@ def _build_metadata_from_files(path, tags, rls_data):
         # Use parse_title from pre_data.py to extract edition from album title
         from brucelee94.tagger.pre_data import parse_title
         metadata["title"], metadata["edition_title"] = parse_title(raw_album_title)
+    
+    # Fallback: Extract title from folder name if tags don't provide one
+    # This handles cases like "Jupiter Motel - EP" where the tags have no album title
+    if not metadata["title"]:
+        basename = os.path.basename(path)
+        # Pattern: "Artist - Title" with optional (Year) and [Format] tags
+        # Examples: "Artist - EP", "Artist - Album (2024)", "Artist - Title [FLAC]"
+        pattern = r"^.+?\s+-\s+(.+?)(?:\s+\(\d{4}\))?(?:\s+\[.+?\])*$"
+        match = re.match(pattern, basename)
+        if match:
+            folder_title = match.group(1).strip()
+            # Remove any remaining brackets/parentheses info
+            folder_title = re.sub(r'\s*[\(\[].*?[\)\]]', '', folder_title).strip()
+            if folder_title:
+                from brucelee94.tagger.pre_data import parse_title
+                metadata["title"], metadata["edition_title"] = parse_title(folder_title)
+                click.secho(f"No album title in tags, extracted from folder: '{metadata['title']}'", fg="yellow")
     
     if years:
         metadata["year"] = max(set(years), key=years.count)
@@ -1113,10 +1675,8 @@ def _build_metadata_from_files(path, tags, rls_data):
     
     # Check if title contains "DJ Mix" and adjust release type and artist roles
     # DJ Mix pattern: matches "DJ Mix", "DJMix", "DJ-Mix" etc. (case-insensitive)
-    click.secho(f"DEBUG (file-based): Checking title for DJ Mix pattern: {metadata.get('title')}", fg="yellow")
     if metadata.get("title") and re.search(r"DJ[\s\-]*Mix", metadata["title"], re.IGNORECASE):
         metadata["rls_type"] = "DJ Mix"
-        click.secho("DEBUG (file-based): DJ Mix detected in title, processing artist roles...", fg="yellow")
         
         # For DJ Mix releases, the album artist should be the DJ/Compiler
         # and track artists should be the main artists
@@ -1131,7 +1691,6 @@ def _build_metadata_from_files(path, tags, rls_data):
         
         # Deduplicate album artists
         album_artists = list(set(album_artists))
-        click.secho(f"DEBUG (file-based): Album artists from tags: {album_artists}", fg="yellow")
         
         # If we found album artists, restructure the artist list
         if album_artists:
@@ -1143,7 +1702,6 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             # Add track artists as main (importance 1), excluding album artists to avoid duplication
             album_artists_lower = [aa.lower() for aa in album_artists]
-            click.secho(f"DEBUG (file-based): Artists before filtering: {metadata['artists']}", fg="yellow")
             seen_track_artists = set()
             for artist, importance in metadata["artists"]:
                 if artist.lower() not in album_artists_lower:
@@ -1160,15 +1718,12 @@ def _build_metadata_from_files(path, tags, rls_data):
             
             # Update metadata with new artist list
             metadata["artists"] = new_artists
-            click.secho(f"DEBUG (file-based): Final artist list: {new_artists}", fg="yellow")
             
             click.secho(f"Detected DJ Mix release. DJ/Compiler: {', '.join(album_artists)}", fg="cyan")
             
             # Remove "(DJ Mix)" suffix from title for cleaner group name
             original_title = metadata["title"]
             metadata["title"] = re.sub(r'\s*\(DJ[\s\-]*Mix\)\s*$', '', metadata["title"], flags=re.IGNORECASE).strip()
-            if metadata["title"] != original_title:
-                click.secho(f"DEBUG (file-based): Removed '(DJ Mix)' suffix from title: '{original_title}' -> '{metadata['title']}'", fg="cyan")
     
     # Validate we have required data
     if not metadata["artists"]:
@@ -1179,7 +1734,8 @@ def _build_metadata_from_files(path, tags, rls_data):
         click.secho("ERROR: No album title found in file tags!", fg="red", bold=True)
         raise click.Abort()
     
-    return metadata
+    # Return both metadata and path (path may have been updated if folder was renamed)
+    return metadata, path
 
 
 def metadata_validator(metadata):

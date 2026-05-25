@@ -1,0 +1,122 @@
+═══════════════════════════════════════════════════════════════════════
+                   TRACK ARTIST FORMAT - EXAMPLES
+═══════════════════════════════════════════════════════════════════════
+
+BEFORE (Old Format)
+═══════════════════════════════════════════════════════════════════════
+All artists mixed together before the title:
+
+[b]Various Artists - Album Title[/b]
+January 15, 2024
+
+[b]01.[/b] [artist]Jon Hansen[/artist], [artist]Mary Doufle[/artist] - My love is forever [i](03:45)[/i]
+[b]02.[/b] [artist]Artist A[/artist], [artist]Guest B[/artist] - Another Track [i](04:20)[/i]
+[b]03.[/b] [artist]Main Act[/artist], [artist]Feature[/artist] - Song Title [i](03:30)[/i]
+
+❌ Problem: Cannot distinguish main artists from featured/guest artists
+
+
+AFTER (New Format)
+═══════════════════════════════════════════════════════════════════════
+Main artists before title, featured artists after in (feat. ...):
+
+[b]Various Artists - Album Title[/b]
+January 15, 2024
+
+[b]01.[/b] [artist]Jon Hansen[/artist] - My love is forever (feat. [artist]Mary Doufle[/artist]) [i](03:45)[/i]
+[b]02.[/b] [artist]Artist A[/artist] - Another Track (feat. [artist]Guest B[/artist]) [i](04:20)[/i]
+[b]03.[/b] [artist]Main Act[/artist] - Song Title (feat. [artist]Feature[/artist]) [i](03:30)[/i]
+
+✓ Solution: Clear separation between main and featured artists
+
+
+DETAILED EXAMPLES
+═══════════════════════════════════════════════════════════════════════
+
+Example 1: Single Main + Single Guest
+┌─────────────────────────────────────────────────────────────────────┐
+│ Artists:                                                             │
+│   - Jon Hansen (main)                                                │
+│   - Mary Doufle (guest)                                              │
+│                                                                      │
+│ Output:                                                              │
+│ [b]01.[/b] [artist]Jon Hansen[/artist] - My love is forever        │
+│ (feat. [artist]Mary Doufle[/artist]) [i](03:45)[/i]                │
+└─────────────────────────────────────────────────────────────────────┘
+
+Example 2: Multiple Main Artists
+┌─────────────────────────────────────────────────────────────────────┐
+│ Artists:                                                             │
+│   - Artist A (main)                                                  │
+│   - Artist B (main)                                                  │
+│                                                                      │
+│ Output:                                                              │
+│ [b]02.[/b] [artist]Artist A[/artist], [artist]Artist B[/artist]    │
+│ - Track Title [i](04:20)[/i]                                        │
+└─────────────────────────────────────────────────────────────────────┘
+
+Example 3: Single Main + Multiple Guests
+┌─────────────────────────────────────────────────────────────────────┐
+│ Artists:                                                             │
+│   - Main Artist (main)                                               │
+│   - Guest 1 (guest)                                                  │
+│   - Guest 2 (guest)                                                  │
+│                                                                      │
+│ Output:                                                              │
+│ [b]03.[/b] [artist]Main Artist[/artist] - Song Title               │
+│ (feat. [artist]Guest 1[/artist], [artist]Guest 2[/artist])         │
+│ [i](03:15)[/i]                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+Example 4: Main Only (No Guests)
+┌─────────────────────────────────────────────────────────────────────┐
+│ Artists:                                                             │
+│   - Solo Artist (main)                                               │
+│                                                                      │
+│ Output:                                                              │
+│ [b]04.[/b] [artist]Solo Artist[/artist] - Another Song             │
+│ [i](02:55)[/i]                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+FORMAT BREAKDOWN
+═══════════════════════════════════════════════════════════════════════
+
+[b]01.[/b] [artist]Jon Hansen[/artist] - My love is forever (feat. [artist]Mary Doufle[/artist]) [i](03:45)[/i]
+└─────┘   └──────────────────────────┘   └──────────────────┘        └────────────────────────────┘   └──────────┘
+Track #   Main Artist(s)                 Title                        Featured Artist(s)                Duration
+(bold)    (with [artist] tags)           (plain text)                 (in parentheses with feat.)      (italic)
+
+
+KEY POINTS
+═══════════════════════════════════════════════════════════════════════
+
+✓ Main artists appear before " - " separator
+✓ Track title in the middle
+✓ Guest/featured artists after title in "(feat. ...)"
+✓ Multiple artists of same type separated by ", "
+✓ Each artist wrapped in [artist]...[/artist] tags
+✓ Duration at the end in italics: [i](MM:SS)[/i]
+
+
+APPLICABILITY
+═══════════════════════════════════════════════════════════════════════
+
+Applied to:   Various Artists albums (3+ main artists)
+Not applied:  Regular albums (1-2 main artists)
+              → Regular albums show album artist in header only
+
+Multi-disc:   Format works identically for multi-disc albums
+              Each disc has same track format
+
+
+BENEFITS
+═══════════════════════════════════════════════════════════════════════
+
+✓ Clear distinction between artist roles
+✓ Follows music industry standard convention
+✓ Better readability and user experience
+✓ Compatible with RED BBCode artist linking
+✓ Consistent format across all tracks
+
+═══════════════════════════════════════════════════════════════════════

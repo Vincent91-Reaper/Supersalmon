@@ -28,18 +28,22 @@ dottorrents_dir = '.torrents'
 # ===============================
 # IMAGE UPLOAD SETTINGS
 # ===============================
-# Image hosters: ptpimg, ptscreens, oeimg, catbox, emp (not tested recently)
+# Image hosters: cyx, imgbb, catbox, ptpimg, ptscreens, oeimg, emp (not tested recently)
+# ImgBB is a free, stable fallback hoster, but it requires an API key.
+# Catbox and cyx do not require API keys, but public hosts may pause uploads during storage issues.
 [image]
-image_uploader = "ptpimg"
-cover_uploader = "ptpimg"
-specs_uploader = "ptpimg"
+image_uploader = "catbox"
+cover_uploader = "catbox"
+specs_uploader = "catbox"
 
-# ptpimg API key (log into ptpimg, developpers tools, go to the Elements tab, and search for 'api_key')
+# ptpimg API key (only needed if you set one of the uploaders above to ptpimg)
 ptpimg_key = 'api_key'
 # ptscreens API key (log into ptscreens, settings, API)
 ptscreens_key = 'api_key'
 # oeimg API key (log into imgoe, settings, API)
 oeimg_key = 'api_key'
+# ImgBB API key (create a free account at imgbb.com, then use API key from api.imgbb.com)
+imgbb_key = 'api_key'
 
 # Set to true to remove downloaded cover images that are created in source folder, when one does not exist
 # remove_auto_downloaded_cover_image = false
@@ -131,8 +135,13 @@ session = 'get-from-site-cookie'
 # native_spectrals_viewer = false
 # feh_fullscreen = true
 # prompt_puddletag = false
+# Set true to normalize file tags before upload. Keep false for faster WEB race uploads.
+# standardize_tags = false
 # log_dupe_tolerance = 0.5
 # windows_use_recycle_bin = true
+# # Enable smart record-label cleaner pre-check (checks folder names for label keywords/whitelist).
+# # Keep false for fastest uploads; set true to auto-clean label-as-artist compilations.
+# smart_record_label_precheck = false
 
 # # multi_tracker support
 # multi_tracker_upload = true
@@ -147,8 +156,8 @@ session = 'get-from-site-cookie'
 # # answers yes to all questions during upload. risky!
 # yes_all = false
 
-# # enable seedbox uploading
-# upload_to_seedbox = true
+# # enable seedbox/upload-client tasks after upload. Keep false for fastest WEB race uploads.
+# upload_to_seedbox = false
 
 # [upload.search]
 # limit = 3

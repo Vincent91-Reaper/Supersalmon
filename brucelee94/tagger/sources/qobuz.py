@@ -190,15 +190,24 @@ class Scraper(QobuzBase, MetadataMixin):
         if not label:
             return None
 
+        # Save the original label before any transformations
+        # This is used for record label detection later
+        original_label = label
+
         # Check if this is Qobuz's "Records DK" label (indicates self-released)
         # Matches patterns like "Records DK", "3324569 Records DK", etc.
         if re.match(r'^\d*\s*Records DK$', label.strip()):
-            return "Self-Released"
+            label = "Self-Released"
 
         # Check if this is likely self-released (artist name in label)
         artist = safe_get(soup, ["artist", "name"])
-        if artist and artist.lower() in label.lower():
-            return "Self-Released"
+        if artist and artist.lower() in label.lower() and label != "Self-Released":
+            label = "Self-Released"
+
+        # Store original label in soup for later use by record label detection
+        # Use a special key that won't interfere with normal processing
+        if label == "Self-Released" and original_label != "Self-Released":
+            soup["_original_label"] = original_label
 
         return label
 
@@ -357,13 +366,15 @@ class Scraper(QobuzBase, MetadataMixin):
         Parse the release type from the API response.
         Returns a standardized release type based on Qobuz data.
         """
-        # Try to get directly from Qobuz's mapping first
+        # Get title from soup
+        title = soup.get("title", "")
+        
+        # Try to get directly from Qobuz's mapping
         qobuz_type = soup.get("release_type", "").lower()
         if qobuz_type in RECORD_TYPES:
             return RECORD_TYPES[qobuz_type]
 
-        # Check the title for explicit indicators
-        title = soup.get("title", "")
+        # Check for other explicit indicators in title
         if RE_EP.search(title):
             # Remove the suffix from the title
             soup["title"] = RE_EP.sub("", title)

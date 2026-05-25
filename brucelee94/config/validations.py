@@ -24,7 +24,7 @@ class Directory(BaseStruct):
             raise ValueError("tmp_dir is not a valid directory")
 
 
-ImgUploaderLiteral = Literal["ptpimg", "ptscreens", "oeimg", "catbox", "emp"]
+ImgUploaderLiteral = Literal["ptpimg", "ptscreens", "oeimg", "catbox", "cyx", "imgbb", "emp"]
 
 
 class ImageUploader(BaseStruct):
@@ -34,6 +34,7 @@ class ImageUploader(BaseStruct):
     ptpimg_key: str | None = None
     ptscreens_key: str | None = None
     oeimg_key: str | None = None
+    imgbb_key: str | None = None
     remove_auto_downloaded_cover_image: bool = False
     auto_compress_cover: bool = False
 
@@ -45,6 +46,8 @@ class ImageUploader(BaseStruct):
             raise ValueError("PTScreens key not specified")
         if "oeimg" in uploader_selections and self.oeimg_key is None:
             raise ValueError("oeimage key not specified")
+        if "imgbb" in uploader_selections and self.imgbb_key is None:
+            raise ValueError("ImgBB key not specified")
 
 
 class TidalSettings(BaseStruct):
@@ -179,7 +182,9 @@ class Upload(BaseStruct):
     native_spectrals_viewer: bool = False
     feh_fullscreen: bool = True
     prompt_puddletag: bool = False
+    standardize_tags: bool = False
     windows_use_recycle_bin: bool = True
+    smart_record_label_precheck: bool = False
 
     multi_tracker_upload: bool = True
     # TODO: should this be in tracker?
@@ -190,7 +195,7 @@ class Upload(BaseStruct):
 
     yes_all: bool = False
 
-    upload_to_seedbox: bool = True
+    upload_to_seedbox: bool = False
 
     # TODO: take these out of the upload struct!
     search: UploadSearch = msgspec.field(default_factory=UploadSearch)

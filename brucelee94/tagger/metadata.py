@@ -14,6 +14,10 @@ from brucelee94.tagger.sources import METASOURCES
 from brucelee94.tagger.sources.base import generate_artists
 
 
+def _normalize_source_url(source, url):
+    return source.Scraper.normalize_url(url)
+
+
 def _get_event_loop():
     """Get or create an event loop for async operations."""
     try:
@@ -85,14 +89,22 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
             # Break out of prompt loop to scrape
             break
     
-    # Special case: Check if this is a Tidal URL
-    # For Tidal, we want to skip scraping and extract metadata from file tags instead
+    # Special case: Check if this is a Tidal or Deezer URL
+    # For Tidal/Deezer, we want to skip scraping and extract metadata from file tags instead
     import re
     tidal_pattern = re.compile(r"^https?://.*(?:tidal|wimpmusic)\.com.*\/(album)\/([0-9]+)")
+    deezer_pattern = re.compile(r"^https?://.*deezer\.com.*\/(album)\/([0-9]+)")
+    
     if tidal_pattern.match(url_input):
+        url_input = _normalize_source_url(METASOURCES["Tidal"], url_input)
         click.secho("Tidal URL detected - skipping metadata scraping", fg="cyan")
         # Return a special marker to indicate we should extract from file tags
-        return {"_extract_from_files": True, "_source_url": url_input}, url_input
+        return {"_extract_from_files": True, "_source_url": url_input, "_is_tidal": True}, url_input
+    elif deezer_pattern.match(url_input):
+        url_input = _normalize_source_url(METASOURCES["Deezer"], url_input)
+        click.secho("Deezer URL detected - skipping metadata scraping", fg="cyan")
+        # Return a special marker to indicate we should extract from file tags
+        return {"_extract_from_files": True, "_source_url": url_input, "_is_deezer": True}, url_input
     
     # Try to scrape from the URL
     source_url = None
@@ -100,6 +112,7 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     
     for name, source in METASOURCES.items():
         if source.Scraper.regex.match(url_input):
+            url_input = _normalize_source_url(source, url_input)
             click.secho(f"Scraping metadata from {name}...", fg="cyan")
             source_url = url_input
             if url_input not in rls_data["urls"]:
@@ -173,11 +186,19 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
                 
                 return metadata, source_url
             else:
+                # Scraping failed - automatically fall back to file extraction
                 click.secho(f"Failed to scrape metadata from {url_input}", fg="red")
+                
+                # If URL was provided programmatically, don't fallback - just fail
                 if provided_source_url:
-                    # If we were given a URL and it failed, raise an error
                     raise click.Abort("Failed to scrape from provided URL")
-                break
+                
+                # Automatically extract from files (no prompt)
+                click.echo()
+                click.secho("Automatically extracting metadata from audio files...", fg="cyan")
+                click.secho("(Similar to Tidal/Deezer uploads)", fg="cyan")
+                # Return the extract_from_files flag like Tidal/Deezer
+                return {"_extract_from_files": True, "_source_url": url_input}, url_input
     
     if not metadata:
         if provided_source_url:
@@ -270,6 +291,11 @@ def _select_choice(choices, rls_data):
 
             # Handle URLs (both starred and unstarred)
             if stripped.lower().startswith("http"):
+                for source in METASOURCES.values():
+                    if source.Scraper.regex.match(stripped):
+                        stripped = _normalize_source_url(source, stripped)
+                        break
+
                 # Add any URL to rls_data urls if not already there
                 if stripped not in rls_data["urls"]:
                     rls_data["urls"].append(stripped)
