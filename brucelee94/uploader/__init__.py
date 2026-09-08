@@ -328,7 +328,7 @@ def upload(
             if new_source_url is not None:
                 source_url = new_source_url
             
-            # Special case: Tidal/Deezer URLs - extract metadata from file tags instead of scraping
+            # Special case: Tidal/Qobuz/Deezer URLs - extract metadata from file tags instead of scraping
             if metadata.get("_extract_from_files"):
                 click.secho("Extracting metadata from file tags...", fg="cyan")
                 source_url = metadata.get("_source_url")
@@ -339,7 +339,7 @@ def upload(
                 # Also get updated path in case folder was renamed (e.g., Various Artists detection)
                 metadata, path = _build_metadata_from_files(path, tags, rls_data, is_deezer=is_deezer)
                 
-                # Skip retagging for Tidal/Deezer - files are already correct
+                # Skip retagging for Tidal/Qobuz/Deezer - files are already correct
                 # Skip the edit_metadata workflow entirely
                 # Just check tags and folder structure
                 tags = check_tags(path)
@@ -1150,7 +1150,7 @@ def _rename_folder_with_various_artists(path):
 
 def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
     """
-    Build metadata structure from file tags for Tidal and Deezer URLs.
+    Build metadata structure from file tags for Tidal, Qobuz, and Deezer URLs.
     Extracts all necessary information from the existing file metadata.
     
     Also detects and handles record label albums (where label is tagged as album artist).
@@ -1283,7 +1283,7 @@ def _build_metadata_from_files(path, tags, rls_data, is_deezer=False):
             if extracted_label:
                 break
     
-    # SIMPLE UNIFIED LABEL HANDLING for Tidal/Deezer
+    # SIMPLE UNIFIED LABEL HANDLING for Tidal/Qobuz/Deezer
     # Optional smart detection: Only check for label if folder name suggests it
     folder_name = os.path.basename(path)
     if cfg.upload.smart_record_label_precheck and _should_check_for_label(folder_name):

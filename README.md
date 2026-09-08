@@ -20,6 +20,7 @@ A simplified music uploading tool for RED (Redacted). Completely separate from s
 - **RED Upload** – Upload music to RED (Redacted) tracker
 - **Metadata Retrieval** – Fetches metadata from:
   - Bandcamp, Beatport, Deezer, Discogs, iTunes, JunoDownload, MusicBrainz, Qobuz, Tidal
+- **Direct File Metadata** – Tidal, Qobuz, and Deezer album URLs skip web scraping and use the uploaded audio files' tags.
 - **File Management** –  
   - Retags files with updated metadata (artists, catalog #/UPC, label only)
   - Original folder and file names are preserved

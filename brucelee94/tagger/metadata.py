@@ -50,7 +50,7 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
     Get metadata from a URL provided by the user. Skips automatic search.
     If provided_source_url is given, use it directly instead of prompting.
     
-    Special case: For Tidal URLs, returns a flag to skip scraping and extract from file tags.
+    Special case: For Tidal, Qobuz, and Deezer URLs, returns a flag to skip scraping and extract from file tags.
     """
     # Initialize rls_data if needed
     rls_data = rls_data or {}
@@ -89,8 +89,8 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
             # Break out of prompt loop to scrape
             break
     
-    # Special case: Check if this is a Tidal or Deezer URL
-    # For Tidal/Deezer, we want to skip scraping and extract metadata from file tags instead
+    # Special case: Check if this is a Tidal, Qobuz, or Deezer URL
+    # For these sources, skip scraping and extract metadata from file tags instead.
     import re
     tidal_pattern = re.compile(r"^https?://.*(?:tidal|wimpmusic)\.com.*\/(album)\/([0-9]+)")
     deezer_pattern = re.compile(r"^https?://.*deezer\.com.*\/(album)\/([0-9]+)")
@@ -105,6 +105,10 @@ def get_metadata(path, tags, rls_data=None, provided_source_url=None):
         click.secho("Deezer URL detected - skipping metadata scraping", fg="cyan")
         # Return a special marker to indicate we should extract from file tags
         return {"_extract_from_files": True, "_source_url": url_input, "_is_deezer": True}, url_input
+    elif METASOURCES["Qobuz"].Scraper.regex.match(url_input):
+        url_input = _normalize_source_url(METASOURCES["Qobuz"], url_input)
+        click.secho("Qobuz URL detected - skipping metadata scraping", fg="cyan")
+        return {"_extract_from_files": True, "_source_url": url_input}, url_input
     
     # Try to scrape from the URL
     source_url = None
