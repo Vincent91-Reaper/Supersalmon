@@ -1,5 +1,5 @@
-from brucelee94.tagger.sources import METASOURCES
 from brucelee94.tagger.metadata import get_metadata
+from brucelee94.tagger.sources import METASOURCES
 
 
 def test_complex_source_urls_are_trimmed_to_release_id():
